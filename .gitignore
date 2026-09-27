@@ -1,0 +1,15 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.env
+# BANELIO: datos locales y configuracion de herramientas
+prisma/dev.db
+prisma/dev.db-*
+opencode.json
+opencode.json.*
+*.before-*

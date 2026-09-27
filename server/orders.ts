@@ -1,0 +1,516 @@
+import { Prisma } from '@prisma/client';
+import { prisma } from './db';
+import { getActiveCatalog } from './catalog';
+import { normalizeCountryCode, getTaxForCountry } from './tax';
+import { createEntitlementsForOrder } from './pricing';
+import {
+  calculateCommercialDiscount,
+  DEFAULT_DISCOUNT_CONFIG
+} from '../src/services/pricingEngine';
+
+/**
+ * BANELIO - Orders (Fase Grande, Subfases 3/4/5).
+ *
+ * Server-authoritative order creation. El servidor es la ÚNICA autoridad para:
+ *   - validar SKU contra el catálogo server-side (server/catalog.ts)
+ *   - precio unitario (solo del catálogo)
+ *   - subtotal
+ *   - tasa fiscal (solo de server/tax.ts)
+ *   - impuesto, base gravable, descuento, total
+ *   - Order ID (cuid generado por la DB)
+ *   - estados (payment/order/provision)
+ *
+ * NUNCA se acepta del cliente: unitPrice, subtotal, tax, taxRate, total,
+ * paymentStatus, orderStatus, provisionStatus, discount. Si llegan, se rechaza.
+ *
+ * Estados al crear: status=CREATED, paymentStatus=PENDING_PAYMENT,
+ * provisionStatus=NONE. El aprovisionamiento SOLO ocurre tras una confirmación
+ * real de pago (webhook posterior), jamás aquí.
+ */
+
+// List of monetary/state fields that the client must NOT be allowed to set.
+const FORBIDDEN_CLIENT_FIELDS = [
+  'unitPrice',
+  'unitPriceUSD',
+  'subtotal',
+  'subtotalUSD',
+  'tax',
+  'taxAmount',
+  'taxUSD',
+  'taxRate',
+  'taxPercent',
+  'total',
+  'totalUSD',
+  'discount',
+  'price',
+  'paymentStatus',
+  'orderStatus',
+  'status',
+  'provisionStatus',
+  'provisioningStatus',
+  'gatewayReference',
+  'paymentReference',
+  'invoiceNumber',
+  'customerId'
+];
+
+export interface OrderCreateInput {
+  idempotencyKey?: string;
+  authenticatedCustomerId?: string;
+  countryCode?: string;
+  // promoCode: el cliente SOLO envía el código; el descuento lo calcula el
+  // servidor contra una tabla interna. Nunca se acepta un %/monto del cliente.
+  promoCode?: string;
+  // displayCurrency is accepted only as a hint for the client's UI currency;
+  // monetary authority is the catalog currency (USD).
+  displayCurrency?: string;
+  customer?: {
+    email?: string;
+    name?: string;
+    phone?: string;
+    registrant?: {
+      name?: string;
+      org?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+  items?: Array<{
+    sku: string;
+    quantity?: number;
+    periodYearsOrMonths?: number;
+    periodUnit?: 'year' | 'month';
+    // For domain transfers, eppCode is required and persisted with the order.
+    isTransfer?: boolean;
+    eppCode?: string;
+  }>;
+}
+
+export class OrderValidationError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// Cupones compatibles con el frontend; el descuento se calcula SOLO aquí.
+const PROMO_CODES: Record<string, number> = {
+  WELCOME20: 0.2,
+  PARTNER30: 0.15,
+  HOTSALE: 0.25
+};
+
+/** Reject any unauthorized monetary/state field the client attempted to set. */
+function assertNoForbiddenFields(body: Record<string, unknown>): void {
+  for (const key of FORBIDDEN_CLIENT_FIELDS) {
+    if (key in body && body[key] !== undefined && body[key] !== null) {
+      throw new OrderValidationError(400, `Campo no autorizado desde el cliente: ${key}`);
+    }
+  }
+}
+
+/**
+ * Crea una orden de forma idempotente y server-authoritative.
+ * Si idempotencyKey ya existe, devuelve la orden existente (sin recrear).
+ */
+export async function createOrder(input: OrderCreateInput): Promise<any> {
+  const body = input as unknown as Record<string, unknown>;
+  assertNoForbiddenFields(body);
+
+  // ---- Idempotency (Subfase 4) ----
+  const rawIdempotencyKey = typeof input.idempotencyKey === 'string'
+    ? input.idempotencyKey.trim()
+    : '';
+
+  if (rawIdempotencyKey.length > 128) {
+    throw new OrderValidationError(400, 'La clave de idempotencia no es válida.');
+  }
+
+  const idempotencyKey = rawIdempotencyKey || undefined;
+
+  if (idempotencyKey) {
+    const existing = await prisma.order.findUnique({ where: { idempotencyKey } });
+    if (existing) {
+      return { order: toPublicOrder(existing), created: false, idempotent: true };
+    }
+  }
+
+  // ---- Validate SKUs against server-side catalog (Subfase 3) ----
+  if (!Array.isArray(input.items) || input.items.length === 0) {
+    throw new OrderValidationError(400, 'Se requiere al menos un item con sku válido.');
+  }
+
+  const catalog = await getActiveCatalog(prisma);
+  const catalogBySku = new Map(catalog.map((c) => [c.sku, c]));
+
+  interface BuiltLine {
+    sku: string;
+    name: string;
+    category: string;
+    billingPeriod: string;
+    unitPriceUSD: number;
+    quantity: number;
+    periodUnit: 'year' | 'month';
+    isTransfer?: boolean;
+    eppCode?: string;
+  }
+
+  const lines: BuiltLine[] = [];
+  let subtotal = 0;
+
+  for (const raw of input.items) {
+    const sku = typeof raw.sku === 'string' ? raw.sku.trim() : '';
+    if (!sku) throw new OrderValidationError(400, 'Item con sku vacío.');
+
+    if (!catalogBySku.has(sku)) {
+      // Distinguish "SKU doesn't exist" from "SKU exists but inactive".
+      const raw = await prisma.catalogItem.findUnique({ where: { sku } });
+      if (raw && raw.active === false) {
+        throw new OrderValidationError(400, `El producto con SKU ${sku} no está activo.`);
+      }
+      // Transferencia/renovación SIN precio real configurado: respuesta honesta,
+      // NUNCA se cobra un precio inventado (lema: no fabricar datos).
+      const transferMatch = /^domain-(.+)-transfer$/.exec(sku);
+      if (transferMatch) {
+        throw new OrderValidationError(
+          400,
+          `Transfer pricing not configured for TLD ${transferMatch[1].replace(/-/g, '.')}. No se puede cobrar la transferencia sin un precio real.`
+        );
+      }
+      const renewMatch = /^domain-(.+)-renew$/.exec(sku);
+      if (renewMatch) {
+        throw new OrderValidationError(
+          400,
+          `Renewal pricing not configured for TLD ${renewMatch[1].replace(/-/g, '.')}. No se puede cobrar la renovación sin un precio real.`
+        );
+      }
+      throw new OrderValidationError(400, `SKU no existe en el catálogo: ${sku}`);
+    }
+    const def = catalogBySku.get(sku)!;
+
+    const qtyRaw = raw.quantity;
+    const quantity = qtyRaw === undefined ? 1 : Number(qtyRaw);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 1000) {
+      throw new OrderValidationError(400, `Cantidad inválida para SKU ${sku}.`);
+    }
+
+    const catalogUnitPrice = Number(def.price);
+    const billingPeriod = def.billingPeriod;
+    const catalogPeriodUnit: 'year' | 'month' =
+      billingPeriod === 'MONTH' ? 'month' : 'year';
+
+    const requestedPeriodUnit =
+      raw.periodUnit === 'month' || raw.periodUnit === 'year'
+        ? raw.periodUnit
+        : catalogPeriodUnit;
+
+    // El cliente puede solicitar duración, pero nunca cambiar la unidad
+    // de facturación definida por el catálogo.
+    if (requestedPeriodUnit !== catalogPeriodUnit) {
+      throw new OrderValidationError(
+        400,
+        `Unidad de facturación inválida para SKU ${sku}.`
+      );
+    }
+
+    const periodsRaw = raw.periodYearsOrMonths;
+    const periods = periodsRaw === undefined ? 1 : Number(periodsRaw);
+
+    if (!Number.isInteger(periods) || periods < 1 || periods > 10) {
+      throw new OrderValidationError(
+        400,
+        `Duración inválida para SKU ${sku}.`
+      );
+    }
+
+    if (raw.isTransfer) {
+      if (typeof raw.eppCode !== 'string' || !raw.eppCode.trim()) {
+        throw new OrderValidationError(
+          400,
+          `El código EPP es obligatorio para transferir el dominio ${sku}.`
+        );
+      }
+    }
+
+    const commercialDiscount = calculateCommercialDiscount(
+      quantity,
+      raw.isTransfer ? 1 : periods,
+      DEFAULT_DISCOUNT_CONFIG
+    );
+
+    const commercialMultiplier = 1 - (
+      commercialDiscount.combinedDiscountPercent / 100
+    );
+
+    const discountedUnitPrice = Math.round(
+      catalogUnitPrice * commercialMultiplier * 100
+    ) / 100;
+
+    const lineTotal = Math.round(
+      discountedUnitPrice * quantity * periods * 100
+    ) / 100;
+
+    lines.push({
+      sku,
+      name: def.name,
+      category: def.category,
+      billingPeriod,
+      unitPriceUSD: discountedUnitPrice,
+      quantity,
+      periodUnit: catalogPeriodUnit,
+      isTransfer: Boolean(raw.isTransfer),
+      ...(raw.isTransfer && typeof raw.eppCode === 'string' && raw.eppCode.trim()
+        ? { eppCode: raw.eppCode.trim() }
+        : {})
+    });
+
+    subtotal += lineTotal;
+  }
+
+  subtotal = Math.round(subtotal * 100) / 100;
+
+  // ---- Promo code (descuento calculado en el SERVIDOR, nunca del cliente) ----
+  const rawPromo = typeof input.promoCode === 'string' ? input.promoCode.trim().toUpperCase() : '';
+  const promoRate = rawPromo && PROMO_CODES[rawPromo] !== undefined ? PROMO_CODES[rawPromo] : 0;
+  const discount = Math.round(subtotal * promoRate * 100) / 100;
+  // ---- Tax rate server-side (Subfase 3) ----
+  const countryCode = normalizeCountryCode(input.countryCode);
+  if (!countryCode) {
+    throw new OrderValidationError(400, 'Código de país inválido. Usa ISO 3166-1 alpha-2.');
+  }
+  const tax = getTaxForCountry(countryCode);
+
+  const taxBase = subtotal - discount;
+  const taxAmount = Math.round(taxBase * tax.rate * 100) / 100;
+  const total = Math.round((taxBase + taxAmount) * 100) / 100;
+
+  // ---- Customer (sesión autenticada autoritativa; guest permitido) ----
+  let customerId: string | null = input.authenticatedCustomerId || null;
+
+  if (customerId) {
+    const authenticatedCustomer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, role: true, status: true }
+    });
+
+    if (
+      !authenticatedCustomer ||
+      authenticatedCustomer.role !== 'CUSTOMER' ||
+      authenticatedCustomer.status !== 'ACTIVE'
+    ) {
+      throw new OrderValidationError(401, 'Sesión de cliente no válida.');
+    }
+  } else {
+    const custEmail = input.customer?.email?.trim().toLowerCase();
+
+    if (custEmail) {
+      const name = input.customer?.name?.trim() || custEmail.split('@')[0] || 'Cliente';
+      const customer = await prisma.customer.upsert({
+        where: { email: custEmail },
+        update: {},
+        create: {
+          email: custEmail,
+          name,
+          phone: input.customer?.phone?.trim() || undefined
+        }
+      });
+      customerId = customer.id;
+    }
+  }
+
+  // ---- Persist (Subfase 3) ----
+  const itemsJson: Prisma.InputJsonValue = lines.map((l) => ({
+    sku: l.sku,
+    name: l.name,
+    category: l.category,
+    billingPeriod: l.billingPeriod,
+    unitPriceUSD: l.unitPriceUSD,
+    quantity: l.quantity,
+    periodUnit: l.periodUnit,
+    isTransfer: l.isTransfer || false,
+    ...(l.isTransfer && l.eppCode ? { eppCode: l.eppCode } : {})
+  })) as unknown as Prisma.InputJsonValue;
+
+  const order = await prisma.order.create({
+    data: {
+      idempotencyKey,
+      customerId,
+      status: 'CREATED',
+      paymentStatus: 'PENDING_PAYMENT',
+      provisionStatus: 'NONE',
+      currency: 'USD',
+      subtotal,
+      discount,
+      taxBase,
+      taxRate: tax.rate,
+      tax: taxAmount,
+      total,
+      paymentMethod: null,
+      items: itemsJson
+    }
+  });
+
+  if (customerId) {
+    try {
+      await createEntitlementsForOrder(order.id, customerId, lines);
+    } catch (e) {
+      console.error('Error creating entitlements for order:', e);
+    }
+  }
+
+  return { order: toPublicOrder(order), created: true, idempotent: false };
+}
+
+/**
+ * GET /api/orders/:id - devuelve SOLO datos no sensibles.
+ * Nunca expone EPP, tokens, ni credenciales de proveedor.
+ */
+export async function getOrderById(id: string): Promise<any> {
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) {
+    throw new OrderValidationError(404, 'Orden no encontrada.');
+  }
+  return toPublicOrder(order);
+}
+
+/**
+ * Raw order lookup for payment endpoints. Devuelve la entidad real de Prisma
+ * (interno del servidor; NO debe serializarse directamente al cliente).
+ */
+export async function getOrderForPayment(orderId: string): Promise<any> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw new OrderValidationError(404, 'Orden no encontrada.');
+  }
+  return order;
+}
+
+/**
+ * Fija la referencia del proveedor (PaymentIntent / PayPal Order / voucher OXXO)
+ * en la orden. Idempotente: si ya existe una referencia del mismo proveedor,
+ * la devuelve sin duplicar (evita PaymentIntents duplicados).
+ */
+export async function setOrderGatewayReference(
+  orderId: string,
+  gatewayReference: string,
+  paymentMethod: 'STRIPE_CARD' | 'PAYPAL' | 'OXXO_PAY'
+): Promise<{ order: any; existing: string | null; changed: boolean }> {
+  const order = await getOrderForPayment(orderId);
+  if (order.paymentStatus === 'PAYMENT_CONFIRMED' || order.status === 'PAID') {
+    throw new OrderValidationError(409, 'La orden ya está pagada; no se puede iniciar un nuevo cobro.');
+  }
+  if (order.gatewayReference) {
+    return { order: toPublicOrder(order), existing: order.gatewayReference, changed: false };
+  }
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: { gatewayReference, paymentMethod }
+  });
+  return { order: toPublicOrder(updated), existing: null, changed: true };
+}
+
+/**
+ * Transición de pago confirmado.
+ * SOLO se invoca desde confirmación autorizada (webhook Stripe verificado /
+ * captura PayPal server-side). El frontend JAMÁS llama esto.
+ * provisionStatus permanece NONE: NO se activa ResellerClub/provisioning aquí.
+ */
+export async function markOrderPaid(orderId: string, reference: string): Promise<{ order: any; changed: boolean; alreadyPaid: boolean }> {
+  const order = await getOrderForPayment(orderId);
+  if (order.paymentStatus === 'PAYMENT_CONFIRMED' || order.status === 'PAID') {
+    return { order: toPublicOrder(order), changed: false, alreadyPaid: true };
+  }
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: 'PAID',
+      paymentStatus: 'PAYMENT_CONFIRMED',
+      gatewayReference: order.gatewayReference || reference,
+      failureReason: null,
+      provisionStatus: 'NONE'
+    }
+  });
+  return { order: toPublicOrder(updated), changed: true, alreadyPaid: false };
+}
+
+/** Pago reembolsado (webhook charge.refunded). */
+export async function markOrderRefunded(orderId: string, reference?: string): Promise<{ order: any; changed: boolean }> {
+  const order = await getOrderForPayment(orderId);
+
+  if (order.paymentStatus === 'REFUNDED') {
+    return { order: toPublicOrder(order), changed: false };
+  }
+
+  if (order.paymentStatus !== 'PAYMENT_CONFIRMED' || order.status !== 'PAID') {
+    throw new OrderValidationError(409, 'La orden no tiene un pago confirmado para reembolsar.');
+  }
+
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: 'REFUNDED',
+      paymentStatus: 'REFUNDED',
+      gatewayReference: order.gatewayReference || reference || null,
+      provisionStatus: 'NONE'
+    }
+  });
+  return { order: toPublicOrder(updated), changed: true };
+}
+
+/** Pago rechazado/fallido (webhook payment_intent.payment_failed). */
+export async function markOrderPaymentFailed(
+  orderId: string,
+  reason: string,
+  reference?: string
+): Promise<{ order: any; changed: boolean }> {
+  const order = await getOrderForPayment(orderId);
+
+  if (
+    order.paymentStatus === 'PAYMENT_CONFIRMED' ||
+    order.paymentStatus === 'REFUNDED' ||
+    order.paymentStatus === 'PAYMENT_FAILED'
+  ) {
+    return { order: toPublicOrder(order), changed: false };
+  }
+
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: 'FAILED',
+      paymentStatus: 'PAYMENT_FAILED',
+      failureReason: reason || null,
+      gatewayReference: order.gatewayReference || reference || null
+    }
+  });
+  return { order: toPublicOrder(updated), changed: true };
+}
+
+/** Serializa una orden sin campos sensibles ni decimales crudos. */
+export function toPublicOrder(order: any) {
+  return {
+    id: order.id,
+    customerId: order.customerId,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    provisionStatus: order.provisionStatus,
+    currency: order.currency,
+    subtotal: Number(order.subtotal),
+    discount: Number(order.discount),
+    taxBase: order.taxBase === null || order.taxBase === undefined ? null : Number(order.taxBase),
+    taxRate: order.taxRate === null || order.taxRate === undefined ? null : Number(order.taxRate),
+    tax: Number(order.tax),
+    total: Number(order.total),
+    paymentMethod: order.paymentMethod || null,
+    gatewayReference: order.gatewayReference || null,
+    failureReason: order.failureReason || null,
+    items: order.items || [],
+    createdAt: order.createdAt?.toISOString?.() || null,
+    updatedAt: order.updatedAt?.toISOString?.() || null
+  };
+}

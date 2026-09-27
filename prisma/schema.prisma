@@ -1,0 +1,338 @@
+// Prisma schema - BANELIO foundations (Fase 1)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PUBLIC
+  CUSTOMER
+  RESELLER
+  ADMIN
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+}
+
+enum BillingPeriod {
+  MONTH
+  YEAR
+  ONETIME
+}
+
+enum CatalogCategory {
+  DOMAIN
+  HOSTING
+  EMAIL
+  SSL
+  ADDON
+  SOLUTION
+  BACKUP
+}
+
+// Order/order lifecycle (business state)
+enum OrderStatus {
+  CREATED
+  PAID
+  REFUNDED
+  CANCELLED
+  FAILED
+}
+
+// Payment axis - extended now so later phases (Stripe/PayPal/OXXO webhooks)
+// do not require a schema change.
+enum PaymentStatus {
+  PENDING_PAYMENT
+  PROCESSING
+  PAYMENT_CONFIRMED
+  PAYMENT_FAILED
+  PAYMENT_CANCELLED
+  REFUNDED
+}
+
+// Provisioning axis - kept fully orthogonal to the payment axis.
+enum ProvisionStatus {
+  NONE
+  PROVISIONING
+  PROVISIONED
+  FAILED
+}
+
+model Customer {
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String
+  phone                   String?
+  // passwordHash is nullable so guest/migrated customers can exist; when set it
+  // always holds a bcrypt hash (never plaintext).
+  passwordHash            String?
+  emailVerified           Boolean                  @default(false)
+  twoFactorEnabled        Boolean                  @default(false)
+  twoFactorSecret         String?
+  backupCodes             String?
+  role                    Role                     @default(CUSTOMER)
+  status                  CustomerStatus           @default(PENDING_VERIFICATION)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  orders                  Order[]
+  sessions                Session[]
+  pendingTwoFactorAuths   PendingTwoFactorAuth[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  entitlements            Entitlement[]
+}
+
+model EmailVerificationToken {
+  id             String   @id
+  customerId     String
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  failedAttempts Int      @default(0)
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id             String   @id
+  customerId     String
+  tokenHash      String   @unique
+  expiresAt      DateTime
+  failedAttempts Int      @default(0)
+  createdAt      DateTime @default(now())
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model CatalogItem {
+  id            String          @id @default(cuid())
+  sku           String          @unique
+  name          String
+  description   String?
+  category      CatalogCategory
+  // Monetary values use Decimal to avoid float drift.
+  price         Decimal
+  currency      String          @default("USD")
+  billingPeriod BillingPeriod   @default(YEAR)
+  active        Boolean         @default(true)
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Order {
+  id               String          @id @default(cuid())
+  // Server-side idempotency key (unique) -> retries return the existing order.
+  // Nullable so guests/historical flows without a key remain representable.
+  idempotencyKey   String?         @unique
+  // nullable so current guest purchases are representable.
+  customerId       String?
+  customer         Customer?       @relation(fields: [customerId], references: [id])
+  status           OrderStatus     @default(CREATED)
+  paymentStatus    PaymentStatus   @default(PENDING_PAYMENT)
+  provisionStatus  ProvisionStatus @default(NONE)
+  currency         String          @default("USD")
+  subtotal         Decimal
+  // discount and taxable base are server-authoritative (never accepted from client).
+  discount         Decimal         @default(0)
+  taxBase          Decimal?        @default(0)
+  taxRate          Decimal?        @default(0)
+  tax              Decimal
+  total            Decimal
+  // honest failure reason (payment/provisioning) - never a fake success.
+  failureReason    String?
+  gatewayReference String?
+  paymentMethod    String?
+  items            Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+}
+
+model Session {
+  id         String   @id
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  userAgent  String?
+  ip         String?
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model PendingTwoFactorAuth {
+  id         String   @id
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+// Commercial pricing architecture models
+model PricingProfile {
+  id           String   @id // "PARTNER", "RETAIL"
+  name         String
+  targetMargin Decimal  @default(0.55)
+  minMargin    Decimal  @default(0.20)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ProviderCostRecord {
+  id                     String                @id @default(cuid())
+  sku                    String                @unique
+  productName            String
+  category               CatalogCategory
+  operation              String                @default("REGISTRATION")
+  providerCostUSD         Decimal               @default(0)
+  providerRenewalCostUSD  Decimal?
+  providerTransferCostUSD Decimal?
+  costKnown               Boolean               @default(false)
+  internalSource         String                @default("config")
+  active                 Boolean               @default(true)
+  updatedAt              DateTime              @updatedAt
+  createdAt              DateTime              @default(now())
+  prices                 ProductPriceVersion[]
+}
+
+model ProductPriceVersion {
+  id              String              @id @default(cuid())
+  sku             String
+  version         String              @default("v1.0")
+  providerCostId  String?
+  providerCost    ProviderCostRecord? @relation(fields: [providerCostId], references: [id])
+  partnerPriceUSD Decimal
+  retailPriceUSD  Decimal
+  effectiveFrom   DateTime            @default(now())
+  effectiveTo     DateTime?
+  changeReason    String              @default("Initial baseline")
+  active          Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+
+  @@index([sku, active])
+  @@index([version])
+}
+
+model SolutionDefinition {
+  id              String              @id // "SOL-START", "SOL-BUSINESS", "SOL-PRO"
+  code            String              @unique // "START", "BUSINESS", "PRO"
+  name            String
+  tagline         String?
+  description     String?
+  expectedCostUSD Decimal
+  partnerPriceUSD Decimal
+  retailPriceUSD  Decimal
+  targetMargin    Decimal             @default(0.50)
+  active          Boolean             @default(true)
+  version         String              @default("v1.0")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  components      SolutionComponent[]
+  entitlements    Entitlement[]
+}
+
+model SolutionComponent {
+  id              String             @id @default(cuid())
+  solutionId      String
+  solution        SolutionDefinition @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  componentSku    String
+  name            String
+  category        CatalogCategory
+  quantity        Int                @default(1)
+  expectedCostUSD Decimal            @default(0)
+  costKnown       Boolean            @default(false)
+  autoProvision   Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+
+  @@index([solutionId])
+}
+
+enum EntitlementStatus {
+  GRANTED
+  ACTIVATED
+  PROVISIONED
+  SUSPENDED
+  EXPIRED
+}
+
+model Entitlement {
+  id              String              @id @default(cuid())
+  orderId         String?
+  customerId      String
+  customer        Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  solutionId      String?
+  solution        SolutionDefinition? @relation(fields: [solutionId], references: [id])
+  serviceType     CatalogCategory
+  sku             String
+  name            String
+  status          EntitlementStatus   @default(GRANTED)
+  grantedAt       DateTime            @default(now())
+  activatedAt     DateTime?
+  provisionedAt   DateTime?
+  expiresAt       DateTime?
+  expectedCostUSD Decimal             @default(0)
+  actualCostUSD   Decimal?            @default(0)
+  config          Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model CommercialOffer {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  name            String
+  description     String?
+  targetSku       String?
+  targetCategory  String?
+  promoPriceUSD   Decimal?
+  discountPercent Decimal?
+  validFrom       DateTime  @default(now())
+  validTo         DateTime?
+  version         String    @default("v1.0")
+  active          Boolean   @default(true)
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([active])
+}
+
+model FxProtectionConfig {
+  id                 String   @id @default(cuid())
+  currency           String   @unique
+  referenceRate      Decimal
+  currentRate        Decimal?
+  fxBufferPercent    Decimal  @default(0.05)
+  fxThresholdPercent Decimal  @default(0.03)
+  version            String   @default("v1.0")
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+

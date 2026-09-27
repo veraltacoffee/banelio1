@@ -1,0 +1,10 @@
+# robots.txt for https://banelio.com
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /checkout
+Disallow: /cart
+
+# Sitemaps
+Sitemap: https://banelio.com/sitemap.xml

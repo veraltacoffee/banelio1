@@ -1,0 +1,6 @@
+{
+  "name": "Banelio - Dominios, Hosting y Servicios Digitales",
+  "description": "Plataforma oficial de Banelio para registro de dominios, hosting NVMe de alto rendimiento, correo corporativo, SSL, diseño web y servicios de posicionamiento SEO.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
