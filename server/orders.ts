@@ -5,7 +5,9 @@ import { normalizeCountryCode, getTaxForCountry } from './tax';
 import { createEntitlementsForOrder } from './pricing';
 import {
   calculateCommercialDiscount,
-  DEFAULT_DISCOUNT_CONFIG
+  DEFAULT_DISCOUNT_CONFIG,
+  getProductPriceResult,
+  calculatePartnerCommission
 } from '../src/services/pricingEngine';
 
 /**
@@ -39,10 +41,22 @@ const FORBIDDEN_CLIENT_FIELDS = [
   'taxUSD',
   'taxRate',
   'taxPercent',
+  'taxBase',
   'total',
   'totalUSD',
   'discount',
+  'discountAmount',
+  'discountPercent',
   'price',
+  'providerCost',
+  'providerCostUSD',
+  'margin',
+  'targetMargin',
+  'minMargin',
+  'commission',
+  'commissionAmount',
+  'commissionRate',
+  'partnerCommission',
   'paymentStatus',
   'orderStatus',
   'status',
@@ -61,6 +75,8 @@ export interface OrderCreateInput {
   // promoCode: el cliente SOLO envía el código; el descuento lo calcula el
   // servidor contra una tabla interna. Nunca se acepta un %/monto del cliente.
   promoCode?: string;
+  // referralCode: código de referido de partner opcional (validado y calculado en servidor)
+  referralCode?: string;
   // displayCurrency is accepted only as a hint for the client's UI currency;
   // monetary authority is the catalog currency (USD).
   displayCurrency?: string;
@@ -107,10 +123,11 @@ const PROMO_CODES: Record<string, number> = {
 };
 
 /** Reject any unauthorized monetary/state field the client attempted to set. */
-function assertNoForbiddenFields(body: Record<string, unknown>): void {
+function assertNoForbiddenFields(body: Record<string, unknown>, context: string = ''): void {
   for (const key of FORBIDDEN_CLIENT_FIELDS) {
     if (key in body && body[key] !== undefined && body[key] !== null) {
-      throw new OrderValidationError(400, `Campo no autorizado desde el cliente: ${key}`);
+      const location = context ? ` en ${context}` : '';
+      throw new OrderValidationError(400, `Campo no autorizado desde el cliente${location}: ${key}`);
     }
   }
 }
@@ -122,6 +139,15 @@ function assertNoForbiddenFields(body: Record<string, unknown>): void {
 export async function createOrder(input: OrderCreateInput): Promise<any> {
   const body = input as unknown as Record<string, unknown>;
   assertNoForbiddenFields(body);
+
+  if (Array.isArray(input.items)) {
+    for (let i = 0; i < input.items.length; i++) {
+      const itemRaw = input.items[i] as unknown as Record<string, unknown>;
+      if (itemRaw && typeof itemRaw === 'object') {
+        assertNoForbiddenFields(itemRaw, `item[${i}]`);
+      }
+    }
+  }
 
   // ---- Idempotency (Subfase 4) ----
   const rawIdempotencyKey = typeof input.idempotencyKey === 'string'
@@ -163,6 +189,7 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
 
   const lines: BuiltLine[] = [];
   let subtotal = 0;
+  let totalOrderCostUSD = 0;
 
   for (const raw of input.items) {
     const sku = typeof raw.sku === 'string' ? raw.sku.trim() : '';
@@ -201,6 +228,12 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     }
 
     const catalogUnitPrice = Number(def.price);
+    if (!Number.isFinite(catalogUnitPrice) || catalogUnitPrice <= 0) {
+      throw new OrderValidationError(
+        400,
+        `El producto con SKU ${sku} no tiene un precio comercial configurado y no es vendible.`
+      );
+    }
     const billingPeriod = def.billingPeriod;
     const catalogPeriodUnit: 'year' | 'month' =
       billingPeriod === 'MONTH' ? 'month' : 'year';
@@ -256,6 +289,15 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
       discountedUnitPrice * quantity * periods * 100
     ) / 100;
 
+    // Rastrear costo interno del proveedor para proteger piso de margen mínimo
+    const priceResult = getProductPriceResult(sku, 'USD', undefined, {
+      operation: raw.isTransfer ? 'TRANSFER' : undefined
+    });
+    const lineCostUSD = priceResult.providerCostKnown && priceResult.providerCostUSD > 0
+      ? priceResult.providerCostUSD * quantity * (raw.isTransfer ? 1 : periods)
+      : 0;
+    totalOrderCostUSD += lineCostUSD;
+
     lines.push({
       sku,
       name: def.name,
@@ -278,7 +320,17 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
   // ---- Promo code (descuento calculado en el SERVIDOR, nunca del cliente) ----
   const rawPromo = typeof input.promoCode === 'string' ? input.promoCode.trim().toUpperCase() : '';
   const promoRate = rawPromo && PROMO_CODES[rawPromo] !== undefined ? PROMO_CODES[rawPromo] : 0;
-  const discount = Math.round(subtotal * promoRate * 100) / 100;
+  const requestedDiscount = Math.round(subtotal * promoRate * 100) / 100;
+
+  // Floor Margin: ningún descuento/promoción puede destruir el margen mínimo del 20%
+  // ni permitir que los ingresos de la orden caigan por debajo del costo del proveedor.
+  const minOrderRevenueFloorUSD = totalOrderCostUSD > 0
+    ? Math.round((totalOrderCostUSD / (1 - 0.20)) * 100) / 100
+    : 0;
+
+  const maxAllowedDiscount = Math.max(0, subtotal - minOrderRevenueFloorUSD);
+  const discount = Math.min(requestedDiscount, maxAllowedDiscount, subtotal);
+
   // ---- Tax rate server-side (Subfase 3) ----
   const countryCode = normalizeCountryCode(input.countryCode);
   if (!countryCode) {
@@ -286,7 +338,7 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
   }
   const tax = getTaxForCountry(countryCode);
 
-  const taxBase = subtotal - discount;
+  const taxBase = Math.max(0, subtotal - discount);
   const taxAmount = Math.round(taxBase * tax.rate * 100) / 100;
   const total = Math.round((taxBase + taxAmount) * 100) / 100;
 
@@ -301,7 +353,7 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
 
     if (
       !authenticatedCustomer ||
-      authenticatedCustomer.role !== 'CUSTOMER' ||
+      !['CUSTOMER', 'RESELLER', 'ADMIN'].includes(authenticatedCustomer.role) ||
       authenticatedCustomer.status !== 'ACTIVE'
     ) {
       throw new OrderValidationError(401, 'Sesión de cliente no válida.');
@@ -324,6 +376,32 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     }
   }
 
+  // ---- Partner Attribution & Referral Commission (Calculado en servidor) ----
+  const rawReferral = typeof input.referralCode === 'string' ? input.referralCode.trim() : '';
+  const referralCode = rawReferral && /^[A-Za-z0-9_-]{3,32}$/.test(rawReferral)
+    ? rawReferral
+    : (rawPromo === 'PARTNER30' ? 'PARTNER30' : undefined);
+
+  const partnerCommission = referralCode
+    ? calculatePartnerCommission(subtotal, discount, false)
+    : null;
+
+  // ---- Registrant Data Sanitization ----
+  const registrantInput = input.customer?.registrant;
+  const registrantClean = registrantInput && typeof registrantInput === 'object'
+    ? {
+        name: typeof registrantInput.name === 'string' ? registrantInput.name.trim() : '',
+        org: typeof registrantInput.org === 'string' ? registrantInput.org.trim() : undefined,
+        email: typeof registrantInput.email === 'string' ? registrantInput.email.trim().toLowerCase() : '',
+        phone: typeof registrantInput.phone === 'string' ? registrantInput.phone.trim() : '',
+        address: typeof registrantInput.address === 'string' ? registrantInput.address.trim() : '',
+        city: typeof registrantInput.city === 'string' ? registrantInput.city.trim() : '',
+        state: typeof registrantInput.state === 'string' ? registrantInput.state.trim() : '',
+        postalCode: typeof registrantInput.postalCode === 'string' ? registrantInput.postalCode.trim() : '',
+        country: typeof registrantInput.country === 'string' ? registrantInput.country.trim() : ''
+      }
+    : null;
+
   // ---- Persist (Subfase 3) ----
   const itemsJson: Prisma.InputJsonValue = lines.map((l) => ({
     sku: l.sku,
@@ -334,7 +412,17 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     quantity: l.quantity,
     periodUnit: l.periodUnit,
     isTransfer: l.isTransfer || false,
-    ...(l.isTransfer && l.eppCode ? { eppCode: l.eppCode } : {})
+    ...(l.isTransfer && l.eppCode ? { eppCode: l.eppCode } : {}),
+    ...(l.category === 'DOMAIN' && registrantClean ? { registrant: registrantClean } : {}),
+    ...(partnerCommission?.eligible
+      ? {
+          referralAttribution: {
+            referralCode,
+            commissionAmountUSD: partnerCommission.commissionAmountUSD,
+            commissionRate: partnerCommission.commissionRate
+          }
+        }
+      : {})
   })) as unknown as Prisma.InputJsonValue;
 
   const order = await prisma.order.create({
@@ -509,7 +597,16 @@ export function toPublicOrder(order: any) {
     paymentMethod: order.paymentMethod || null,
     gatewayReference: order.gatewayReference || null,
     failureReason: order.failureReason || null,
-    items: order.items || [],
+    items: Array.isArray(order.items)
+      ? order.items.map((item: any) => {
+          if (!item || typeof item !== 'object') return item;
+          const { eppCode, ...safeItem } = item;
+          return {
+            ...safeItem,
+            ...(eppCode ? { hasEppCode: true } : {})
+          };
+        })
+      : [],
     createdAt: order.createdAt?.toISOString?.() || null,
     updatedAt: order.updatedAt?.toISOString?.() || null
   };

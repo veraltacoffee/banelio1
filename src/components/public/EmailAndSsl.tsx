@@ -32,7 +32,7 @@ export default function EmailAndSsl() {
       sku: 'email-eml-starter',
       name: language === 'en' ? 'Professional Email (5 Mailboxes)' : 'Email Profesional (5 Buzones)',
       tagline: language === 'en' ? 'Ideal for freelancers and startups starting with their own domain.' : 'Ideal para profesionistas y pymes que inician con su dominio propio.',
-      priceUSD: getProductPriceResult('email-eml-starter').retailPriceUSD || 19.99,
+      priceUSD: getProductPriceResult('email-eml-starter').retailPriceUSD,
       specs: language === 'en'
         ? [
             '5 Mailboxes (10 GB each) with automated backup',
@@ -54,7 +54,7 @@ export default function EmailAndSsl() {
       sku: 'email-eml-pro',
       name: language === 'en' ? 'Email Suite Enterprise (10 Mailboxes)' : 'Email Suite Enterprise (10 Buzones)',
       tagline: language === 'en' ? 'Massive storage, advanced encryption security with guaranteed SLA.' : 'Almacenamiento masivo y seguridad de cifrado avanzado con SLA garantizado.',
-      priceUSD: getProductPriceResult('email-eml-pro').retailPriceUSD || 39.99,
+      priceUSD: getProductPriceResult('email-eml-pro').retailPriceUSD,
       specs: language === 'en'
         ? [
             '10 High-capacity Mailboxes (30 GB each)',
@@ -79,7 +79,7 @@ export default function EmailAndSsl() {
       sku: 'ssl-ssl-dv',
       name: 'Sectigo Essential SSL (DV)',
       tagline: language === 'en' ? 'Instant domain validation for 1 website.' : 'Validación de dominio instantánea para 1 dominio web.',
-      priceUSD: getProductPriceResult('ssl-ssl-dv').retailPriceUSD || 14.99,
+      priceUSD: getProductPriceResult('ssl-ssl-dv').retailPriceUSD,
       type: 'Single Domain DV',
       warranty: language === 'en' ? '$10,000 USD Warranty' : '$10,000 USD Garantía'
     },
@@ -88,7 +88,7 @@ export default function EmailAndSsl() {
       sku: 'ssl-ssl-wildcard',
       name: 'PositiveSSL Wildcard (*.domain)',
       tagline: language === 'en' ? 'Protects the main domain and unlimited subdomains.' : 'Protege el dominio principal y todos sus subdominios de forma ilimitada.',
-      priceUSD: getProductPriceResult('ssl-ssl-wildcard').retailPriceUSD || 49.99,
+      priceUSD: getProductPriceResult('ssl-ssl-wildcard').retailPriceUSD,
       type: 'Wildcard DV',
       warranty: language === 'en' ? '$50,000 USD Warranty' : '$50,000 USD Garantía',
       badge: language === 'en' ? 'Best Seller' : 'Más Vendido'
@@ -98,7 +98,7 @@ export default function EmailAndSsl() {
       sku: 'ssl-ssl-ev',
       name: 'Comodo EV SSL (Extended Validation)',
       tagline: language === 'en' ? 'Maximum bank-grade trust with rigorous identity validation.' : 'Máxima confianza bancaria con validación rigurosa de personería jurídica.',
-      priceUSD: getProductPriceResult('ssl-ssl-ev').retailPriceUSD || 129.99,
+      priceUSD: getProductPriceResult('ssl-ssl-ev').retailPriceUSD,
       type: 'Enterprise EV',
       warranty: language === 'en' ? '$1,000,000 USD Warranty' : '$1,000,000 USD Garantía'
     }

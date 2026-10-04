@@ -41,14 +41,24 @@ export async function getHealth(prisma: PrismaClientType, startedAt: number) {
     transferPricingConfigured = transfers > 0 && renews > 0;
   } catch { /* ignore */ }
 
+  const isResellerConfigured = Boolean(process.env.RESELLERCLUB_RESELLER_ID || process.env.RESELLER_ID) && Boolean(process.env.RESELLERCLUB_API_KEY || process.env.API_KEY);
+
   const integrations: HealthIntegrationState[] = [
     {
       key: 'registry',
-      label: 'Banelio Registry',
+      label: 'Banelio Registry (Bridge)',
       status: Boolean(process.env.REGISTRY_PARTNER_ID && process.env.REGISTRY_API_KEY) || Boolean(process.env.BANELIO_API_KEY)
         ? 'configured'
         : 'not_configured',
       details: 'REGISTRY_PARTNER_ID / REGISTRY_API_KEY'
+    },
+    {
+      key: 'resellerclub',
+      label: 'ResellerClub (PHP Bridge en IONOS)',
+      status: isResellerConfigured ? 'configured' : 'not_configured',
+      details: isResellerConfigured
+        ? 'Configurado vía PHP Bridge en IONOS'
+        : 'Credenciales delegadas a IONOS / PHP'
     },
     {
       key: 'stripe',

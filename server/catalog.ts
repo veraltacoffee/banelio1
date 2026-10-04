@@ -1,80 +1,90 @@
 import { Prisma } from '@prisma/client';
 import { BillingPeriod, CatalogCategory, PrismaClientType } from './db';
 import {
-  calculateGrossMarginPrice,
-  calculateCommercialDiscount,
-  applyCommercialRounding,
-  DEFAULT_DISCOUNT_CONFIG,
   getProductPriceResult,
   calculateSolutionPrice,
-  INITIAL_PROVIDER_COSTS,
+  INITIAL_PROVIDER_COSTS
 } from '../src/services/pricingEngine';
 
 /**
- * BANELIO - Catálogo server-side (Fase 1B).
+ * BANELIO - Catálogo Comercial Server-Side
  *
- * Fuente única del catálogo en el servidor. Los valores NO fueron inventados:
- * se derivan de las fuentes actuales del frontend (ver reporte):
- *   - TLDs:  src/data/mockData.ts (INITIAL_TLDS) + fórmula de
- *            src/utils/pricing.ts (calculateTldRetailPrice + snapToPsychological99),
- *            de modo que el precio retail coincida con el que hoy emite el frontend.
- *   - Hosting: src/components/public/HostingPlans.tsx
- *   - Email:   src/components/public/EmailAndSsl.tsx / EmailLanding.tsx / AddonConfigModal.tsx
- *   - SSL:     src/components/public/EmailAndSsl.tsx
- *   - Addons:  src/components/public/AddonConfigModal.tsx (Google Workspace, Backup, Whois)
+ * Fuente autoritativa y centralizada del catálogo comercial de BANELIO.
  *
- * `price` es el precio retail en USD por unidad del `billingPeriod`
- * (por año para YEAR, por mes para MONTH, único para ONETIME).
+ * ARQUITECTURA DE PRECIOS Y COSTOS:
+ * - El costo del proveedor (providerCostUSD) reside en ProviderCostRecord y pricingEngine.ts.
+ * - El precio público (retailPriceUSD) reside en CatalogItem.price.
+ * - El precio partner (partnerPriceUSD) y márgenes residen en ProductPriceVersion y PricingProfile.
+ * - El cliente público NUNCA recibe costos de proveedor ni márgenes internos.
+ * - Si un precio no está configurado, el producto es NO vendible (precio 0).
  */
 
-// Réplica exacta del motor de precios del frontend (src/utils/pricing.ts).
-// Mantiene el catálogo servidor consistente con lo que hoy factura la UI.
-export function snapToPsychological99USD(amount: number): number {
-  if (amount <= 0) return 0;
-  const floorInt = Math.floor(amount);
-  return floorInt + 0.99;
-}
+export type CommercialCategory =
+  | 'DOMAIN_REGISTRATION'
+  | 'DOMAIN_TRANSFER'
+  | 'DOMAIN_RENEWAL'
+  | 'WEB_HOSTING'
+  | 'CLOUD_HOSTING'
+  | 'BUSINESS_EMAIL'
+  | 'SSL'
+  | 'ADDON'
+  | 'SOLUTION';
 
-export function calculateTldRetailPrice(
-  providerCost: number,
-  marginPercent: number,
-  fixedMarkup: number,
-  quantity: number = 1,
-  periods: number = 1
-): number {
-  const wholesale = providerCost || 10.0;
-  const markup = typeof marginPercent === 'number' ? marginPercent : 1.24;
-  const fixed = fixedMarkup || 0;
+export type ProductOperationType =
+  | 'REGISTRATION'
+  | 'TRANSFER'
+  | 'RENEWAL'
+  | 'MONTHLY'
+  | 'YEARLY'
+  | 'ONETIME';
 
-  // Convierte el markup histórico en su margen bruto equivalente.
-  const basePrice = wholesale * (1 + markup) + fixed;
-  const equivalentMargin = basePrice > 0
-    ? Math.max(0.20, Math.min(0.90, (basePrice - wholesale) / basePrice))
-    : 0.55;
+export type CommercialProvider =
+  | 'resellerclub'
+  | 'banelio_internal'
+  | 'pending_validation';
 
-  const centralBasePrice = calculateGrossMarginPrice(
-    wholesale,
-    equivalentMargin,
-    0.20
-  ) + fixed;
+export interface CommercialMetadata {
+  commercialCategory: CommercialCategory;
+  provider: CommercialProvider;
+  operation: ProductOperationType;
+  billingPeriodUnit: 'year' | 'month';
+  status: 'ACTIVE' | 'PENDING_CONFIG' | 'DISCONTINUED';
 
-  const discount = calculateCommercialDiscount(
-    quantity,
-    periods,
-    DEFAULT_DISCOUNT_CONFIG
-  );
+  // Dominios
+  tld?: string;
+  allowedDurationsYears?: number[];
+  requiresEppCode?: boolean;
+  requiresRegistrantData?: boolean;
+  allowsTransfer?: boolean;
+  allowsRenewal?: boolean;
+  isPopular?: boolean;
+  isPromo?: boolean;
+  tldCategory?: string;
 
-  const discountedPrice = centralBasePrice * (
-    1 - discount.combinedDiscountPercent / 100
-  );
+  // Hosting
+  platform?: 'linux' | 'cloud';
+  requiresAssociatedDomain?: boolean;
+  requiresLocation?: boolean;
+  planId?: string;
 
-  const floorPrice = wholesale / 0.80;
+  // Email
+  numberOfMailboxes?: number;
 
-  return applyCommercialRounding(
-    Math.max(discountedPrice, floorPrice),
-    'USD',
-    floorPrice
-  );
+  // SSL
+  sslType?: 'dv' | 'wildcard' | 'ev';
+  requiresCsr?: boolean;
+
+  // Soluciones / Bundles
+  code?: 'START' | 'BUSINESS' | 'PRO';
+  version?: string;
+  isBundle?: boolean;
+  components?: Array<{ sku: string; name: string; quantity: number }>;
+
+  // Addons
+  target?: string;
+  kind?: string;
+
+  [key: string]: unknown;
 }
 
 export interface CatalogItemDef {
@@ -82,35 +92,33 @@ export interface CatalogItemDef {
   name: string;
   description?: string;
   category: CatalogCategory;
-  price: number; // USD, per billing period unit
+  price: number; // USD retail por unidad de facturación
   currency?: string;
   billingPeriod: BillingPeriod;
   active?: boolean;
-  metadata?: Record<string, unknown>;
+  metadata: CommercialMetadata;
 }
 
-// TLD config extraída de INITIAL_TLDS (mockData.ts) para derivar precios.
+// TLDs comerciales soportados en el catálogo interno de BANELIO.
+// El proveedor real está marcado como 'pending_validation' hasta comprobar sincronización con ResellerClub.
 const TLD_CONFIGS: Array<{
   tld: string;
-  providerCost: number;
-  marginPercent: number;
-  fixedMarkup: number;
   isPopular?: boolean;
   isPromo?: boolean;
   category: 'Popular' | 'Tech' | 'Global' | 'Geo';
 }> = [
-  { tld: 'com', providerCost: 9.8, marginPercent: 1.24, fixedMarkup: 0, isPopular: true, category: 'Popular' },
-  { tld: 'net', providerCost: 11.2, marginPercent: 1.44, fixedMarkup: 0, isPopular: true, category: 'Popular' },
-  { tld: 'org', providerCost: 10.5, marginPercent: 1.34, fixedMarkup: 0, isPopular: true, category: 'Popular' },
-  { tld: 'mx', providerCost: 18.5, marginPercent: 1.37, fixedMarkup: 0, isPopular: true, category: 'Geo' },
-  { tld: 'com.mx', providerCost: 14.0, marginPercent: 1.34, fixedMarkup: 0, isPopular: false, category: 'Geo' },
-  { tld: 'ai', providerCost: 65.0, marginPercent: 1.1, fixedMarkup: 0, isPopular: true, category: 'Tech' },
-  { tld: 'io', providerCost: 34.0, marginPercent: 1.25, fixedMarkup: 0, isPopular: true, category: 'Tech' },
-  { tld: 'dev', providerCost: 12.0, marginPercent: 1.25, fixedMarkup: 0, isPopular: false, category: 'Tech' },
-  { tld: 'app', providerCost: 14.5, marginPercent: 1.25, fixedMarkup: 0, isPopular: false, category: 'Tech' },
-  { tld: 'online', providerCost: 1.8, marginPercent: 2.01, fixedMarkup: 0, isPromo: true, category: 'Global' },
-  { tld: 'cloud', providerCost: 4.5, marginPercent: 1.42, fixedMarkup: 0, isPromo: true, category: 'Global' },
-  { tld: 'shop', providerCost: 2.9, marginPercent: 1.81, fixedMarkup: 0, isPromo: true, category: 'Global' }
+  { tld: 'com', isPopular: true, category: 'Popular' },
+  { tld: 'net', isPopular: true, category: 'Popular' },
+  { tld: 'org', isPopular: true, category: 'Popular' },
+  { tld: 'mx', isPopular: true, category: 'Geo' },
+  { tld: 'com.mx', isPopular: false, category: 'Geo' },
+  { tld: 'ai', isPopular: true, category: 'Tech' },
+  { tld: 'io', isPopular: true, category: 'Tech' },
+  { tld: 'dev', isPopular: false, category: 'Tech' },
+  { tld: 'app', isPopular: false, category: 'Tech' },
+  { tld: 'online', isPromo: true, category: 'Global' },
+  { tld: 'cloud', isPromo: true, category: 'Global' },
+  { tld: 'shop', isPromo: true, category: 'Global' }
 ];
 
 function buildDomainItems(): CatalogItemDef[] {
@@ -120,305 +128,34 @@ function buildDomainItems(): CatalogItemDef[] {
     return {
       sku,
       name: `.${c.tld}`,
-      description: `Registro de dominio .${c.tld} (por año)`,
+      description: `Registro de dominio .${c.tld} (anual)`,
       category: 'DOMAIN',
- price: Math.round(pricing.retailPriceUSD * 100) / 100,
- currency: 'USD',
- billingPeriod: 'YEAR',
- active: true,
- metadata: {
- kind: 'domain-registration',
- tld: c.tld,
- providerCostUSD: c.providerCost,
- marginPercent: c.marginPercent,
- fixedMarkup: c.fixedMarkup,
- isPopular: Boolean(c.isPopular),
- isPromo: Boolean(c.isPromo),
- tldCategory: c.category
- }
- };
- });
-}
-
-// Hosting. El precio base procede exclusivamente del pricingEngine.
-const HOSTING_PLANS = [
-  {
-    id: 'plan-starter',
-    name: 'Cloud Starter NVMe',
-    monthlySku: 'hosting-plan-starter-month',
-    annualSku: 'hosting-plan-starter-year'
-  },
-  {
-    id: 'plan-pro',
-    name: 'Cloud NVMe Pro Ultra',
-    monthlySku: 'hosting-plan-pro-month',
-    annualSku: 'hosting-plan-pro-year'
-  },
-  {
-    id: 'plan-enterprise',
-    name: 'Enterprise Cloud NVMe',
-    monthlySku: 'hosting-plan-enterprise-month',
-    annualSku: 'hosting-plan-enterprise-year'
-  }
-];
-
-function buildHostingItems(): CatalogItemDef[] {
-  const items: CatalogItemDef[] = [];
-
-  for (const p of HOSTING_PLANS) {
-    const monthlyPrice = getProductPriceResult(p.monthlySku).retailPriceUSD;
-    const annualPrice = getProductPriceResult(p.annualSku).retailPriceUSD;
-
-    items.push({
-      sku: p.monthlySku,
-      name: `${p.name} (Mensual)`,
-      description: `Plan de hosting ${p.name} - tarifa mensual`,
-      category: 'HOSTING',
-      price: monthlyPrice,
-      currency: 'USD',
-      billingPeriod: 'MONTH',
-      active: true,
-      metadata: { kind: 'hosting-plan', planId: p.id, period: 'month' }
-    });
-
-    items.push({
-      sku: p.annualSku,
-      name: `${p.name} (Anual)`,
-      description: `Plan de hosting ${p.name} - tarifa anual`,
-      category: 'HOSTING',
-      price: annualPrice,
+      price: pricing.retailPriceUSD,
       currency: 'USD',
       billingPeriod: 'YEAR',
-      active: true,
-      metadata: { kind: 'hosting-plan', planId: p.id, period: 'year' }
-    });
-  }
-
-  return items;
+      active: pricing.retailPriceUSD > 0,
+      metadata: {
+        commercialCategory: 'DOMAIN_REGISTRATION',
+        provider: 'pending_validation',
+        operation: 'REGISTRATION',
+        billingPeriodUnit: 'year',
+        status: pricing.retailPriceUSD > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        tld: c.tld,
+        allowedDurationsYears: [1, 2, 3, 5, 10],
+        requiresEppCode: false,
+        requiresRegistrantData: true,
+        allowsTransfer: true,
+        allowsRenewal: true,
+        isPopular: Boolean(c.isPopular),
+        isPromo: Boolean(c.isPromo),
+        tldCategory: c.category,
+        kind: 'domain-registration'
+      }
+    };
+  });
 }
 
-// Email (EmailAndSsl.tsx - planes anuales) + EmailLanding.tsx (tarifas mensuales).
-const EMAIL_PLANS = [
-  {
-    id: 'eml-starter',
-    name: 'Email Profesional (5 Buzones)',
-    priceUSD: getProductPriceResult('email-eml-starter').retailPriceUSD,
-    period: 'YEAR'
-  },
-  {
-    id: 'eml-pro',
-    name: 'Email Suite Enterprise (10 Buzones)',
-    priceUSD: getProductPriceResult('email-eml-pro').retailPriceUSD,
-    period: 'YEAR'
-  },
-  {
-    id: 'email-starter',
-    name: 'Email Starter Pro (por buzón)',
-    priceUSD: getProductPriceResult('email-email-starter').retailPriceUSD,
-    period: 'MONTH'
-  },
-  {
-    id: 'email-business',
-    name: 'Email Business Suite (por buzón)',
-    priceUSD: getProductPriceResult('email-email-business').retailPriceUSD,
-    period: 'MONTH'
-  },
-  {
-    id: 'email-email-starter-year',
-    name: 'Email Starter Pro (por buzón/año)',
-    priceUSD: getProductPriceResult('email-email-starter-year').retailPriceUSD,
-    period: 'YEAR'
-  },
-  {
-    id: 'email-email-business-year',
-    name: 'Email Business Suite (por buzón/año)',
-    priceUSD: getProductPriceResult('email-email-business-year').retailPriceUSD,
-    period: 'YEAR'
-  }
-];
-
-function buildEmailItems(): CatalogItemDef[] {
-  return EMAIL_PLANS.map((p) => ({
-    sku: p.id.startsWith('email-') ? p.id : `email-${p.id}`,
-    name: p.name,
-    description: `Servicio de email corporativo (${p.period === 'YEAR' ? 'anual' : 'mensual'})`,
-    category: 'EMAIL',
-    price: p.priceUSD,
-    currency: 'USD',
-    billingPeriod: p.period as BillingPeriod,
-    active: true,
-    metadata: { kind: 'email-plan', planId: p.id }
-  }));
-}
-
-// SSL. El precio base procede exclusivamente del pricingEngine.
-const SSL_PLANS = [
-  {
-    id: 'ssl-dv',
-    name: 'Sectigo Essential SSL (DV)',
-    sku: 'ssl-ssl-dv'
-  },
-  {
-    id: 'ssl-wildcard',
-    name: 'PositiveSSL Wildcard (*.domain)',
-    sku: 'ssl-ssl-wildcard'
-  },
-  {
-    id: 'ssl-ev',
-    name: 'Comodo EV SSL (Extended Validation)',
-    sku: 'ssl-ssl-ev'
-  }
-];
-
-function buildSslItems(): CatalogItemDef[] {
-  return SSL_PLANS.map((p) => ({
-    sku: p.sku,
-    name: p.name,
-    description: `Certificado SSL ${p.name}`,
-    category: 'SSL',
-    price: getProductPriceResult(p.sku).retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'ssl-plan', planId: p.id }
-  }));
-}
-
-// Addons. El precio base procede exclusivamente del pricingEngine.
-const ADDON_ITEMS: CatalogItemDef[] = [
-  {
-    sku: 'addon-workspace',
-    name: 'Google Workspace Starter',
-    description: 'Google Workspace (por usuario)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-workspace').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'MONTH',
-    active: true,
-    metadata: { kind: 'addon', target: 'email', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-mail-pro',
-    name: 'Banelio Mail Pro',
-    description: 'Buzón de correo Banelio (por buzón)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-mail-pro').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'MONTH',
-    active: true,
-    metadata: { kind: 'addon', target: 'email', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-backup',
-    name: 'Cloud Backup Diario Automatizado',
-    description: 'Copia de seguridad diaria',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-backup').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'MONTH',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-workspace-year',
-    name: 'Google Workspace Starter (Anual)',
-    description: 'Google Workspace (por usuario, anual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-workspace-year').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'email', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-mail-pro-year',
-    name: 'Banelio Mail Pro (Anual)',
-    description: 'Buzón de correo Banelio (por buzón, anual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-mail-pro-year').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'email', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-backup-year',
-    name: 'Cloud Backup Diario Automatizado (Anual)',
-    description: 'Copia de seguridad diaria anual',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-backup-year').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-hosting-starter-month',
-    name: 'Hosting Cloud NVMe Starter (Complemento Mes)',
-    description: 'Complemento de hosting Starter (mensual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-hosting-starter-month').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'MONTH',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-hosting-starter-year',
-    name: 'Hosting Cloud NVMe Starter (Complemento Año)',
-    description: 'Complemento de hosting Starter (anual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-hosting-starter-year').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-hosting-business-month',
-    name: 'Hosting Cloud NVMe Business (Complemento Mes)',
-    description: 'Complemento de hosting Business (mensual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-hosting-business-month').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'MONTH',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-hosting-business-year',
-    name: 'Hosting Cloud NVMe Business (Complemento Año)',
-    description: 'Complemento de hosting Business (anual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-hosting-business-year').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'hosting', source: 'AddonConfigModal' }
-  },
-  {
-    sku: 'addon-ssl-wildcard',
-    name: 'Certificado SSL Wildcard (Complemento)',
-    description: 'Certificado SSL Wildcard por dominio (anual)',
-    category: 'ADDON',
-    price: getProductPriceResult('addon-ssl-wildcard').retailPriceUSD,
-    currency: 'USD',
-    billingPeriod: 'YEAR',
-    active: true,
-    metadata: { kind: 'addon', target: 'ssl', source: 'AddonConfigModal' }
-  }
-];
-
-// Transferencia / Renovación de dominios (Fase Grande - Pricing de operaciones).
-// Los precios de OTRA operación distinta al registro (transferir / renovar).
-// SOLO existen cuando se declaran con un precio REAL. Mientras no exista una
-// entrada aquí, la tienda responde "Transfer/renewal pricing not configured"
-// y NUNCA se inventa un precio (lema: no fabricar datos).
-//
-// Convención de SKU:
-//   - Registro:    tld-<tld>              (ver buildDomainItems)
-//   - Transferir:  domain-<tld>-transfer  (incluye 1 año de extensión)
-//   - Renovar:     domain-<tld>-renew
+// Transferencia / Renovación de dominios con precios reales configurados
 const TRANSFER_TLDS = Object.values(INITIAL_PROVIDER_COSTS)
   .filter((c) =>
     c.category === 'DOMAIN' &&
@@ -430,6 +167,7 @@ const TRANSFER_TLDS = Object.values(INITIAL_PROVIDER_COSTS)
     tld: c.productName.replace(/^\./, ''),
     providerTransferCostUSD: c.providerTransferCostUSD!
   }));
+
 const RENEWAL_TLDS: Array<{ tld: string; renewalPriceUSD: number }> =
   Object.values(INITIAL_PROVIDER_COSTS)
     .filter((c) =>
@@ -445,21 +183,16 @@ const RENEWAL_TLDS: Array<{ tld: string; renewalPriceUSD: number }> =
 
 function buildTransferItems(): CatalogItemDef[] {
   return TRANSFER_TLDS
-    .map((c) => {
-      const registrationSku = `tld-${c.tld.replace(/\./g, '-')}`;
-      const pricing = getProductPriceResult(
-        registrationSku,
-        'USD',
-        INITIAL_PROVIDER_COSTS,
-        { operation: 'TRANSFER' }
-      );
+    .map((c): CatalogItemDef | null => {
+      const sku = `domain-${c.tld.replace(/\./g, '-')}-transfer`;
+      const pricing = getProductPriceResult(sku);
 
       if (!pricing.providerCostKnown || pricing.retailPriceUSD <= 0) {
         return null;
       }
 
       return {
-        sku: `domain-${c.tld.replace(/\./g, '-')}-transfer`,
+        sku,
         name: `Transferencia de dominio .${c.tld}`,
         description: `Transferencia de dominio .${c.tld} (incluye 1 año de extensión)`,
         category: 'DOMAIN',
@@ -468,9 +201,18 @@ function buildTransferItems(): CatalogItemDef[] {
         billingPeriod: 'YEAR',
         active: true,
         metadata: {
-          kind: 'domain-transfer',
+          commercialCategory: 'DOMAIN_TRANSFER',
+          provider: 'pending_validation',
+          operation: 'TRANSFER',
+          billingPeriodUnit: 'year',
+          status: 'ACTIVE',
           tld: c.tld,
-          operation: 'transfer'
+          allowedDurationsYears: [1],
+          requiresEppCode: true,
+          requiresRegistrantData: true,
+          allowsTransfer: true,
+          allowsRenewal: true,
+          kind: 'domain-transfer'
         }
       };
     })
@@ -478,30 +220,459 @@ function buildTransferItems(): CatalogItemDef[] {
 }
 
 function buildRenewalItems(): CatalogItemDef[] {
-  return RENEWAL_TLDS.map((c) => ({
-    sku: `domain-${c.tld.replace(/\./g, '-')}-renew`,
-    name: `Renovación de dominio .${c.tld}`,
-    description: `Renovación anual del dominio .${c.tld}`,
-    category: 'DOMAIN',
-    price: getProductPriceResult(
-      `tld-${c.tld.replace(/\./g, '-')}`,
-      'USD',
-      INITIAL_PROVIDER_COSTS,
-      { operation: 'RENEWAL' }
-    ).retailPriceUSD,
+  return RENEWAL_TLDS.map((c): CatalogItemDef => {
+    const sku = `domain-${c.tld.replace(/\./g, '-')}-renew`;
+    const pricing = getProductPriceResult(sku);
+
+    return {
+      sku,
+      name: `Renovación de dominio .${c.tld}`,
+      description: `Renovación anual del dominio .${c.tld}`,
+      category: 'DOMAIN',
+      price: pricing.retailPriceUSD,
+      currency: 'USD',
+      billingPeriod: 'YEAR',
+      active: pricing.retailPriceUSD > 0,
+      metadata: {
+        commercialCategory: 'DOMAIN_RENEWAL',
+        provider: 'pending_validation',
+        operation: 'RENEWAL',
+        billingPeriodUnit: 'year',
+        status: pricing.retailPriceUSD > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        tld: c.tld,
+        allowedDurationsYears: [1, 2, 3],
+        requiresEppCode: false,
+        requiresRegistrantData: false,
+        allowsTransfer: false,
+        allowsRenewal: true,
+        kind: 'domain-renewal'
+      }
+    };
+  });
+}
+
+// Hosting Web (Linux cPanel y Cloud Hosting)
+const HOSTING_PLANS = [
+  {
+    id: 'plan-starter',
+    name: 'Cloud Starter NVMe',
+    monthlySku: 'hosting-plan-starter-month',
+    annualSku: 'hosting-plan-starter-year',
+    platform: 'linux' as const
+  },
+  {
+    id: 'plan-pro',
+    name: 'Cloud NVMe Pro Ultra',
+    monthlySku: 'hosting-plan-pro-month',
+    annualSku: 'hosting-plan-pro-year',
+    platform: 'linux' as const
+  },
+  {
+    id: 'plan-enterprise',
+    name: 'Enterprise Cloud NVMe',
+    monthlySku: 'hosting-plan-enterprise-month',
+    annualSku: 'hosting-plan-enterprise-year',
+    platform: 'cloud' as const
+  }
+];
+
+function buildHostingItems(): CatalogItemDef[] {
+  const items: CatalogItemDef[] = [];
+
+  for (const p of HOSTING_PLANS) {
+    const monthlyPrice = getProductPriceResult(p.monthlySku).retailPriceUSD;
+    const annualPrice = getProductPriceResult(p.annualSku).retailPriceUSD;
+    const commercialCategory: CommercialCategory = p.platform === 'cloud' ? 'CLOUD_HOSTING' : 'WEB_HOSTING';
+
+    items.push({
+      sku: p.monthlySku,
+      name: `${p.name} (Mensual)`,
+      description: `Plan de hosting ${p.name} - tarifa mensual`,
+      category: 'HOSTING',
+      price: monthlyPrice,
+      currency: 'USD',
+      billingPeriod: 'MONTH',
+      active: monthlyPrice > 0,
+      metadata: {
+        commercialCategory,
+        provider: 'pending_validation',
+        operation: 'MONTHLY',
+        billingPeriodUnit: 'month',
+        status: monthlyPrice > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        planId: p.id,
+        platform: p.platform,
+        requiresAssociatedDomain: true,
+        requiresLocation: true,
+        kind: 'hosting-plan'
+      }
+    });
+
+    items.push({
+      sku: p.annualSku,
+      name: `${p.name} (Anual)`,
+      description: `Plan de hosting ${p.name} - tarifa anual`,
+      category: 'HOSTING',
+      price: annualPrice,
+      currency: 'USD',
+      billingPeriod: 'YEAR',
+      active: annualPrice > 0,
+      metadata: {
+        commercialCategory,
+        provider: 'pending_validation',
+        operation: 'YEARLY',
+        billingPeriodUnit: 'year',
+        status: annualPrice > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        planId: p.id,
+        platform: p.platform,
+        requiresAssociatedDomain: true,
+        requiresLocation: true,
+        kind: 'hosting-plan'
+      }
+    });
+  }
+
+  return items;
+}
+
+// Correo Profesional (Business / Enterprise Email)
+const EMAIL_PLANS = [
+  {
+    id: 'eml-starter',
+    name: 'Email Profesional (5 Buzones)',
+    sku: 'email-eml-starter',
+    period: 'YEAR' as const,
+    mailboxes: 5
+  },
+  {
+    id: 'eml-pro',
+    name: 'Email Suite Enterprise (10 Buzones)',
+    sku: 'email-eml-pro',
+    period: 'YEAR' as const,
+    mailboxes: 10
+  },
+  {
+    id: 'email-starter',
+    name: 'Email Starter Pro (por buzón/mes)',
+    sku: 'email-email-starter',
+    period: 'MONTH' as const,
+    mailboxes: 1
+  },
+  {
+    id: 'email-business',
+    name: 'Email Business Suite (por buzón/mes)',
+    sku: 'email-email-business',
+    period: 'MONTH' as const,
+    mailboxes: 1
+  },
+  {
+    id: 'email-email-starter-year',
+    name: 'Email Starter Pro (por buzón/año)',
+    sku: 'email-email-starter-year',
+    period: 'YEAR' as const,
+    mailboxes: 1
+  },
+  {
+    id: 'email-email-business-year',
+    name: 'Email Business Suite (por buzón/año)',
+    sku: 'email-email-business-year',
+    period: 'YEAR' as const,
+    mailboxes: 1
+  }
+];
+
+function buildEmailItems(): CatalogItemDef[] {
+  return EMAIL_PLANS.map((p) => {
+    const price = getProductPriceResult(p.sku).retailPriceUSD;
+    return {
+      sku: p.sku,
+      name: p.name,
+      description: `Servicio de correo profesional corporativo (${p.period === 'YEAR' ? 'anual' : 'mensual'})`,
+      category: 'EMAIL',
+      price,
+      currency: 'USD',
+      billingPeriod: p.period as BillingPeriod,
+      active: price > 0,
+      metadata: {
+        commercialCategory: 'BUSINESS_EMAIL',
+        provider: 'pending_validation',
+        operation: p.period === 'YEAR' ? 'YEARLY' : 'MONTHLY',
+        billingPeriodUnit: p.period === 'YEAR' ? 'year' : 'month',
+        status: price > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        planId: p.id,
+        numberOfMailboxes: p.mailboxes,
+        requiresAssociatedDomain: true,
+        kind: 'email-plan'
+      }
+    };
+  });
+}
+
+// Certificados Digitales SSL
+const SSL_PLANS = [
+  {
+    id: 'ssl-dv',
+    name: 'Sectigo Essential SSL (DV)',
+    sku: 'ssl-ssl-dv',
+    sslType: 'dv' as const
+  },
+  {
+    id: 'ssl-wildcard',
+    name: 'PositiveSSL Wildcard (*.domain)',
+    sku: 'ssl-ssl-wildcard',
+    sslType: 'wildcard' as const
+  },
+  {
+    id: 'ssl-ev',
+    name: 'Comodo EV SSL (Extended Validation)',
+    sku: 'ssl-ssl-ev',
+    sslType: 'ev' as const
+  }
+];
+
+function buildSslItems(): CatalogItemDef[] {
+  return SSL_PLANS.map((p) => {
+    const price = getProductPriceResult(p.sku).retailPriceUSD;
+    return {
+      sku: p.sku,
+      name: p.name,
+      description: `Certificado SSL ${p.name}`,
+      category: 'SSL',
+      price,
+      currency: 'USD',
+      billingPeriod: 'YEAR',
+      active: price > 0,
+      metadata: {
+        commercialCategory: 'SSL',
+        provider: 'pending_validation',
+        operation: 'YEARLY',
+        billingPeriodUnit: 'year',
+        status: price > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        planId: p.id,
+        sslType: p.sslType,
+        requiresAssociatedDomain: true,
+        requiresCsr: true,
+        kind: 'ssl-plan'
+      }
+    };
+  });
+}
+
+// Addons y Complementos
+const ADDON_ITEMS: CatalogItemDef[] = [
+  {
+    sku: 'addon-workspace',
+    name: 'Google Workspace Starter',
+    description: 'Google Workspace (por usuario, mensual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-workspace').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'MONTH',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'banelio_internal',
+      operation: 'MONTHLY',
+      billingPeriodUnit: 'month',
+      status: 'ACTIVE',
+      target: 'email',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-mail-pro',
+    name: 'Banelio Mail Pro',
+    description: 'Buzón de correo Banelio (por buzón, mensual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-mail-pro').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'MONTH',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'MONTHLY',
+      billingPeriodUnit: 'month',
+      status: 'ACTIVE',
+      target: 'email',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-backup',
+    name: 'Cloud Backup Diario Automatizado',
+    description: 'Copia de seguridad diaria (mensual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-backup').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'MONTH',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'banelio_internal',
+      operation: 'MONTHLY',
+      billingPeriodUnit: 'month',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-workspace-year',
+    name: 'Google Workspace Starter (Anual)',
+    description: 'Google Workspace (por usuario, anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-workspace-year').retailPriceUSD,
     currency: 'USD',
     billingPeriod: 'YEAR',
     active: true,
-    metadata: { kind: 'domain-renewal', tld: c.tld, operation: 'renew' }
-  }));
-}
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'banelio_internal',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'email',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-mail-pro-year',
+    name: 'Banelio Mail Pro (Anual)',
+    description: 'Buzón de correo Banelio (por buzón, anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-mail-pro-year').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'YEAR',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'email',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-backup-year',
+    name: 'Cloud Backup Diario Automatizado (Anual)',
+    description: 'Copia de seguridad diaria (anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-backup-year').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'YEAR',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'banelio_internal',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-hosting-starter-month',
+    name: 'Hosting Cloud NVMe Starter (Complemento Mes)',
+    description: 'Complemento de hosting Starter (mensual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-hosting-starter-month').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'MONTH',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'MONTHLY',
+      billingPeriodUnit: 'month',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-hosting-starter-year',
+    name: 'Hosting Cloud NVMe Starter (Complemento Año)',
+    description: 'Complemento de hosting Starter (anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-hosting-starter-year').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'YEAR',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-hosting-business-month',
+    name: 'Hosting Cloud NVMe Business (Complemento Mes)',
+    description: 'Complemento de hosting Business (mensual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-hosting-business-month').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'MONTH',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'MONTHLY',
+      billingPeriodUnit: 'month',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-hosting-business-year',
+    name: 'Hosting Cloud NVMe Business (Complemento Año)',
+    description: 'Complemento de hosting Business (anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-hosting-business-year').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'YEAR',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'hosting',
+      kind: 'addon'
+    }
+  },
+  {
+    sku: 'addon-ssl-wildcard',
+    name: 'Certificado SSL Wildcard (Complemento)',
+    description: 'Certificado SSL Wildcard por dominio (anual)',
+    category: 'ADDON',
+    price: getProductPriceResult('addon-ssl-wildcard').retailPriceUSD,
+    currency: 'USD',
+    billingPeriod: 'YEAR',
+    active: true,
+    metadata: {
+      commercialCategory: 'ADDON',
+      provider: 'pending_validation',
+      operation: 'YEARLY',
+      billingPeriodUnit: 'year',
+      status: 'ACTIVE',
+      target: 'ssl',
+      kind: 'addon'
+    }
+  }
+];
 
+// Soluciones BANELIO: BUNDLES comerciales compuestos por productos individuales de la plataforma
 function buildSolutionItems(): CatalogItemDef[] {
-  const solutionCodes: Array<'START' | 'BUSINESS' | 'PRO'> = [
-    'START',
-    'BUSINESS',
-    'PRO'
-  ];
+  const solutionCodes: Array<'START' | 'BUSINESS' | 'PRO'> = ['START', 'BUSINESS', 'PRO'];
 
   return solutionCodes.map((code) => {
     const solution = calculateSolutionPrice(code, 'USD');
@@ -516,9 +687,20 @@ function buildSolutionItems(): CatalogItemDef[] {
       billingPeriod: 'YEAR',
       active: true,
       metadata: {
-        kind: 'solution',
+        commercialCategory: 'SOLUTION',
+        provider: 'banelio_internal',
+        operation: 'YEARLY',
+        billingPeriodUnit: 'year',
+        status: 'ACTIVE',
         code,
-        version: solution.version
+        version: solution.version,
+        isBundle: true,
+        components: solution.components.map((c) => ({
+          sku: c.sku,
+          name: c.name,
+          quantity: c.quantity
+        })),
+        kind: 'solution'
       }
     };
   });
@@ -538,7 +720,6 @@ export const CATALOG_DEFINITION: CatalogItemDef[] = [
 /**
  * Devuelve el pricing de transferencias CONFIGURADO de forma real (desde Prisma).
  * Solo SKUs activos con prefijo de transferencia; JSON sin secretos.
- * Vacío mientras no exista un precio real definido en TRANSFER_TLDS.
  */
 export async function getTransferPricing(prisma: PrismaClientType) {
   const rows = await prisma.catalogItem.findMany({
@@ -546,7 +727,7 @@ export async function getTransferPricing(prisma: PrismaClientType) {
     orderBy: { sku: 'asc' }
   });
 
-  return rows
+  const items = rows
     .filter((r) => String(r.sku).endsWith('-transfer') || String(r.sku).endsWith('-renew'))
     .map((r) => {
       const m = r.metadata && typeof r.metadata === 'object' ? (r.metadata as Record<string, unknown>) : {};
@@ -561,11 +742,16 @@ export async function getTransferPricing(prisma: PrismaClientType) {
         billingPeriod: r.billingPeriod
       };
     });
+
+  return {
+    configured: items.length > 0,
+    items
+  };
 }
 
 /**
  * Siembra idempotente del catálogo en la tabla CatalogItem (upsert por sku).
- * Solo crea/actualiza; nunca borra nada. No toca mocks ni localStorage.
+ * Solo crea/actualiza; nunca borra nada.
  */
 export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
   let created = 0;
@@ -578,7 +764,7 @@ export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
       price: item.price,
       currency: item.currency || 'USD',
       billingPeriod: item.billingPeriod,
-      active: item.active !== false,
+      active: item.active !== false && item.price > 0,
       metadata: (item.metadata as Prisma.InputJsonValue) || undefined
     };
     if (!existing) {
@@ -592,8 +778,9 @@ export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
 }
 
 /**
- * Devuelve el catálogo activo listo para exponer por HTTP.
- * Filtra solo items activos y serializa Decimal -> number.
+ * Devuelve el catálogo activo listo para exponer por HTTP a clientes públicos.
+ * Filtra solo items activos y sanitiza la metadata para JAMÁS exponer costos,
+ * márgenes internos ni reglas privadas del negocio.
  */
 export async function getActiveCatalog(prisma: PrismaClientType) {
   const rows = await prisma.catalogItem.findMany({
@@ -607,22 +794,38 @@ export async function getActiveCatalog(prisma: PrismaClientType) {
         ? (r.metadata as Record<string, unknown>)
         : {};
 
-    // Solo metadata comercial/pública. Nunca exponer costos,
-    // márgenes, fuentes internas ni reglas de protección.
     const publicMetadata: Record<string, unknown> = {};
 
+    // Whitelist estricta de atributos públicos.
+    // Costos mayoristas (providerCostUSD), márgenes y fórmulas quedan 100% omitidos.
     const allowedMetadataKeys = [
+      'commercialCategory',
+      'operation',
+      'provider',
+      'billingPeriodUnit',
+      'status',
       'kind',
       'tld',
+      'allowedDurationsYears',
+      'requiresEppCode',
+      'requiresRegistrantData',
+      'allowsTransfer',
+      'allowsRenewal',
       'isPopular',
       'isPromo',
       'tldCategory',
       'planId',
-      'period',
+      'platform',
+      'requiresAssociatedDomain',
+      'requiresLocation',
+      'numberOfMailboxes',
+      'sslType',
+      'requiresCsr',
       'target',
       'code',
       'version',
-      'operation'
+      'isBundle',
+      'components'
     ];
 
     for (const key of allowedMetadataKeys) {

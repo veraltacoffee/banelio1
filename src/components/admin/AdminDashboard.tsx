@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/pricing';
-import { TldConfig, PayoutRequest, AuditLogEntry, ProvisioningJob, SupportTicket } from '../../types';
+import { TldConfig, PayoutRequest, AuditLogEntry, SupportTicket } from '../../types';
 import TicketModal from '../dashboard/TicketModal';
 import {
   INITIAL_PROVIDER_COSTS,
@@ -24,11 +24,9 @@ import {
   UserCheck,
   Eye,
   AlertTriangle,
-  Play,
   CheckCircle2,
   FileText,
   Activity,
-  Layers,
   Search
 } from 'lucide-react';
 
@@ -36,7 +34,6 @@ export default function AdminDashboard() {
   const {
     tlds,
     updateTldConfig,
-    provisioningJobs,
     payouts,
     updatePayoutStatus,
     auditLogs,
@@ -50,7 +47,7 @@ export default function AdminDashboard() {
     t
   } = useApp();
 
-  const [activeAdminTab, setActiveAdminTab] = useState<'PRICING' | 'QUEUE' | 'CUSTOMERS' | 'PAYOUTS' | 'AUDIT' | 'TICKETS' | 'API_CONFIG'>('PRICING');
+  const [activeAdminTab, setActiveAdminTab] = useState<'PRICING' | 'CUSTOMERS' | 'PAYOUTS' | 'AUDIT' | 'TICKETS' | 'API_CONFIG'>('PRICING');
   const [editingTld, setEditingTld] = useState<TldConfig | null>(null);
 
   // Central Commercial Pricing State
@@ -116,6 +113,7 @@ export default function AdminDashboard() {
   const [editingPricingItem, setEditingPricingItem] = useState<any>(null);
   const [editItemCost, setEditItemCost] = useState(0);
   const [editItemRenewalCost, setEditItemRenewalCost] = useState<number | ''>('');
+  const [editItemTransferCost, setEditItemTransferCost] = useState<number | ''>('');
   const [editItemPartnerMargin, setEditItemPartnerMargin] = useState(35);
   const [editItemRetailMargin, setEditItemRetailMargin] = useState(55);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -124,9 +122,6 @@ export default function AdminDashboard() {
   // API Tester State
   const [apiStatus, setApiStatus] = useState<any>(null);
   const [isTestingApi, setIsTestingApi] = useState(false);
-  const [domainProbe, setDomainProbe] = useState('');
-  const [probeResult, setProbeResult] = useState<any>(null);
-  const [isProbing, setIsProbing] = useState(false);
 
   const checkApiStatus = async () => {
     setIsTestingApi(true);
@@ -138,24 +133,6 @@ export default function AdminDashboard() {
       setApiStatus({ error: err.message });
     } finally {
       setIsTestingApi(false);
-    }
-  };
-
-  const executeDomainProbe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!domainProbe) return;
-    setIsProbing(true);
-    try {
-      const cleanDomain = domainProbe.trim().toLowerCase().includes('.')
-        ? domainProbe.trim().toLowerCase()
-        : `${domainProbe.trim().toLowerCase()}.com`;
-      const res = await fetch(`/api/domains/check.php?domain=${encodeURIComponent(cleanDomain)}`);
-      const data = await res.json();
-      setProbeResult(data);
-    } catch (err: any) {
-      setProbeResult({ error: err.message });
-    } finally {
-      setIsProbing(false);
     }
   };
 
@@ -342,11 +319,6 @@ export default function AdminDashboard() {
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 bg-[#F7F8F0] p-2 px-3 rounded-2xl border border-[#8A8F98]">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#B8F23A] animate-pulse"></div>
-            <span className="text-xs font-mono text-[#B8F23A] font-bold">PAL Daemon: Online (3ms)</span>
-          </div>
         </div>
 
         {/* FINANCIAL & OPERATIONS KPI CARDS */}
@@ -406,18 +378,6 @@ export default function AdminDashboard() {
           >
             <DollarSign size={15} />
             <span>{t('adm_tab_pricing')} ({tlds.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveAdminTab('QUEUE')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-              activeAdminTab === 'QUEUE'
-                ? 'bg-[#B8F23A] text-[#070707] font-black shadow-xs'
-                : 'bg-[#FFFFFF] text-[#555A52] hover:text-[#070707] border border-[#8A8F98]'
-            }`}
-          >
-            <Layers size={15} />
-            <span>{t('adm_tab_queue')} ({provisioningJobs.length})</span>
           </button>
 
           <button
@@ -805,71 +765,6 @@ export default function AdminDashboard() {
         )}
 
         {/* TAB 2: PROVISIONING QUEUE */}
-        {activeAdminTab === 'QUEUE' && (
-          <div className="space-y-4">
-            <div className="bg-[#FFFFFF] rounded-3xl p-6 border border-[#8A8F98] space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-black text-lg text-[#070707]">Cola de Tareas Asíncronas (BullMQ & Workers)</h3>
-                  <p className="text-xs text-[#555A52]">
-                    Aprovisionamiento automático de dominios, hosting y certificados hacia el Registry de Banelio.
-                  </p>
-                </div>
-                <span className="text-xs font-mono text-[#070707] bg-[#B8F23A] px-3 py-1 rounded-xl border border-[#B8F23A] font-bold">
-                  Workers Conectados: 4
-                </span>
-              </div>
-
-              <div className="border border-[#8A8F98] rounded-2xl overflow-hidden text-xs">
-                <table className="w-full text-left">
-                  <thead className="bg-[#FCFCF8] text-[#555A52] font-bold border-b border-[#8A8F98]">
-                    <tr>
-                      <th className="py-3 px-4">Job ID</th>
-                      <th className="py-3 px-4">Servicio / Recurso</th>
-                      <th className="py-3 px-4">Tipo</th>
-                      <th className="py-3 px-4">Reintentos</th>
-                      <th className="py-3 px-4">Último Log</th>
-                      <th className="py-3 px-4">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#8A8F98] font-mono bg-[#FFFFFF]">
-                    {provisioningJobs.map((job) => (
-                      <tr key={job.id} className="hover:bg-[#F7F8F0] transition-colors">
-                        <td className="py-3 px-4 font-bold text-[#555A52]">#{job.id}</td>
-                        <td className="py-3 px-4 text-[#070707] font-semibold">{job.serviceName}</td>
-                        <td className="py-3 px-4 text-[#B8F23A]">{job.serviceType}</td>
-                        <td className="py-3 px-4 text-[#555A52]">{job.retries}/3</td>
-                        <td className="py-3 px-4 font-sans text-[#555A52] max-w-xs truncate">
-                          {job.logs?.[job.logs.length - 1] || 'Completado sin errores.'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`text-[10px] font-sans font-black uppercase px-2 py-0.5 rounded-full ${
-                              job.status === 'ACTIVE'
-                                ? 'bg-[#B8F23A] text-[#B8F23A] border border-[#B8F23A]'
-                                : job.status === 'FAILED'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-blue-50 text-blue-700 border border-blue-200'
-                            }`}
-                          >
-                            {job.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {provisioningJobs.length === 0 && (
-                  <div className="bg-[#FFFFFF] p-8 text-center">
-                    <Layers size={28} className="text-[#858A82]/40 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-[#070707]">{t('adm_no_orders')}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* TAB 3: CUSTOMERS & IMPERSONATION */}
         {activeAdminTab === 'CUSTOMERS' && (
           <div className="space-y-4">
@@ -1191,42 +1086,6 @@ export default function AdminDashboard() {
                       ℹ️ {apiStatus.message}
                     </p>
                   )}
-                </div>
-              )}
-            </div>
-
-            {/* Probe Testing Sandbox */}
-            <div className="bg-[#FFFFFF] rounded-3xl p-6 border border-[#8A8F98] space-y-4 shadow-xs">
-              <h4 className="font-black text-lg text-[#070707]">Probador de Endpoint Banelio (/api/domains/check.php)</h4>
-              <p className="text-xs text-[#555A52]">
-                Ejecuta una petición hacia el backend PHP de Banelio para verificar la disponibilidad real de un dominio mediante la infraestructura oficial.
-              </p>
-
-              <form onSubmit={executeDomainProbe} className="flex gap-2">
-                <input
-                  type="text"
-                  value={domainProbe}
-                  onChange={(e) => setDomainProbe(e.target.value)}
-                  placeholder="ejemplo: supernegociomexico"
-                  className="flex-1 bg-[#FCFCF8] border border-[#8A8F98] rounded-xl px-4 py-2.5 text-xs text-[#070707] font-mono outline-none focus:border-[#B8F23A]"
-                />
-                <button
-                  type="submit"
-                  disabled={isProbing}
-                  className="px-5 py-2.5 bg-[#070707] hover:bg-[#B8F23A] text-[#FCFCF8] rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-                >
-                  <Play size={13} className={isProbing ? 'animate-spin' : ''} />
-                  <span>Probar Proxy</span>
-                </button>
-              </form>
-
-              {probeResult && (
-                <div className="mt-4 p-4 rounded-2xl bg-[#070707] text-[#B8F23A] font-mono text-xs overflow-x-auto space-y-2">
-                  <div className="flex items-center justify-between text-[#858A82] pb-2 border-b border-[#555A52]">
-                    <span>Respuesta JSON del Backend:</span>
-                    <span>Fuente: {probeResult.source || 'server_proxy'}</span>
-                  </div>
-                  <pre>{JSON.stringify(probeResult, null, 2)}</pre>
                 </div>
               )}
             </div>

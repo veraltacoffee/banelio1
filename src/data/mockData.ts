@@ -2,7 +2,6 @@ import {
   AuditLogEntry,
   Order,
   PayoutRequest,
-  ProvisioningJob,
   ResellerCommission,
   SupportTicket,
   TldConfig,
@@ -33,7 +32,5 @@ export const INITIAL_TICKETS: SupportTicket[] = [];
 export const INITIAL_COMMISSIONS: ResellerCommission[] = [];
 
 export const INITIAL_PAYOUTS: PayoutRequest[] = [];
-
-export const INITIAL_PROVISIONING_JOBS: ProvisioningJob[] = [];
 
 export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [];

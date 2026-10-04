@@ -969,35 +969,51 @@ export function getProductPriceResult(
   options: PricingQuantityDurationOptions & { operation?: PricingOperation } = {}
 ): PriceResult {
   const costMap = customCostMap || INITIAL_PROVIDER_COSTS;
-  const cost = costMap[sku];
 
-  if (!cost) {
-    // If not found in known map, return a safe fallback with costKnown = false
-    const fallbackPriceUSD = 14.99;
-    const partnerUSD = applyCommercialRounding(fallbackPriceUSD * 0.75, 'USD');
-    const retailUSD = applyCommercialRounding(fallbackPriceUSD, 'USD');
-    const partnerLocal = convertUsdToLocal(partnerUSD, currency);
-    const retailLocal = convertUsdToLocal(retailUSD, currency);
+  let resolvedSku = sku;
+  let resolvedOperation = options.operation;
 
+  // Normalización de SKUs de dominios hacia las claves de costos del catálogo
+  if (!costMap[resolvedSku]) {
+    if (resolvedSku.startsWith('domain-') && resolvedSku.endsWith('-transfer')) {
+      const tldClean = resolvedSku.slice(7, -9).replace(/\./g, '-');
+      resolvedSku = `tld-${tldClean}`;
+      resolvedOperation = resolvedOperation ?? 'TRANSFER';
+    } else if (resolvedSku.startsWith('domain-') && resolvedSku.endsWith('-renew')) {
+      const tldClean = resolvedSku.slice(7, -6).replace(/\./g, '-');
+      resolvedSku = `tld-${tldClean}`;
+      resolvedOperation = resolvedOperation ?? 'RENEWAL';
+    } else if (resolvedSku.startsWith('domain-')) {
+      const tldClean = resolvedSku.slice(7).replace(/\./g, '-');
+      resolvedSku = `tld-${tldClean}`;
+      resolvedOperation = resolvedOperation ?? 'REGISTRATION';
+    }
+  }
+
+  const cost = costMap[resolvedSku];
+
+  if (!cost || !cost.active) {
+    // PRECIO NO CONFIGURADO: producto no vendible.
+    // NUNCA inventar un precio fallback arbitrario.
     return {
       sku,
-      operation: 'REGISTRATION',
+      operation: resolvedOperation ?? 'REGISTRATION',
       currency,
       providerCostUSD: 0,
       providerCostKnown: false,
-      partnerPriceUSD: partnerUSD,
-      retailPriceUSD: retailUSD,
-      partnerPriceLocal: partnerLocal,
-      retailPriceLocal: retailLocal,
-      commercialSavingsLocal: Math.max(0, retailLocal - partnerLocal),
-      commercialSavingsPercent: retailLocal > 0 ? Math.round(((retailLocal - partnerLocal) / retailLocal) * 100) : 0,
+      partnerPriceUSD: 0,
+      retailPriceUSD: 0,
+      partnerPriceLocal: 0,
+      retailPriceLocal: 0,
+      commercialSavingsLocal: 0,
+      commercialSavingsPercent: 0,
       partnerGrossMargin: 0,
       retailGrossMargin: 0,
-      priceVersion: 'v1.0'
+      priceVersion: 'unconfigured'
     };
   }
 
-  const operation = options.operation ?? cost.operation;
+  const operation = resolvedOperation ?? cost.operation;
 
   const costUSD =
     operation === 'RENEWAL'
@@ -1024,11 +1040,32 @@ export function getProductPriceResult(
       commercialSavingsPercent: 0,
       partnerGrossMargin: 0,
       retailGrossMargin: 0,
-      priceVersion: 'v1.0'
+      priceVersion: 'unconfigured'
     };
   }
 
-  const resolvedCostUSD = costUSD ?? 0;
+  const resolvedCostUSD = typeof costUSD === 'number' && Number.isFinite(costUSD) && costUSD > 0
+    ? costUSD
+    : 0;
+
+  if (resolvedCostUSD <= 0) {
+    return {
+      sku,
+      operation,
+      currency,
+      providerCostUSD: 0,
+      providerCostKnown: false,
+      partnerPriceUSD: 0,
+      retailPriceUSD: 0,
+      partnerPriceLocal: 0,
+      retailPriceLocal: 0,
+      commercialSavingsLocal: 0,
+      commercialSavingsPercent: 0,
+      partnerGrossMargin: 0,
+      retailGrossMargin: 0,
+      priceVersion: 'unconfigured'
+    };
+  }
 
   const partnerProfile = PRICING_PROFILES.PARTNER;
   const retailProfile = PRICING_PROFILES.RETAIL;
@@ -1054,7 +1091,7 @@ export function getProductPriceResult(
     retailProfile.minMargin
   );
 
-  const floorUSD = costUSD / (1 - partnerProfile.minMargin);
+  const floorUSD = resolvedCostUSD / (1 - partnerProfile.minMargin);
 
   // Apply commercial discount without changing provider cost.
   const discountedPartnerUSD = rawPartnerUSD * discountMultiplier;
@@ -1396,3 +1433,67 @@ export const ACTIVE_COMMERCIAL_OFFERS: CommercialOffer[] = [
     active: true
   }
 ];
+
+/**
+ * 10. PARTNER / AFFILIATE COMMISSIONS
+ *
+ * Implements strict separation between:
+ * - PARTNER PRICE: Wholesale purchase rate with partner target margin (35%), where savings = retailPrice - partnerPrice.
+ * - PARTNER COMMISSION: Percentage referral payout on retail sales attributed to a partner.
+ *
+ * ANTI-DOUBLE-DIPPING CONSTRAINT:
+ * If an order already benefited from Partner wholesale pricing, no referral commission is granted on top.
+ */
+export interface PartnerCommissionResult {
+  eligible: boolean;
+  commissionRate: number;
+  baseAmountUSD: number;
+  commissionAmountUSD: number;
+  currency: 'USD';
+  reason?: string;
+}
+
+export function calculatePartnerCommission(
+  orderSubtotalUSD: number,
+  discountUSD: number,
+  isPartnerPriceApplied: boolean = false,
+  customRate?: number
+): PartnerCommissionResult {
+  if (isPartnerPriceApplied) {
+    return {
+      eligible: false,
+      commissionRate: 0,
+      baseAmountUSD: 0,
+      commissionAmountUSD: 0,
+      currency: 'USD',
+      reason: 'No duplicate benefit: Order already received Partner wholesale pricing'
+    };
+  }
+
+  const baseUSD = Math.max(0, orderSubtotalUSD - discountUSD);
+  if (baseUSD <= 0) {
+    return {
+      eligible: false,
+      commissionRate: 0,
+      baseAmountUSD: 0,
+      commissionAmountUSD: 0,
+      currency: 'USD',
+      reason: 'Order base amount is zero'
+    };
+  }
+
+  const rate =
+    typeof customRate === 'number' && Number.isFinite(customRate) && customRate >= 0 && customRate <= 0.50
+      ? customRate
+      : 0.20; // 20% standard recurring commission
+
+  const commissionAmountUSD = Math.round(baseUSD * rate * 100) / 100;
+
+  return {
+    eligible: true,
+    commissionRate: rate,
+    baseAmountUSD: Number(baseUSD.toFixed(2)),
+    commissionAmountUSD,
+    currency: 'USD'
+  };
+}

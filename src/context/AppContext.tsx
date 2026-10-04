@@ -12,7 +12,6 @@ import {
   OrderStatus,
   PaymentMethod,
   PayoutRequest,
-  ProvisioningJob,
   ResellerCommission,
   ServiceType,
   SupportTicket,
@@ -26,7 +25,6 @@ import {
   INITIAL_COMMISSIONS,
   INITIAL_ORDERS,
   INITIAL_PAYOUTS,
-  INITIAL_PROVISIONING_JOBS,
   INITIAL_SERVICES,
   INITIAL_TICKETS,
   INITIAL_TLDS
@@ -59,6 +57,8 @@ export interface CustomerUser {
   id?: string;
   name: string;
   email: string;
+  role?: UserRole;
+  status?: string;
   phone?: string;
   company?: string;
   taxId?: string;
@@ -165,7 +165,6 @@ interface AppContextType {
   requestPayout: (amountUSD: number, method: any, destination: string) => { success: boolean; message: string };
   updatePayoutStatus: (payoutId: string, status: 'APPROVED' | 'REJECTED') => void;
   resellerPromoCode: string;
-  provisioningJobs: ProvisioningJob[];
   auditLogs: AuditLogEntry[];
   addAuditLog: (action: string, entity: string, details: string, entityId?: string) => void;
   toasts: Toast[];
@@ -305,11 +304,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : INITIAL_PAYOUTS;
   });
 
-  const [provisioningJobs, setProvisioningJobs] = useState<ProvisioningJob[]>(() => {
-    const saved = localStorage.getItem('gh_jobs');
-    return saved ? JSON.parse(saved) : INITIAL_PROVISIONING_JOBS;
-  });
-
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     const saved = localStorage.getItem('gh_audit');
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
@@ -367,8 +361,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setCustomerUser(user);
       setAffiliateUser(null);
-      setIsAdminAuthenticated(false);
-      setRole('CUSTOMER');
+      if (user.role === 'ADMIN') {
+        setIsAdminAuthenticated(true);
+        setRole('ADMIN');
+      } else if (user.role === 'RESELLER') {
+        setIsAdminAuthenticated(false);
+        setRole('RESELLER');
+      } else {
+        setIsAdminAuthenticated(false);
+        setRole('CUSTOMER');
+      }
 
       return true;
     } catch {
@@ -397,8 +399,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const user = result.user as CustomerUser;
       setCustomerUser(user);
       setAffiliateUser(null);
-      setIsAdminAuthenticated(false);
-      setRole('CUSTOMER');
+      if (user.role === 'ADMIN') {
+        setIsAdminAuthenticated(true);
+        setRole('ADMIN');
+      } else if (user.role === 'RESELLER') {
+        setIsAdminAuthenticated(false);
+        setRole('RESELLER');
+      } else {
+        setIsAdminAuthenticated(false);
+        setRole('CUSTOMER');
+      }
       setPendingTwoFactorAuth(null);
       return true;
     } catch {
@@ -486,10 +496,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         if (cancelled || !result.success || !result.user) return;
 
-        setCustomerUser(result.user as CustomerUser);
+        const user = result.user as CustomerUser;
+        setCustomerUser(user);
         setAffiliateUser(null);
-        setIsAdminAuthenticated(false);
-        setRole('CUSTOMER');
+        if (user.role === 'ADMIN') {
+          setIsAdminAuthenticated(true);
+          setRole('ADMIN');
+        } else if (user.role === 'RESELLER') {
+          setIsAdminAuthenticated(false);
+          setRole('RESELLER');
+        } else {
+          setIsAdminAuthenticated(false);
+          setRole('CUSTOMER');
+        }
       } catch {
         // Sin sesión válida: mantener estado público.
       }
@@ -715,9 +734,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('gh_payouts', JSON.stringify(payouts));
   }, [payouts]);
-  useEffect(() => {
-    localStorage.setItem('gh_jobs', JSON.stringify(provisioningJobs));
-  }, [provisioningJobs]);
   useEffect(() => {
     localStorage.setItem('gh_audit', JSON.stringify(auditLogs));
   }, [auditLogs]);
@@ -974,7 +990,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const config = tlds.find((t) => t.tld.toLowerCase() === cleanTld);
-    if (!config) return 14.99;
+    if (!config) return 0;
     return calculateTldRetailPrice(config);
   };
 
@@ -1092,9 +1108,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         idempotencyKey,
         countryCode,
         promoCode: promoCode.trim() || undefined,
+        referralCode: promoCode.trim() === 'PARTNER30' ? 'PARTNER30' : (affiliateUser?.referralCode || undefined),
         customer: {
           email: customerInfo?.email || customerUser?.email || undefined,
-          name: customerInfo?.name || customerUser?.name || undefined
+          name: customerInfo?.name || customerUser?.name || undefined,
+          registrant: sharedRegistrantContact?.email ? {
+            name: sharedRegistrantContact.name,
+            org: sharedRegistrantContact.company,
+            email: sharedRegistrantContact.email,
+            phone: sharedRegistrantContact.phone,
+            address: sharedRegistrantContact.address,
+            city: sharedRegistrantContact.city,
+            state: sharedRegistrantContact.state,
+            postalCode: sharedRegistrantContact.postalCode,
+            country: sharedRegistrantContact.country
+          } : undefined
         },
         items
       })
@@ -1433,7 +1461,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requestPayout,
         updatePayoutStatus,
         resellerPromoCode: 'PARTNER30',
-        provisioningJobs,
         auditLogs,
         addAuditLog,
         toasts,

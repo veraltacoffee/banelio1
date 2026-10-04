@@ -52,12 +52,12 @@ export default function AddonConfigModal({
       if (selectedPlan === 'google') {
         sku = periodUnit === 'year' ? 'addon-workspace-year' : 'addon-workspace';
         serviceName = `Google Workspace Starter - ${associatedDomain}`;
-        basePriceUSD = getProductPriceResult(sku).retailPriceUSD || (periodUnit === 'year' ? 72 : 6.00);
+        basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
         quantity = period;
       } else {
         sku = periodUnit === 'year' ? 'addon-mail-pro-year' : 'addon-mail-pro';
         serviceName = `Banelio Mail Pro (${mailboxCount} buzones) - ${associatedDomain}`;
-        basePriceUSD = getProductPriceResult(sku).retailPriceUSD || (periodUnit === 'year' ? 16.99 : 1.99);
+        basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
         quantity = period * mailboxCount;
       }
     } else if (addonType === 'HOSTING') {
@@ -65,26 +65,26 @@ export default function AddonConfigModal({
       if (selectedPlan === 'business') {
         sku = periodUnit === 'year' ? 'addon-hosting-business-year' : 'addon-hosting-business-month';
         serviceName = `Hosting Cloud NVMe Business - ${associatedDomain}`;
-        basePriceUSD = getProductPriceResult(sku).retailPriceUSD || (periodUnit === 'year' ? 89.99 : 8.99);
+        basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
         quantity = period;
       } else {
         sku = periodUnit === 'year' ? 'addon-hosting-starter-year' : 'addon-hosting-starter-month';
         serviceName = `Hosting Cloud NVMe Starter - ${associatedDomain}`;
-        basePriceUSD = getProductPriceResult(sku).retailPriceUSD || (periodUnit === 'year' ? 39.99 : 3.99);
+        basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
         quantity = period;
       }
     } else if (addonType === 'SSL') {
       type = 'SSL';
       sku = 'addon-ssl-wildcard';
       serviceName = `Certificado SSL Wildcard (*.${associatedDomain})`;
-      basePriceUSD = getProductPriceResult(sku).retailPriceUSD || 9.99;
+      basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
       quantity = 1;
       setPeriodUnit('year');
     } else if (addonType === 'BACKUP') {
       type = 'HOSTING';
       sku = periodUnit === 'year' ? 'addon-backup-year' : 'addon-backup';
       serviceName = `Cloud Backup Diario Automatizado - ${associatedDomain}`;
-      basePriceUSD = getProductPriceResult(sku).retailPriceUSD || (periodUnit === 'year' ? 14.99 : 1.49);
+      basePriceUSD = getProductPriceResult(sku).retailPriceUSD;
       quantity = 1;
     }
 
@@ -255,7 +255,10 @@ export default function AddonConfigModal({
                     {selectedPlan === 'starter' && <Check size={16} className="text-[#B8F23A]" />}
                   </div>
                   <div className="text-xl font-black text-[#B8F23A] mb-1">
-                    {formatMoney(periodUnit === 'year' ? 39.99 : 3.99, currency)}
+                    {formatMoney(
+                      getProductPriceResult(periodUnit === 'year' ? 'addon-hosting-starter-year' : 'addon-hosting-starter-month').retailPriceUSD,
+                      currency
+                    )}
                     <span className="text-xs text-[#555A52] font-normal"> / {periodUnit === 'year' ? 'año' : 'mes'}</span>
                   </div>
                   <ul className="text-xs text-[#555A52] space-y-1 mt-2">
@@ -279,7 +282,10 @@ export default function AddonConfigModal({
                     {selectedPlan === 'business' && <Check size={16} className="text-[#B8F23A]" />}
                   </div>
                   <div className="text-xl font-black text-[#B8F23A] mb-1">
-                    {formatMoney(periodUnit === 'year' ? 89.99 : 8.99, currency)}
+                    {formatMoney(
+                      getProductPriceResult(periodUnit === 'year' ? 'addon-hosting-business-year' : 'addon-hosting-business-month').retailPriceUSD,
+                      currency
+                    )}
                     <span className="text-xs text-[#555A52] font-normal"> / {periodUnit === 'year' ? 'año' : 'mes'}</span>
                   </div>
                   <ul className="text-xs text-[#555A52] space-y-1 mt-2">
@@ -301,7 +307,9 @@ export default function AddonConfigModal({
                   <p className="text-xs text-[#555A52]">Protege *. {associatedDomain} y todas sus variantes de subdominios.</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-black text-[#B8F23A]">{formatMoney(9.99, currency)}</span>
+                  <span className="text-xl font-black text-[#B8F23A]">
+                    {formatMoney(getProductPriceResult('addon-ssl-wildcard').retailPriceUSD, currency)}
+                  </span>
                   <span className="text-xs text-[#555A52] block">/ año</span>
                 </div>
               </div>
@@ -324,7 +332,10 @@ export default function AddonConfigModal({
                 </div>
                 <div className="text-right">
                   <span className="text-xl font-black text-[#B8F23A]">
-                    {formatMoney(periodUnit === 'year' ? 14.99 : 1.49, currency)}
+                    {formatMoney(
+                      getProductPriceResult(periodUnit === 'year' ? 'addon-backup-year' : 'addon-backup').retailPriceUSD,
+                      currency
+                    )}
                   </span>
                   <span className="text-xs text-[#555A52] block">/ {periodUnit === 'year' ? 'año' : 'mes'}</span>
                 </div>

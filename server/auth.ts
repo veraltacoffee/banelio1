@@ -12,6 +12,8 @@ const TWO_FACTOR_CHALLENGE_TTL_SECONDS = 5 * 60;
 const EMAIL_VERIFICATION_TTL_SECONDS = 15 * 60;
 const PASSWORD_RESET_TTL_SECONDS = 15 * 60;
 
+export const VALID_AUTH_ROLES = ['CUSTOMER', 'RESELLER', 'ADMIN'];
+
 function getMailTransport() {
   const host = process.env.MAIL_HOST;
   const port = Number(process.env.MAIL_PORT || 587);
@@ -188,7 +190,7 @@ export async function requestPasswordResetAuth(
   });
 
   // Respuesta uniforme para no revelar si el correo está registrado.
-  if (!customer || customer.role !== 'CUSTOMER' || !customer.passwordHash) {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role) || !customer.passwordHash) {
     return res.json({
       success: true,
       sent: true,
@@ -263,7 +265,7 @@ export async function resetPasswordAuth(
     where: { email },
   });
 
-  if (!customer || !customer.passwordHash || customer.role !== 'CUSTOMER') {
+  if (!customer || !customer.passwordHash || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(400).json({
       success: false,
       error: 'El código de recuperación no es válido o ha expirado.',
@@ -751,6 +753,17 @@ export async function registerAuth(req: Request, res: Response) {
     },
   });
 
+  // Crear token de verificación inicial (no bloqueante si el transporte de mail no está configurado)
+  try {
+    const code = await createEmailVerificationToken(customer.id);
+    await sendEmailVerificationCode(
+      { email: customer.email, name: customer.name },
+      code
+    ).catch(() => {});
+  } catch {
+    // Si no está configurado SMTP en dev/local, se conserva la cuenta creada
+  }
+
   await createSession(req, res, customer.id);
 
   return res.status(201).json({
@@ -783,7 +796,7 @@ export async function loginAuth(req: Request, res: Response) {
     where: { email },
   });
 
-  if (!customer?.passwordHash || customer.role !== 'CUSTOMER') {
+  if (!customer?.passwordHash || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(401).json({
       success: false,
       error: 'Credenciales inválidas.',
@@ -841,7 +854,7 @@ export async function logoutAuth(req: Request, res: Response) {
 export async function meAuth(req: Request, res: Response) {
   const customer = await getAuthenticatedCustomer(req);
 
-  if (!customer || customer.role !== 'CUSTOMER') {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.json({
       success: true,
       authenticated: false,
@@ -896,7 +909,7 @@ export function requireRole(...roles: string[]) {
 export async function setupTwoFactorAuth(req: Request, res: Response) {
   const customer = await getAuthenticatedCustomer(req);
 
-  if (!customer || customer.role !== 'CUSTOMER') {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(401).json({
       success: false,
       error: 'Autenticación requerida.',
@@ -935,7 +948,7 @@ export async function setupTwoFactorAuth(req: Request, res: Response) {
 export async function verifyTwoFactorSetup(req: Request, res: Response) {
   const customer = await getAuthenticatedCustomer(req);
 
-  if (!customer || customer.role !== 'CUSTOMER') {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(401).json({
       success: false,
       error: 'Autenticación requerida.',
@@ -981,7 +994,7 @@ export async function verifyTwoFactorSetup(req: Request, res: Response) {
 export async function disableTwoFactorAuth(req: Request, res: Response) {
   const customer = await getAuthenticatedCustomer(req);
 
-  if (!customer || customer.role !== 'CUSTOMER') {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(401).json({
       success: false,
       error: 'Autenticación requerida.',
@@ -1039,7 +1052,7 @@ export async function verifyTwoFactorCodeAuth(
 ) {
   const customer = await getAuthenticatedCustomer(req);
 
-  if (!customer || customer.role !== 'CUSTOMER') {
+  if (!customer || !VALID_AUTH_ROLES.includes(customer.role)) {
     return res.status(401).json({
       success: false,
       error: 'Autenticación requerida.',
@@ -1142,7 +1155,7 @@ export async function completeTwoFactorLoginAuth(
   const customer = challenge.customer;
 
   if (
-    customer.role !== 'CUSTOMER' ||
+    !VALID_AUTH_ROLES.includes(customer.role) ||
     !customer.twoFactorEnabled ||
     !customer.twoFactorSecret
   ) {

@@ -16,7 +16,7 @@ export default function EmailLanding() {
       sku: 'email-email-starter',
       name: 'Email Starter Pro',
       storage: language === 'en' ? '10 GB per Mailbox' : '10 GB por Buzón',
-      basePriceUSD: getProductPriceResult('email-email-starter').retailPriceUSD || 1.99,
+      basePriceUSD: getProductPriceResult('email-email-starter').retailPriceUSD,
       features: language === 'en'
         ? [
             'Modern Webmail + IMAP/POP3',
@@ -36,7 +36,7 @@ export default function EmailLanding() {
       sku: 'email-email-business',
       name: 'Email Business Suite',
       storage: language === 'en' ? '50 GB per Mailbox' : '50 GB por Buzón',
-      basePriceUSD: getProductPriceResult('email-email-business').retailPriceUSD || 4.99,
+      basePriceUSD: getProductPriceResult('email-email-business').retailPriceUSD,
       features: language === 'en'
         ? [
             'Shared Calendars & Contacts',

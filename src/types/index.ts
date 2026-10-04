@@ -198,17 +198,6 @@ export interface AuditLogEntry {
   details: string;
 }
 
-export interface ProvisioningJob {
-  id: string;
-  orderId: string;
-  serviceName: string;
-  serviceType: ServiceType;
-  status: 'QUEUED' | 'CALLING_REGISTRY' | 'CONFIGURING_DNS' | 'ACTIVE' | 'FAILED';
-  retries: number;
-  timestamp: string;
-  logs: string[];
-}
-
 export type ThemeMode = 'light' | 'dark';
 
 export interface BlogPost {

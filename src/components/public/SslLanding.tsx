@@ -14,7 +14,7 @@ export default function SslLanding() {
       name: 'SSL Positivo DV',
       validation: language === 'en' ? 'Domain Validation in 5 minutes' : 'Validación por Dominio en 5 minutos',
       warranty: language === 'en' ? 'Warranty $10,000 USD' : 'Garantía $10,000 USD',
-      priceUSD: getProductPriceResult('ssl-ssl-dv').retailPriceUSD || 14.99,
+      priceUSD: getProductPriceResult('ssl-ssl-dv').retailPriceUSD,
       features: language === 'en'
         ? ['256-bit SHA-256 Encryption', 'HTTPS Browser Padlock', 'Dynamic Security Site Seal', 'Unlimited Free Reissuance']
         : ['Encriptación 256-bit SHA-256', 'Candado de Seguridad en Navegadores', 'Sello de Seguridad Dinámico', 'Reemisión Ilimitada']
@@ -25,7 +25,7 @@ export default function SslLanding() {
       name: 'SSL Wildcard Pro (*.domain)',
       validation: language === 'en' ? 'Secures your domain and all its subdomains' : 'Protege tu dominio y todos sus subdominios',
       warranty: language === 'en' ? 'Warranty $50,000 USD' : 'Garantía $50,000 USD',
-      priceUSD: getProductPriceResult('ssl-ssl-wildcard').retailPriceUSD || 49.99,
+      priceUSD: getProductPriceResult('ssl-ssl-wildcard').retailPriceUSD,
       features: language === 'en'
         ? ['Protects unlimited subdomains (*.company.com)', 'Immediate Automated Issuance', '99.9% Browser & Mobile Compatibility', 'Certified Trust Site Seal']
         : ['Protege subdominios ilimitados (*.empresa.com)', 'Aprobación Inmediata', 'Compatibilidad 99.9% con Móviles y Navegadores', 'Sello de Seguridad Certificado']

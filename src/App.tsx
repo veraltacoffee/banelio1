@@ -162,7 +162,7 @@ function MainAppContent() {
         )}
 
         {role === 'RESELLER' && (
-          affiliateUser ? (
+          (affiliateUser || customerUser?.role === 'RESELLER') ? (
             <ResellerPortal />
           ) : (
             <AffiliateAuthView onCancel={() => setRole('PUBLIC')} />
@@ -170,7 +170,7 @@ function MainAppContent() {
         )}
 
         {role === 'ADMIN' && (
-          isAdminAuthenticated ? (
+          (isAdminAuthenticated || customerUser?.role === 'ADMIN') ? (
             <AdminDashboard />
           ) : (
             <AdminAuthView onCancel={() => setRole('PUBLIC')} />

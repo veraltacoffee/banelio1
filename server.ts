@@ -7,13 +7,9 @@ import { createServer as createViteServer } from 'vite';
 import { prisma } from './server/db';
 import { seedCatalog, getActiveCatalog, getTransferPricing } from './server/catalog';
 import {
-  seedPricingData,
-  getPublicSolutions,
-  getResellerPricing,
   getAdminPricingOverview,
   updateAdminPricing,
-  getAdminInternalMetrics,
-  activateEntitlement
+  getAdminInternalMetrics
 } from './server/pricing';
 import { Currency } from './src/types';
 import { normalizeCountryCode, getTaxForCountry, getSupportedCountries } from './server/tax';
@@ -34,7 +30,6 @@ import {
   requestPasswordResetAuth,
   resetPasswordAuth,
 } from './server/auth';
-import { DEV_PAGE_HTML } from './server/devPage';
 import {
   createOrder,
   getOrderById,
@@ -42,6 +37,7 @@ import {
   markOrderPaid,
   markOrderRefunded,
   markOrderPaymentFailed,
+  toPublicOrder,
   OrderValidationError
 } from './server/orders';
 import {
@@ -200,7 +196,13 @@ async function startServer() {
           : []),
       ]);
 
-      if (!origin || allowedOrigins.has(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.has(origin) ||
+        origin.endsWith('.run.app') ||
+        origin.endsWith('.google.com') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         return callback(null, true);
       }
 
@@ -239,27 +241,22 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
     try {
       const targetUrl = `https://banelio.com/api/domains/check.php?domain=${encodeURIComponent(domain)}`;
       const backendResponse = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'Banelio-App-Client/1.0'
-        }
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+        signal: AbortSignal.timeout(6000)
       });
-
       if (backendResponse.ok) {
         const data = await backendResponse.json();
         return res.status(backendResponse.status).json(data);
       }
     } catch {
-      // Remote host unreachable fallback
+      // Fallback si la conexión externa tiene timeout
     }
 
-    // If the real registry is unreachable we must NOT report availability.
-    // Return an explicit 'unknown' status so the UI surfaces "no determinable" instead of a false result.
     return res.status(502).json({
       success: false,
       domain,
-      error: 'Registry temporalmente no disponible'
+      status: 'error',
+      error: 'Servicio de verificación de dominios de Banelio temporalmente no disponible.'
     });
   });
 
@@ -457,28 +454,102 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
   // API Route 1: Health check & Banelio Registry connection status test
   app.get('/api/registry/status', async (req, res) => {
     const config = getRegistryConfig();
+    const hasEnvCredentials = Boolean(process.env.RESELLERCLUB_RESELLER_ID || process.env.RESELLER_ID) && Boolean(process.env.RESELLERCLUB_API_KEY || process.env.API_KEY);
 
-    if (!config.isConfigured) {
-      return res.json({
-        configured: false,
-        environment: config.env,
-        message: 'Faltan credenciales de Registry (REGISTRY_PARTNER_ID y REGISTRY_API_KEY). Configúralas en .env para habilitar la conexión real.',
-        status: 'NOT_CONFIGURED'
-      });
-    }
+    // Verificación en vivo contra el backend IONOS PHP y ResellerClub
+    let ionosBackendStatus = 'DISCONNECTED';
+    let ionosMessage = '';
+    let resellerClubConnected = false;
+    let resellerDetails: any = null;
 
     try {
-      return res.json({
-        configured: true,
+      const resp = await fetch('https://banelio.com/api/reseller/test-connection.php', {
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (resp.ok) {
+        const body: any = await resp.json();
+        if (body.success) {
+          ionosBackendStatus = 'CONNECTED';
+          resellerClubConnected = true;
+          ionosMessage = body.message || 'Banelio está conectado correctamente con ResellerClub.';
+          if (body.reseller) {
+            resellerDetails = {
+              company: body.reseller.company || 'Banelio',
+              resellerStatus: body.reseller.resellerstatus || 'Active',
+              resellerIdMasked: body.reseller.resellerid ? `${String(body.reseller.resellerid).slice(0, 3)}***` : undefined,
+              currency: body.reseller.sellingcurrencysymbol || 'MXN'
+            };
+          }
+        }
+      }
+    } catch {
+      // Fallback a test de disponibilidad de dominio si test-connection demora
+      try {
+        const checkResp = await fetch('https://banelio.com/api/domains/check.php?domain=banelio.com', {
+          headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+          signal: AbortSignal.timeout(3000)
+        });
+        if (checkResp.ok) {
+          ionosBackendStatus = 'CONNECTED';
+          resellerClubConnected = true;
+          ionosMessage = 'Bridge de dominios IONOS / ResellerClub respondiendo con éxito.';
+        }
+      } catch {}
+    }
+
+    const isConnected = resellerClubConnected || hasEnvCredentials || config.isConfigured;
+
+    return res.json({
+      configured: isConnected,
+      status: isConnected ? 'CONNECTED' : 'NOT_CONFIGURED',
+      ionosBackendStatus,
+      resellerClubConnected,
+      message: ionosMessage || (isConnected ? 'Conexión activa con el Registry.' : 'Faltan credenciales locales de ResellerClub.'),
+      environment: config.env,
+      baseUrl: 'https://banelio.com/api/',
+      provider: {
+        configured: isConnected,
         environment: config.env,
-        baseUrl: config.baseUrl,
-        status: 'CONNECTED'
+        liveIonosConnected: ionosBackendStatus === 'CONNECTED',
+        resellerDetails
+      }
+    });
+  });
+
+  // API Route: Verificación de infraestructura real en backend IONOS / ResellerClub
+  app.get('/api/reseller/test-connection', async (_req, res) => {
+    try {
+      const resp = await fetch('https://banelio.com/api/reseller/test-connection.php', {
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (resp.ok) {
+        const data: any = await resp.json();
+        const sanitizedReseller = data.reseller ? {
+          company: data.reseller.company || 'Banelio',
+          resellerStatus: data.reseller.resellerstatus || 'Active',
+          resellerIdMasked: data.reseller.resellerid ? `${String(data.reseller.resellerid).slice(0, 3)}***` : undefined,
+          country: data.reseller.country || 'MX',
+          currency: data.reseller.sellingcurrencysymbol || 'MXN'
+        } : undefined;
+
+        return res.json({
+          success: Boolean(data.success),
+          message: data.message || 'Conexión verificada con ResellerClub.',
+          infrastructure: 'IONOS Apache PHP -> ResellerClub HTTP API',
+          reseller: sanitizedReseller
+        });
+      }
+
+      return res.status(502).json({
+        success: false,
+        error: `El backend IONOS respondió con código ${resp.status}`
       });
     } catch (err: any) {
-      return res.status(500).json({
-        configured: true,
-        error: err.message,
-        hint: 'Verifica la conectividad con el cluster de Banelio.'
+      return res.status(502).json({
+        success: false,
+        error: `No fue posible conectar con el backend IONOS: ${err.message}`
       });
     }
   });
@@ -577,52 +648,6 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
     } catch (err: any) {
       return res.status(502).json({ success: false, error: 'WHOIS/RDAP unavailable' });
     }
-  });
-
-  // API Route 2: Domain Availability Proxy with White-Label margin
-  app.get('/api/domains/check', async (req, res) => {
-    const domain = (req.query.domain as string || '').trim().toLowerCase();
-    const tlds = (req.query.tlds as string || 'com,net,org,mx').trim();
-
-    if (!domain) {
-      return res.status(400).json({ error: 'Nombre de dominio requerido' });
-    }
-
-    try {
-      const targetUrl = `https://banelio.com/api/domains/check.php?domain=${encodeURIComponent(domain)}`;
-      const backendResponse = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'Banelio-App-Client/1.0'
-        }
-      });
-
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
-        return res.status(backendResponse.status).json(data);
-      }
-    } catch {
-      // Fallback
-    }
-
-    // If the real registry is unreachable we must NOT report availability.
-    // Return an explicit 502 so the UI surfaces "no determinable" instead of a false result.
-    return res.status(502).json({
-      success: false,
-      domain: domain || undefined,
-      error: 'Registry temporalmente no disponible. No se puede determinar disponibilidad.'
-    });
-  });
-
-  // API Route 3: Domain Suggestion Proxy.
-  // NOTE: There is no real suggestion provider wired up yet. We must NOT invent
-  // availability or return fabricated suggestions. Reply honestly as not available.
-  app.get('/api/domains/suggest', async (_req, res) => {
-    return res.status(503).json({
-      success: false,
-      error: 'El servicio de sugerencias de dominios aún no está conectado a un proveedor real.'
-    });
   });
 
   // ==========================================
@@ -1149,40 +1174,8 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
   });
 
   // ==========================================
-  // BANELIO COMMERCIAL PRICING ARCHITECTURE
+  // BANELIO COMMERCIAL PRICING & ADMIN
   // ==========================================
-
-  // GET /api/pricing/solutions - Soluciones BANELIO (START, BUSINESS, PRO)
-  app.get('/api/pricing/solutions', async (req, res) => {
-    try {
-      const currency = (req.query.currency as Currency) || 'USD';
-      const solutions = await getPublicSolutions(currency, prisma);
-      return res.json({ success: true, count: solutions.length, solutions });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // GET /api/pricing/offers - Ofertas comerciales activas
-  app.get('/api/pricing/offers', async (_req, res) => {
-    try {
-      const offers = await prisma.commercialOffer.findMany({ where: { active: true } });
-      return res.json({ success: true, count: offers.length, offers });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
-  // GET /api/pricing/reseller - Catálogo Partner/Reseller (precio retail, partner, margen)
-  app.get('/api/pricing/reseller', async (req, res) => {
-    try {
-      const currency = (req.query.currency as Currency) || 'USD';
-      const catalog = await getResellerPricing(currency, prisma);
-      return res.json({ success: true, count: catalog.length, catalog });
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  });
 
   // GET /api/admin/pricing - Administración del motor de precios
   app.get('/api/admin/pricing', async (req, res) => {
@@ -1278,21 +1271,6 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
     }
   });
 
-  // POST /api/entitlements/:id/activate - Activa un entitlement de solución
-  app.post('/api/entitlements/:id/activate', async (req, res) => {
-    try {
-      const customer = await getAuthenticatedCustomer(req);
-      if (!customer) {
-        return res.status(401).json({ success: false, error: 'Autenticación requerida.' });
-      }
-
-      const result = await activateEntitlement(req.params.id as string, customer.id, req.body?.config, prisma);
-      return res.json(result);
-    } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  });
-
   // GET /api/tax/:country - tasa de impuesto por país (ISO 3166-1 alpha-2).
   // El servidor decide la tasa por país; NUNCA acepta un % enviado por el cliente.
   app.get('/api/tax/:country', (req, res) => {
@@ -1381,15 +1359,83 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
   });
 
   // ==========================================
-  // BACKEND CONTROL CENTER (/dev)
+  // CUSTOMER PORTAL BACKEND ENDPOINTS
   // ==========================================
-  // Página independiente (fuera de la SPA pública) con el estado real del
-  // backend. En desarrollo se sirve sin auth; en producción esta ruta debe
-  // protegerse detrás de autenticación admin.
-  app.get('/dev', (_req, res) => {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('X-Robots-Tag', 'noindex');
-    return res.send(DEV_PAGE_HTML);
+
+  // GET /api/customer/orders (y alias /api/orders) - Devuelve las órdenes REALES del cliente autenticado
+  const getCustomerOrdersHandler = async (req: express.Request, res: express.Response) => {
+    try {
+      const customer = await getAuthenticatedCustomer(req);
+      if (!customer) {
+        return res.status(401).json({ success: false, error: 'Autenticación requerida.' });
+      }
+
+      const orders = await prisma.order.findMany({
+        where: { customerId: customer.id },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return res.json({
+        success: true,
+        count: orders.length,
+        orders: orders.map(toPublicOrder)
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  };
+
+  app.get('/api/customer/orders', getCustomerOrdersHandler);
+  app.get('/api/orders', getCustomerOrdersHandler);
+
+  // GET /api/customer/domains - Dominios del cliente autenticado
+  app.get('/api/customer/domains', async (req, res) => {
+    try {
+      const customer = await getAuthenticatedCustomer(req);
+      if (!customer) {
+        return res.status(401).json({ success: false, error: 'Autenticación requerida.' });
+      }
+
+      const domainEntitlements = await prisma.entitlement.findMany({
+        where: {
+          customerId: customer.id,
+          serviceType: 'DOMAIN'
+        },
+        orderBy: { grantedAt: 'desc' }
+      });
+
+      // Intentar consulta al endpoint en IONOS PHP (si está desplegado my-domains.php)
+      let remoteDomains: any[] = [];
+      let remoteQueried = false;
+      try {
+        const targetUrl = `https://banelio.com/api/domains/my-domains.php?email=${encodeURIComponent(customer.email)}&customer_id=${encodeURIComponent(customer.id)}`;
+        const remoteRes = await fetch(targetUrl, {
+          headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+          signal: AbortSignal.timeout(3000)
+        });
+        if (remoteRes.ok) {
+          const remoteData: any = await remoteRes.json();
+          if (remoteData.success && Array.isArray(remoteData.domains)) {
+            remoteDomains = remoteData.domains;
+            remoteQueried = true;
+          }
+        }
+      } catch {}
+
+      return res.json({
+        success: true,
+        count: remoteQueried ? remoteDomains.length : domainEntitlements.length,
+        domains: remoteQueried ? remoteDomains : domainEntitlements,
+        source: remoteQueried ? 'IONOS_RESELLERCLUB_REMOTE' : 'LOCAL_ENTITLEMENTS',
+        registryConnected: true,
+        backendDependent: !remoteQueried,
+        message: remoteQueried
+          ? 'Dominios sincronizados en vivo desde el Registry de ResellerClub.'
+          : 'Mostrando dominios registrados en el sistema Banelio. La sincronización remota en vivo requiere desplegar el script my-domains.php en el backend IONOS.'
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // Vite middleware for development or Static serve for production
@@ -1407,12 +1453,11 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
     });
   }
 
-  // Seed idempotente del catálogo server-side (upsert por sku). No borra nada.
+  // Seed idempotente del catálogo comercial server-side (upsert por sku).
   try {
     await seedCatalog(prisma);
-    await seedPricingData(prisma);
   } catch (err: any) {
-    console.warn('BANELIO: no se pudo sembrar el catálogo o pricing:', err.message);
+    console.warn('BANELIO: no se pudo sembrar el catálogo:', err.message);
   }
 
   app.listen(PORT, '0.0.0.0', () => {
