@@ -1,46 +1,24 @@
 # BANELIO RULES — Reglas Operativas Obligatorias
 
-Estas reglas son mandatorias para cualquier desarrollador, agente o sesión de Google AI Studio que trabaje en el repositorio de **BANELIO**.
+Estas reglas son obligatorias y estrictas para cualquier desarrollador, agente o sesión de Google AI Studio que trabaje en el repositorio de **BANELIO**.
 
-1. The repository is the source of truth.
-2. Never depend on previous AI Studio conversation history.
-3. Before starting any task, read:
-   - `BANELIO_RULES.md`
-   - `BANELIO_WORK_STATE.md`
-   - `BANELIO_TASKS.md`
-4. Only modify files required for the assigned task.
-5. Never overwrite unrelated work.
-6. Never delete functionality without global dependency analysis.
-7. Never invent APIs.
-8. Never invent payment states.
-9. Never invent ResellerClub responses.
-10. Never expose credentials.
-11. Never put secrets in frontend code.
-12. Never replace real functionality with mocks.
-13. Never report PASS without actually running the corresponding validation.
-14. After EVERY completed task update `BANELIO_WORK_STATE.md`.
-15. After EVERY completed task update `BANELIO_TASKS.md`.
-16. Every completed task must record:
-    - files modified
-    - files created
-    - files deleted
-    - validation performed
-    - results
-    - remaining problems
-    - next task
-17. Never modify `main` unless explicitly authorized.
-18. Work must be performed on the assigned Git branch.
-19. If another worker's changes are detected, do not overwrite them.
-20. If a Git conflict exists, stop and report it.
-21. Production-critical systems must not be changed outside the assigned scope.
-22. Never delete database models without verifying all references.
-23. Never execute destructive database commands without explicit authorization.
-24. Never execute:
-    - `prisma migrate reset`
-    - `DROP`
-    - `TRUNCATE`
-    - `DELETE` against production data
-    without explicit authorization.
-25. Before completing any task run the validations appropriate to the files modified.
-26. `BANELIO_WORK_STATE.md` is mandatory handoff documentation.
-27. The next AI Studio account must be able to continue using only the repository and these documentation files.
+1. **GitHub es la fuente de verdad.** El código de GitHub `veraltacoffee/banelio1` prevalece sobre cualquier memoria de conversación previa.
+2. **`main` es la rama estable.** Todo cambio debe respetar la integridad de esta rama.
+3. **No modificar `main` directamente cuando exista una rama de trabajo disponible.**
+4. **Una tarea = un objetivo concreto.** No mezclar múltiples responsabilidades en una misma tarea.
+5. **Una conversación = una tarea lógica.** Al terminar una tarea, documentar, sincronizar y finalizar la conversación.
+6. **No modificar archivos fuera del alcance autorizado.** Solo se pueden modificar los archivos explícitamente listados en los `ALLOWED FILES` de la tarea.
+7. **No ejecutar migraciones sin autorización.** Queda terminantemente prohibido ejecutar `prisma migrate deploy`, `prisma db push` o alterar `prisma/schema.prisma` sin autorización explícita.
+8. **No cambiar arquitectura sin autorización.** No alterar el stack, runtime ni flujo de servicios.
+9. **No inventar APIs, estados o resultados.** Toda integración debe responder a contratos reales.
+10. **No crear mocks para reemplazar funciones reales.** Ni proxies en memoria ni simulaciones de base de datos o APIs.
+11. **No exponer secretos.** No colocar credenciales, claves privadas o tokens en frontend ni en repositorios.
+12. **No modificar pagos, autenticación, ResellerClub o producción sin autorización explícita.**
+13. **Toda tarea terminada debe actualizar los archivos de continuidad.** (`BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`, `BANELIO_HANDOFF.md`).
+14. **Toda tarea terminada debe sincronizarse con GitHub.**
+15. **Una tarea no está terminada hasta comprobar el estado de GitHub.** Si el push no puede realizarse, reportar `PUSH PENDIENTE`.
+16. **Si existe conflicto entre documentación y código, el código real tiene prioridad.**
+17. **Si existe conflicto entre documentos de continuidad, detenerse y resolverlo antes de modificar código.**
+18. **Las respuestas deben ser concretas y breves.** Cero relleno, cero explicaciones narrativas innecesarias.
+19. **No realizar trabajo adicional no solicitado.** Ceñirse con precisión quirúrgica a las instrucciones de la tarea.
+20. **No realizar "mejoras" espontáneas.** No hacer refactorizaciones preventivas, correcciones estéticas ni modificaciones secundarias fuera del alcance.
