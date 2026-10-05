@@ -814,8 +814,8 @@ export default function CheckoutModal() {
                 </div>
 
                 {/* Transfer items EPP verified indicator */}
-                {cart.some((c) => c.type === 'DOMAIN' && c.addons?.isTransfer) && (
-                  <div className="p-3 bg-white border border-[#B8F23A] rounded-xl flex items-center gap-2 text-xs text-[#B8F23A]">
+                {cart.some((c) => (c.type === 'DOMAIN' && c.addons?.isTransfer) || c.sku === 'DOMAIN_TRANSFER') && (
+                  <div className="p-3 bg-white border border-[#B8F23A] rounded-xl flex items-center gap-2 text-xs text-[#070707]">
                     <CheckCircle2 size={16} className="text-[#B8F23A] shrink-0" />
                     <div>
                       <strong>Clave de Transferencia (EPP) verificada:</strong> Los dominios a transferir fueron validados correctamente con su código de autorización.

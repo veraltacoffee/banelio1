@@ -16,20 +16,12 @@
 
 ---
 
-## IN PROGRESS
-
-*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado a la espera de autorización explícita para la siguiente tarea).*
-
----
-
-## PENDING
-
 ### TASK: DOMAIN-TRANSFER-CHECKOUT
 - **TASK ID:** DOMAIN-TRANSFER-CHECKOUT
-- **STATUS:** PENDING / NO INICIADA
+- **STATUS:** COMPLETED
 - **PRIORITY:** HIGH
 - **OWNER:** Checkout & Domains Team
-- **OBJECTIVE:** Migrar la transferencia de dominios al checkout comercial estándar de Banelio y retirar la dependencia de los scripts PHP históricos remotos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`), manteniendo `transfer.php` exclusivamente para validación de transferibilidad.
+- **OBJECTIVE:** Migrar el flujo de transferencia de dominios al checkout comercial estándar de Banelio y retirar la dependencia de los scripts PHP históricos remotos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`), manteniendo `transfer.php` exclusivamente para validación de transferibilidad.
 - **ALLOWED FILES:**
   - `server.ts`
   - `src/components/public/DomainTransferModal.tsx`
@@ -44,8 +36,27 @@
   - `package.json`
   - `server/php/*`
 - **DEPENDENCIES:** `server/php/domains/transfer.php` (verificación remota de transferibilidad), Motor de órdenes `server/orders.ts`, Prisma `Entitlement`.
-- **VALIDATION:** `npx tsc --noEmit` limpio (0 errores), `compile_applet` exitoso, verificación de validación de dominio transferible en UI y generación de orden comercial con SKU `DOMAIN_TRANSFER` en `/api/orders/create`.
-- **HANDOFF:** Requiere autorización explícita del usuario para iniciar. No debe ejecutarse automáticamente. La sesión que la aborde debe comenzar leyendo en orden exacto: 1. `BANELIO_HANDOFF.md`, 2. `BANELIO_RULES.md`, 3. `BANELIO_WORK_STATE.md`, 4. `BANELIO_TASKS.md`.
+- **VALIDATION:**
+  - `npx tsc --noEmit` limpio (0 errores).
+  - `compile_applet` exitoso.
+  - Verificación de validación remota de dominio transferible vía `/api/domains/transfer.php`.
+  - Validación de Auth/EPP Code (6 a 32 caracteres) tanto en modal (`DomainTransferModal.tsx`) como en validación server-side (`server/orders.ts`).
+  - Creación de orden comercial estándar con SKU `DOMAIN_TRANSFER` en `/api/orders/create`.
+  - Salida pública sanitizada en `toPublicOrder` (`hasEppCode: true` sin exponer la clave en texto plano).
+  - Sin dependencias activas de `transfer-order.php`, `transfer-auth.php` ni `transfer-status.php`.
+- **HANDOFF:** Flujo migrado al checkout comercial estándar y validado en todas sus capas. Los 4 documentos de continuidad actualizados.
+
+---
+
+## IN PROGRESS
+
+*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado a la espera de autorización explícita para la siguiente tarea).*
+
+---
+
+## PENDING
+
+*(Sin tareas pendientes registradas. Toda nueva tarea requerirá autorización explícita del usuario para iniciar).*
 
 ---
 

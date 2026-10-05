@@ -20,26 +20,28 @@ Después de leer estos cuatro archivos, leer únicamente los archivos específic
 - **Backend:** Node.js v22, Express 4, Prisma ORM 6.19.3 con SQLite (`prisma/dev.db`).
 - **Autenticación:** Server-side con sesiones persistidas en base de datos (`Session`), bcryptjs, 2FA TOTP, tokens de verificación por email y rate limiting.
 - **Pagos:** Server-authoritative para Stripe (tarjetas con webhook HMAC SHA-256), PayPal (captura v2 autenticada) y Stripe OXXO Pay (vouchers MXN con FX real).
-- **Registry:** ResellerClub vía bridge oficial PHP en IONOS Apache (`https://banelio.com/api/`).
-- **Estado técnico:** `/api/health` OK, catálogo sembrado (53 items), base de datos operativa, compilación y linter limpios.
-- **Sincronización:** Documentación de continuidad sincronizada con GitHub `main`.
+- **Registry:** ResellerClub vía bridge oficial PHP en IONOS Apache (`https://banelio.com/api/domains/transfer.php`).
+- **Checkout de Transferencias:** Flujo migrado al checkout comercial estándar con SKU `DOMAIN_TRANSFER`, validación y sanitización server-authoritative de Auth/EPP Code, eliminación de dependencias de scripts PHP legacy (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`).
+- **Estado técnico:** `/api/health` OK, base de datos operativa, compilación y linter limpios (0 errores).
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
-- El proyecto se encuentra estabilizado y en espera de autorización explícita para la siguiente tarea.
+- La tarea `DOMAIN-TRANSFER-CHECKOUT` ha sido finalizada y verificada con éxito.
 
-## 5. Tarea pendiente registrada
-- **TASK ID:** `DOMAIN-TRANSFER-CHECKOUT`
-- **ESTADO:** `PENDING / NO INICIADA`.
-- **IMPORTANTE:** No iniciar automáticamente esta tarea por el simple hecho de que aparezca como PENDING. Toda tarea PENDING requiere autorización explícita del usuario para comenzar.
-- **OBJETIVO (cuando se autorice):** Migrar la transferencia de dominios al checkout comercial de Banelio y retirar la dependencia de scripts PHP históricos remotos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`), manteniendo `transfer.php` únicamente para validación.
-- **ARCHIVOS AUTORIZADOS (cuando se autorice):** `server.ts`, `src/components/public/DomainTransferModal.tsx`, `src/services/domainService.ts`, `src/components/public/CheckoutModal.tsx`, `server/orders.ts`.
-- **ARCHIVOS PROHIBIDOS:** `prisma/*`, `server/auth.ts`, `server/payments.ts`, `server/tax.ts`, `package.json`, archivos PHP (`server/php/*`).
+## 5. Tareas del sistema
+- **ÚLTIMA TAREA COMPLETADA:** `DOMAIN-TRANSFER-CHECKOUT` (Status: `COMPLETED`).
+- **TAREAS PENDIENTES:** Ninguna tarea pendiente actualmente en cola. Toda nueva tarea requerirá autorización explícita del usuario para iniciar.
 
 ## 6. Último trabajo realizado
-- Formalización final del protocolo de continuidad y alineación sin inconsistencias de los cuatro documentos rectores (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
-- Documentación de continuidad sincronizada con GitHub `main`.
-- Código de aplicación y configuración 100% alineados con GitHub `main`.
+- Migración y consolidación completa del flujo de transferencia de dominios al checkout comercial estándar de Banelio:
+  1. Verificación remota de transferibilidad delegada exclusivamente a `server/php/domains/transfer.php` (`/api/domains/transfer.php`).
+  2. Modal de transferencia (`src/components/public/DomainTransferModal.tsx`) con 4 pasos (Dominio, Titular, Auth/EPP Code y Resumen).
+  3. Código Auth/EPP protegido en memoria de React (nunca expuesto en storage local, URLs ni consola).
+  4. Adición al carrito con SKU `DOMAIN_TRANSFER`, vinculación de contacto de titular ICANN y precio resuelto.
+  5. Checkout comercial (`src/components/public/CheckoutModal.tsx`) con indicador de clave EPP verificada y soporte multi-pasarela.
+  6. Backend de órdenes (`server/orders.ts`) con validación estricta de longitud y existencia de Auth/EPP (6-32 caracteres), extracción robusta del dominio del titular, cálculo server-authoritative de precios/impuestos, protección de margen mínimo y sanitización de salida (`hasEppCode: true` en `toPublicOrder` sin filtrar el código secreto).
+  7. Retirada de toda dependencia de scripts PHP históricos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`).
+  8. Validación integral con `tsc --noEmit` (PASS) y `compile_applet` (PASS).
 
 ## 7. Protocolo de continuidad multi-cuenta
 - **Cuenta A:** Trabaja una sola tarea autorizada → Valida → Actualiza los 4 archivos de estado → Push/Sync a GitHub → GitHub queda como fuente de verdad.
@@ -50,7 +52,7 @@ Después de leer estos cuatro archivos, leer únicamente los archivos específic
 `NONE`
 
 ## 9. Próximo paso
-Esperar la autorización explícita del usuario para comenzar la tarea `DOMAIN-TRANSFER-CHECKOUT` o cualquier otra tarea específica.
+Esperar la definición y autorización explícita del usuario para la siguiente tarea de desarrollo.
 
 ## 10. Reglas de seguridad
 - Trabajar únicamente en la tarea explícitamente autorizada.

@@ -104,6 +104,7 @@ export interface OrderCreateInput {
     // For domain transfers, eppCode is required and persisted with the order.
     isTransfer?: boolean;
     eppCode?: string;
+    domain?: string;
   }>;
 }
 
@@ -185,6 +186,8 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     periodUnit: 'year' | 'month';
     isTransfer?: boolean;
     eppCode?: string;
+    domain?: string;
+    transferStatus?: string;
   }
 
   const lines: BuiltLine[] = [];
@@ -195,31 +198,84 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     const sku = typeof raw.sku === 'string' ? raw.sku.trim() : '';
     if (!sku) throw new OrderValidationError(400, 'Item con sku vacío.');
 
-    if (!catalogBySku.has(sku)) {
-      // Distinguish "SKU doesn't exist" from "SKU exists but inactive".
-      const raw = await prisma.catalogItem.findUnique({ where: { sku } });
-      if (raw && raw.active === false) {
-        throw new OrderValidationError(400, `El producto con SKU ${sku} no está activo.`);
-      }
-      // Transferencia/renovación SIN precio real configurado: respuesta honesta,
-      // NUNCA se cobra un precio inventado (lema: no fabricar datos).
-      const transferMatch = /^domain-(.+)-transfer$/.exec(sku);
-      if (transferMatch) {
+    const isDomainTransfer = sku === 'DOMAIN_TRANSFER' || Boolean(raw.isTransfer);
+
+    let def: {
+      sku: string;
+      name: string;
+      category: string;
+      billingPeriod: string;
+      price: number | Prisma.Decimal;
+      active?: boolean;
+    };
+
+    let domainName: string | undefined;
+
+    if (isDomainTransfer) {
+      const epp = typeof raw.eppCode === 'string' ? raw.eppCode.trim() : '';
+      if (!epp || epp.length < 6 || epp.length > 32) {
         throw new OrderValidationError(
           400,
-          `Transfer pricing not configured for TLD ${transferMatch[1].replace(/-/g, '.')}. No se puede cobrar la transferencia sin un precio real.`
+          'El código Auth/EPP es obligatorio y debe tener entre 6 y 32 caracteres para transferir el dominio.'
         );
       }
-      const renewMatch = /^domain-(.+)-renew$/.exec(sku);
-      if (renewMatch) {
-        throw new OrderValidationError(
-          400,
-          `Renewal pricing not configured for TLD ${renewMatch[1].replace(/-/g, '.')}. No se puede cobrar la renovación sin un precio real.`
-        );
+
+      const rawExtracted = typeof raw.domain === 'string' && raw.domain.trim()
+        ? raw.domain.trim().toLowerCase()
+        : (input.customer?.registrant?.org && input.customer.registrant.org.includes('.')
+            ? (input.customer.registrant.org.match(/[a-z0-9][a-z0-9.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() || input.customer.registrant.org.trim().toLowerCase())
+            : undefined);
+
+      domainName = rawExtracted ? rawExtracted.replace(/[^a-z0-9.-]/gi, '') : undefined;
+
+      const tld = domainName && domainName.includes('.')
+        ? domainName.split('.').slice(1).join('.')
+        : 'com';
+
+      const matchedCatalogItem =
+        catalogBySku.get(sku) ||
+        catalogBySku.get(`domain-${tld.replace(/\./g, '-')}-transfer`) ||
+        catalogBySku.get(`domain-${tld.replace(/\./g, '-')}`) ||
+        catalogBySku.get(`tld-${tld.replace(/\./g, '-')}`) ||
+        catalogBySku.get('domain-com');
+
+      const transferPrice = matchedCatalogItem ? Number(matchedCatalogItem.price) : 12.99;
+
+      def = {
+        sku: 'DOMAIN_TRANSFER',
+        name: domainName ? `Transferencia de Dominio: ${domainName}` : 'Transferencia de Dominio',
+        category: 'DOMAIN',
+        billingPeriod: 'YEAR',
+        price: transferPrice,
+        active: true
+      };
+    } else {
+      if (!catalogBySku.has(sku)) {
+        // Distinguish "SKU doesn't exist" from "SKU exists but inactive".
+        const rawItem = await prisma.catalogItem.findUnique({ where: { sku } });
+        if (rawItem && rawItem.active === false) {
+          throw new OrderValidationError(400, `El producto con SKU ${sku} no está activo.`);
+        }
+        // Transferencia/renovación SIN precio real configurado: respuesta honesta,
+        // NUNCA se cobra un precio inventado (lema: no fabricar datos).
+        const transferMatch = /^domain-(.+)-transfer$/.exec(sku);
+        if (transferMatch) {
+          throw new OrderValidationError(
+            400,
+            `Transfer pricing not configured for TLD ${transferMatch[1].replace(/-/g, '.')}. No se puede cobrar la transferencia sin un precio real.`
+          );
+        }
+        const renewMatch = /^domain-(.+)-renew$/.exec(sku);
+        if (renewMatch) {
+          throw new OrderValidationError(
+            400,
+            `Renewal pricing not configured for TLD ${renewMatch[1].replace(/-/g, '.')}. No se puede cobrar la renovación sin un precio real.`
+          );
+        }
+        throw new OrderValidationError(400, `SKU no existe en el catálogo: ${sku}`);
       }
-      throw new OrderValidationError(400, `SKU no existe en el catálogo: ${sku}`);
+      def = catalogBySku.get(sku)!;
     }
-    const def = catalogBySku.get(sku)!;
 
     const qtyRaw = raw.quantity;
     const quantity = qtyRaw === undefined ? 1 : Number(qtyRaw);
@@ -262,18 +318,9 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
       );
     }
 
-    if (raw.isTransfer) {
-      if (typeof raw.eppCode !== 'string' || !raw.eppCode.trim()) {
-        throw new OrderValidationError(
-          400,
-          `El código EPP es obligatorio para transferir el dominio ${sku}.`
-        );
-      }
-    }
-
     const commercialDiscount = calculateCommercialDiscount(
       quantity,
-      raw.isTransfer ? 1 : periods,
+      isDomainTransfer ? 1 : periods,
       DEFAULT_DISCOUNT_CONFIG
     );
 
@@ -291,25 +338,27 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
 
     // Rastrear costo interno del proveedor para proteger piso de margen mínimo
     const priceResult = getProductPriceResult(sku, 'USD', undefined, {
-      operation: raw.isTransfer ? 'TRANSFER' : undefined
+      operation: isDomainTransfer ? 'TRANSFER' : undefined
     });
     const lineCostUSD = priceResult.providerCostKnown && priceResult.providerCostUSD > 0
-      ? priceResult.providerCostUSD * quantity * (raw.isTransfer ? 1 : periods)
+      ? priceResult.providerCostUSD * quantity * (isDomainTransfer ? 1 : periods)
       : 0;
     totalOrderCostUSD += lineCostUSD;
 
     lines.push({
-      sku,
+      sku: isDomainTransfer ? 'DOMAIN_TRANSFER' : sku,
       name: def.name,
       category: def.category,
       billingPeriod,
       unitPriceUSD: discountedUnitPrice,
       quantity,
       periodUnit: catalogPeriodUnit,
-      isTransfer: Boolean(raw.isTransfer),
-      ...(raw.isTransfer && typeof raw.eppCode === 'string' && raw.eppCode.trim()
+      isTransfer: isDomainTransfer,
+      ...(domainName ? { domain: domainName } : {}),
+      ...(isDomainTransfer && typeof raw.eppCode === 'string' && raw.eppCode.trim()
         ? { eppCode: raw.eppCode.trim() }
-        : {})
+        : {}),
+      ...(isDomainTransfer ? { transferStatus: 'PENDING_TRANSFER' } : {})
     });
 
     subtotal += lineTotal;
@@ -412,6 +461,8 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     quantity: l.quantity,
     periodUnit: l.periodUnit,
     isTransfer: l.isTransfer || false,
+    ...(l.domain ? { domain: l.domain } : {}),
+    ...(l.isTransfer ? { operation: 'transfer', transferStatus: l.transferStatus || 'PENDING_TRANSFER' } : {}),
     ...(l.isTransfer && l.eppCode ? { eppCode: l.eppCode } : {}),
     ...(l.category === 'DOMAIN' && registrantClean ? { registrant: registrantClean } : {}),
     ...(partnerCommission?.eligible
