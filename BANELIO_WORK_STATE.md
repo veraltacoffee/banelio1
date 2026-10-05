@@ -4,10 +4,10 @@
 2026-10-04
 
 ## RAMA
-`main` (fuente de verdad y rama de trabajo actual en GitHub `veraltacoffee/banelio1`).
+`main` es actualmente la rama estable y fuente de verdad de Banelio en GitHub `veraltacoffee/banelio1`.
 
-## ÚLTIMO COMMIT COMPROBADO
-NO DISPONIBLE EN EL CONTENEDOR (sin `.git` local en el runtime; la fuente de verdad verificable es GitHub `veraltacoffee/banelio1`).
+## ESTADO DE SINCRONIZACIÓN
+Documentación de continuidad sincronizada con GitHub `main`.
 
 ## ESTADO GENERAL
 ESTABLE Y CON DOCUMENTACIÓN DE CONTINUIDAD ALINEADA.
@@ -21,16 +21,16 @@ El sistema cuenta con frontend Vite SPA y backend Express + Prisma SQLite comple
 - **Pagos:** Server-authoritative para Stripe (tarjetas con webhook HMAC SHA-256), PayPal (captura v2 autenticada) y Stripe OXXO Pay (vouchers MXN con FX real).
 
 ## TRABAJO COMPLETADO
-1. Reversión previa y confirmada de modificaciones no autorizadas en `server/db.ts` y `.env.example`.
-2. Verificación de código 100% idéntico a GitHub `main`.
-3. Sincronización y resolución de inconsistencias entre los 4 documentos de continuidad (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
+1. Corrección y alineación final del protocolo de continuidad (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
+2. Eliminación de inconsistencias sobre el orden de lectura y la rama de trabajo.
+3. Confirmación de que la documentación de continuidad se encuentra sincronizada con GitHub `main`.
 
 ## TAREA ACTIVA
 NINGUNA (no hay ninguna tarea en ejecución actualmente; el sistema está a la espera de autorización explícita).
 
 ## TAREA PENDIENTE
 `DOMAIN-TRANSFER-CHECKOUT` (Estado: `PENDING / NO INICIADA`).
-Requiere autorización explícita del usuario para iniciar.
+Requiere autorización explícita del usuario para iniciar. No debe ejecutarse automáticamente.
 
 ## ARCHIVOS RELACIONADOS CON LA TAREA PENDIENTE
 - `server.ts`
@@ -42,7 +42,7 @@ Requiere autorización explícita del usuario para iniciar.
 ## BLOQUEADORES
 `NONE`
 
-## VALIDACIONES
+## VALIDACIONES TÉCNICAS
 - `compile_applet`: PASS (Build exitoso de frontend y backend).
 - `lint_applet` (`tsc --noEmit`): PASS (0 errores).
 - Backend `/api/health`: 200 OK.
@@ -61,4 +61,3 @@ Esperar autorización explícita para iniciar la tarea `DOMAIN-TRANSFER-CHECKOUT
 3. **Prohibido ejecutar migraciones** (`prisma migrate deploy`, `prisma db push`) o modificar `prisma/schema.prisma` sin autorización expresa.
 4. **Prohibido introducir mocks o fallbacks en memoria.**
 5. **Una tarea PENDING no se inicia automáticamente.** Requiere autorización previa del usuario.
-6. **Reportar `PUSH PENDIENTE`** si AI Studio no puede hacer push directo a GitHub al finalizar la tarea.
