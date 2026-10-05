@@ -1,4 +1,4 @@
-# BANELIO TASKS — Cola de Tareas
+# BANELIO TASKS — Cola Compacta de Tareas
 
 ## COMPLETED
 
@@ -7,18 +7,18 @@
 - **STATUS:** COMPLETED
 - **PRIORITY:** HIGHEST
 - **OWNER:** AI Studio System Engineer
-- **OBJECTIVE:** Establecer el sistema permanente de continuidad documental multi-cuenta para Banelio, garantizando que cualquier cuenta de AI Studio pueda retomar el trabajo directamente desde GitHub sin depender de conversaciones previas.
-- **ALLOWED FILES:** `BANELIO_RULES.md`, `BANELIO_TASKS.md`, `BANELIO_WORK_STATE.md`, `BANELIO_HANDOFF.md`
+- **OBJECTIVE:** Establecer y alinear el sistema permanente de continuidad documental multi-cuenta para Banelio, garantizando que cualquier cuenta de AI Studio pueda retomar el trabajo directamente desde GitHub `main` sin depender del historial de conversaciones previas.
+- **ALLOWED FILES:** `BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`
 - **FORBIDDEN FILES:** Todos los archivos de código de aplicación (`src/*`, `server/*`, `prisma/*`, `package.json`, etc.)
 - **DEPENDENCIES:** Ninguna
-- **VALIDATION:** Inspección documental, verificación de alineación con GitHub `main`, `lint_applet` (PASS), `compile_applet` (PASS).
-- **HANDOFF:** Documentación de handoff creada y alineada.
+- **VALIDATION:** Verificación de consistencia entre los 4 documentos, `lint_applet` (PASS), `compile_applet` (PASS).
+- **HANDOFF:** Los 4 archivos de contexto persistente quedan sincronizados y sin contradicciones.
 
 ---
 
 ## IN PROGRESS
 
-*(Ninguna tarea en ejecución. El sistema de continuidad está establecido y listo para la siguiente tarea lógica).*
+*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado a la espera de autorización explícita para la siguiente tarea).*
 
 ---
 
@@ -26,10 +26,10 @@
 
 ### TASK: DOMAIN-TRANSFER-CHECKOUT
 - **TASK ID:** DOMAIN-TRANSFER-CHECKOUT
-- **STATUS:** PENDING
+- **STATUS:** PENDING / NO INICIADA
 - **PRIORITY:** HIGH
 - **OWNER:** Checkout & Domains Team
-- **OBJECTIVE:** Migrar la transferencia de dominios al checkout comercial estándar de Banelio y eliminar la dependencia de los scripts PHP históricos remotos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`), manteniendo `transfer.php` exclusivamente para validación de transferibilidad.
+- **OBJECTIVE:** Migrar la transferencia de dominios al checkout comercial estándar de Banelio y retirar la dependencia de los scripts PHP históricos remotos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`), manteniendo `transfer.php` exclusivamente para validación de transferibilidad.
 - **ALLOWED FILES:**
   - `server.ts`
   - `src/components/public/DomainTransferModal.tsx`
@@ -44,8 +44,8 @@
   - `package.json`
   - `server/php/*`
 - **DEPENDENCIES:** `server/php/domains/transfer.php` (verificación remota de transferibilidad), Motor de órdenes `server/orders.ts`, Prisma `Entitlement`.
-- **VALIDATION:** `npx tsc --noEmit` limpio, `compile_applet` exitoso, verificación de validación de dominio transferible en UI y generación de orden comercial con SKU `DOMAIN_TRANSFER` en `/api/orders/create`.
-- **HANDOFF:** Debe ejecutarse en una nueva sesión dedicada de AI Studio leyendo previamente `BANELIO_HANDOFF.md`.
+- **VALIDATION:** `npx tsc --noEmit` limpio (0 errores), `compile_applet` exitoso, verificación de validación de dominio transferible en UI y generación de orden comercial con SKU `DOMAIN_TRANSFER` en `/api/orders/create`.
+- **HANDOFF:** Requiere autorización explícita del usuario para iniciar. La sesión que la aborde debe comenzar leyendo en orden: 1. `BANELIO_HANDOFF.md`, 2. `BANELIO_RULES.md`, 3. `BANELIO_WORK_STATE.md`, 4. `BANELIO_TASKS.md`.
 
 ---
 
