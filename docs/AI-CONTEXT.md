@@ -2,7 +2,7 @@
 
 ## Project
 - **Repository:** `veraltacoffee/banelio1`
-- **Current Branch:** `cleanup/banelio-resellerclub`
+- **Current Branch:** `main`
 - **Architecture:** Client-Server Monorepo (React SPA + Express Backend API + IONOS PHP Bridge to ResellerClub)
 - **Technology Stack:**
   - **Runtime & Language:** Node.js v22, TypeScript 5.8

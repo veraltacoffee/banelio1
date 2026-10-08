@@ -4,10 +4,10 @@
 2026-10-08
 
 ## RAMA
-`cleanup/banelio-resellerclub` en el repositorio GitHub `veraltacoffee/banelio1`.
+`main` en el repositorio GitHub `veraltacoffee/banelio1`.
 
 ## ESTADO DE SINCRONIZACIÓN
-Depuración y consolidación del repositorio Banelio1 completadas. Código limpio, sin dependencias huérfanas ni componentes abandonados, con documentación oficial en `docs/AI-CONTEXT.md`.
+Depuración, consolidación y preparación final del repositorio Banelio1 completadas. Código limpio, sin dependencias huérfanas ni componentes abandonados, sin archivos temporales ni `bun.lock`, con documentación oficial en `docs/AI-CONTEXT.md` y listo para exportación o continuidad en Claude/otro agente.
 
 ## ESTADO GENERAL
 ESTABLE Y CON REPOSITORIO DEPURADO Y CONSOLIDADO PARA RESELLERCLUB.
@@ -57,6 +57,6 @@ Consultar `docs/AI-CONTEXT.md` como fuente de contexto permanente para cualquier
 
 ## ADVERTENCIAS IMPORTANTES
 1. **GitHub es la fuente de verdad del código.**
-2. **Rama actual de consolidación:** `cleanup/banelio-resellerclub`.
+2. **Rama estable y fuente de verdad:** `main`.
 3. **Prohibido introducir mocks o fallbacks en memoria.**
 4. **ResellerClub es el proveedor principal de infraestructura para dominios y hosting.**
