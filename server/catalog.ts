@@ -750,6 +750,85 @@ export async function getTransferPricing(prisma: PrismaClientType) {
 }
 
 /**
+ * Devuelve el catálogo completo de precios de dominios por TLD (desde Prisma y motor de pricing).
+ * Mantiene estrictamente separados:
+ * - precio de coste ResellerClub (providerCostUSD / providerTransferCostUSD)
+ * - precio comercial Banelio (registrationPriceUSD / transferPriceUSD / renewalPriceUSD)
+ * - operación registro vs transferencia vs renovación
+ */
+export async function getDomainCatalogPricing(prisma: PrismaClientType) {
+  const rows = await prisma.catalogItem.findMany({
+    where: { active: true, category: 'DOMAIN' },
+    orderBy: { sku: 'asc' }
+  });
+
+  const byTld = new Map<string, {
+    tld: string;
+    sku: string;
+    registrationPriceUSD: number;
+    transferPriceUSD: number | null;
+    renewalPriceUSD: number | null;
+    providerCostUSD: number;
+    providerTransferCostUSD: number | null;
+    providerRenewalCostUSD: number | null;
+    currency: string;
+    isPopular: boolean;
+    isPromo: boolean;
+    category?: string;
+  }>();
+
+  for (const r of rows) {
+    const m = r.metadata && typeof r.metadata === 'object' ? (r.metadata as Record<string, unknown>) : {};
+    const tld = typeof m.tld === 'string' && m.tld ? m.tld : (r.name.startsWith('.') ? r.name.slice(1) : '');
+    if (!tld) continue;
+
+    if (!byTld.has(tld)) {
+      const costMap = INITIAL_PROVIDER_COSTS;
+      const cleanTldKey = tld.replace(/\./g, '-');
+      const providerEntry = costMap[`tld-${cleanTldKey}`];
+
+      byTld.set(tld, {
+        tld,
+        sku: `domain-${cleanTldKey}`,
+        registrationPriceUSD: 0,
+        transferPriceUSD: null,
+        renewalPriceUSD: null,
+        providerCostUSD: providerEntry ? providerEntry.providerCostUSD : 0,
+        providerTransferCostUSD: providerEntry?.providerTransferCostUSD ?? null,
+        providerRenewalCostUSD: providerEntry?.providerRenewalCostUSD ?? null,
+        currency: r.currency || 'USD',
+        isPopular: Boolean(m.isPopular),
+        isPromo: Boolean(m.isPromo),
+        category: typeof m.tldCategory === 'string' ? m.tldCategory : undefined
+      });
+    }
+
+    const entry = byTld.get(tld)!;
+    const priceNum = Number(r.price);
+
+    if (String(r.sku).endsWith('-transfer') || m.operation === 'TRANSFER') {
+      entry.transferPriceUSD = priceNum;
+    } else if (String(r.sku).endsWith('-renew') || m.operation === 'RENEWAL') {
+      entry.renewalPriceUSD = priceNum;
+    } else if (m.operation === 'REGISTRATION' || r.sku === `domain-${tld.replace(/\./g, '-')}`) {
+      entry.registrationPriceUSD = priceNum;
+      if (m.isPopular !== undefined) entry.isPopular = Boolean(m.isPopular);
+      if (m.isPromo !== undefined) entry.isPromo = Boolean(m.isPromo);
+    }
+  }
+
+  const items = Array.from(byTld.values()).filter(
+    (item) => item.registrationPriceUSD > 0 || item.transferPriceUSD !== null
+  );
+
+  return {
+    success: true,
+    count: items.length,
+    items
+  };
+}
+
+/**
  * Siembra idempotente del catálogo en la tabla CatalogItem (upsert por sku).
  * Solo crea/actualiza; nunca borra nada.
  */

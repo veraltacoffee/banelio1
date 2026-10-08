@@ -1,47 +1,48 @@
 # BANELIO WORK STATE
 
 ## FECHA DE ACTUALIZACIÓN
-2026-10-04
+2026-10-08
 
 ## RAMA
-`main` es actualmente la rama estable y fuente de verdad de Banelio en GitHub `veraltacoffee/banelio1`.
+`cleanup/banelio-resellerclub` en el repositorio GitHub `veraltacoffee/banelio1`.
 
 ## ESTADO DE SINCRONIZACIÓN
-Documentación y código actualizados tras la finalización de `DOMAIN-TRANSFER-CHECKOUT`. Sincronización con GitHub `main` lista para push.
+Depuración y consolidación del repositorio Banelio1 completadas. Código limpio, sin dependencias huérfanas ni componentes abandonados, con documentación oficial en `docs/AI-CONTEXT.md`.
 
 ## ESTADO GENERAL
-ESTABLE Y CON TAREA DOMAIN-TRANSFER-CHECKOUT COMPLETADA.
-El flujo de transferencias de dominios ha sido migrado satisfactoriamente al checkout comercial estándar de Banelio. Se validaron tanto las consultas remotas vía `server/php/domains/transfer.php` como el flujo completo de carrito comercial, orden server-authoritative (`DOMAIN_TRANSFER`), protección de Auth/EPP Code en memoria y sanitización segura en API sin exposición de secretos. No hay dependencias activas de los scripts históricos `transfer-order.php`, `transfer-auth.php` ni `transfer-status.php`.
+ESTABLE Y CON REPOSITORIO DEPURADO Y CONSOLIDADO PARA RESELLERCLUB.
+El proyecto está completamente preparado para continuar el desarrollo teniendo a ResellerClub como proveedor principal:
+- Frontend limpio sin componentes abandonados.
+- Backend consolidado con rutas de autenticación ordenadas y conexión a IONOS/ResellerClub.
+- Dependencias innecesarias eliminadas (`@google/genai`).
+- Documentación centralizada en `docs/AI-CONTEXT.md`.
 
 ## ARQUITECTURA RESUMIDA
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide React, Vite SPA integrado en `server.ts`.
 - **Backend:** Node.js v22, Express 4, TypeScript, Prisma ORM 6.19.3.
 - **Base de Datos:** SQLite (`prisma/dev.db`), esquema unificado en `prisma/schema.prisma`.
-- **Transferencias:** Validación remota vía `server/php/domains/transfer.php` (`/api/domains/transfer.php`). Modal de 4 pasos con Auth/EPP Code protegido en memoria. Creación de orden comercial estándar con SKU `DOMAIN_TRANSFER` y sanitización en `server/orders.ts`.
 - **Registry:** ResellerClub gestionado mediante PHP bridge oficial alojado en IONOS Apache (`https://banelio.com/api/`).
-- **Pagos:** Server-authoritative para Stripe (tarjetas con webhook HMAC SHA-256), PayPal (captura v2 autenticada) y Stripe OXXO Pay (vouchers MXN con FX real).
+- **Transferencias & Registro:** Verificación y checkout comercial estándar de Banelio con EPP Code seguro.
+- **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
 
 ## TRABAJO COMPLETADO
-1. Corrección y alineación final del protocolo de continuidad (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
-2. Ejecución integral y completitud de la tarea `DOMAIN-TRANSFER-CHECKOUT`.
-3. Modal de transferencia (`DomainTransferModal.tsx`) integrado con carrito comercial y titular ICANN.
-4. Validación estricta y segura de Auth/EPP Code (6-32 caracteres) tanto en cliente como en backend de órdenes (`server/orders.ts`).
-5. Extracción robusta de dominio y protección de margen mínimo en `/api/orders/create`.
-6. Retiro verificado de dependencias de scripts PHP legacy de transferencia.
+1. Eliminación de dependencias no utilizadas (`@google/genai`).
+2. Eliminación de componentes abandonados (`CleanHomeLanding.tsx`, `ResellerPromoSection.tsx`, `QuickAuthModal.tsx`, `RoleBar.tsx`).
+3. Eliminación de archivos vacíos y documentación obsoleta (`HTTP`, `AUDIT/`, `estructura.txt`, `BANELIO_AUDITORIA.md`, `BANELIO_AUDIT.md`, `AUTH_IMPLEMENTATION_SPEC.md`).
+4. Creación y estructuración obligatoria de `docs/AI-CONTEXT.md`.
+5. Verificación de types (`tsc --noEmit`) y build (`compile_applet`) con 0 errores.
 
 ## TAREA ACTIVA
-NINGUNA (la tarea `DOMAIN-TRANSFER-CHECKOUT` ha sido finalizada y validada).
+NINGUNA (la tarea de depuración y consolidación ha sido finalizada).
 
 ## TAREA PENDIENTE
-NINGUNA en cola actualmente. Nuevas tareas requerirán autorización explícita del usuario.
+- `RESELLERCLUB-PROVISIONING-WORKER`: Implementar el procesador de aprovisionamiento que conecta órdenes pagadas con la API de ResellerClub.
 
 ## ARCHIVOS MODIFICADOS EN LA TAREA
-- `src/components/public/DomainTransferModal.tsx`
-- `server/orders.ts`
-- `BANELIO_HANDOFF.md`
-- `BANELIO_RULES.md`
+- `package.json`
+- `server.ts`
+- `docs/AI-CONTEXT.md` (creado)
 - `BANELIO_WORK_STATE.md`
-- `BANELIO_TASKS.md`
 
 ## BLOQUEADORES
 `NONE`
@@ -49,21 +50,13 @@ NINGUNA en cola actualmente. Nuevas tareas requerirán autorización explícita 
 ## VALIDACIONES TÉCNICAS
 - `compile_applet`: PASS (Build exitoso de frontend y backend).
 - `lint_applet` (`tsc --noEmit`): PASS (0 errores).
-- Backend `/api/health`: 200 OK.
-- Creación de órdenes con transferencias (`/api/orders/create`): 200 OK con sanitización de `hasEppCode: true`.
-- Validación de errores para EPP inválido/ausente: 400 Bad Request verificado.
-- Consulta de transferibilidad (`/api/domains/transfer.php`): 200 OK con respuesta remota real.
+- Base de datos Prisma: Validada y migrada.
 
 ## SIGUIENTE PASO
-Esperar autorización explícita para la siguiente tarea de desarrollo. Toda nueva sesión debe leer obligatoriamente:
-1. `BANELIO_HANDOFF.md`
-2. `BANELIO_RULES.md`
-3. `BANELIO_WORK_STATE.md`
-4. `BANELIO_TASKS.md`
+Consultar `docs/AI-CONTEXT.md` como fuente de contexto permanente para cualquier siguiente desarrollo.
 
 ## ADVERTENCIAS IMPORTANTES
 1. **GitHub es la fuente de verdad del código.**
-2. **`main` es la rama de trabajo.** Las cuentas de AI Studio trabajan secuencialmente sobre ella sin crear ramas adicionales salvo instrucción expresa.
-3. **Prohibido ejecutar migraciones** (`prisma migrate deploy`, `prisma db push`) o modificar `prisma/schema.prisma` sin autorización expresa.
-4. **Prohibido introducir mocks o fallbacks en memoria.**
-5. **Una tarea PENDING no se inicia automáticamente.** Requiere autorización previa del usuario.
+2. **Rama actual de consolidación:** `cleanup/banelio-resellerclub`.
+3. **Prohibido introducir mocks o fallbacks en memoria.**
+4. **ResellerClub es el proveedor principal de infraestructura para dominios y hosting.**

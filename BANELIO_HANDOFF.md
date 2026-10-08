@@ -8,10 +8,11 @@
 
 ## 2. Orden obligatorio de lectura para iniciar sesión
 Toda nueva sesión o cuenta de AI Studio debe leer el contexto persistente oficial en este orden exacto:
-1. `BANELIO_HANDOFF.md`
-2. `BANELIO_RULES.md`
-3. `BANELIO_WORK_STATE.md`
-4. `BANELIO_TASKS.md`
+1. `docs/AI-CONTEXT.md`
+2. `BANELIO_HANDOFF.md`
+3. `BANELIO_RULES.md`
+4. `BANELIO_WORK_STATE.md`
+5. `BANELIO_TASKS.md`
 
 Después de leer estos cuatro archivos, leer únicamente los archivos específicos relacionados con la tarea autorizada.
 

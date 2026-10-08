@@ -180,6 +180,19 @@ export default function CheckoutModal() {
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar que los dominios de transferencia cuenten con código Auth/EPP válido (6-32 caracteres)
+    const invalidTransfer = cart.find(
+      (c) => c.type === 'DOMAIN' && c.addons?.isTransfer && (!c.addons?.eppCode || c.addons.eppCode.trim().length < 6 || c.addons.eppCode.trim().length > 32)
+    );
+    if (invalidTransfer) {
+      addToast({
+        type: 'error',
+        title: 'Código Auth/EPP Requerido',
+        message: `El dominio ${invalidTransfer.name} requiere un código Auth/EPP válido (entre 6 y 32 caracteres) para procesar la transferencia.`
+      });
+      return;
+    }
+
     // 1. Ensure user is authenticated or registers real account
     let activeCustomerEmail = customerEmail.trim();
     let activeCustomerName = customerName.trim();
@@ -1086,7 +1099,9 @@ export default function CheckoutModal() {
             <div className="bg-[#F7F8F0] text-[#070707] p-4 rounded-2xl space-y-2 text-xs border border-[#8A8F98]">
               <div className="flex justify-between text-[#555A52]">
                 <span>Servicios a Contratar ({cart.length}):</span>
-                <span className="font-semibold text-[#070707] truncate max-w-[280px]">{cart.map((c) => c.name).join(', ')}</span>
+                <span className="font-semibold text-[#070707] truncate max-w-[280px]">
+                  {cart.map((c) => c.addons?.isTransfer ? `${c.name} (Transferencia)` : c.name).join(', ')}
+                </span>
               </div>
               <div className="flex justify-between text-[#555A52]">
                 <span>Subtotal:</span>

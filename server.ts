@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { prisma } from './server/db';
-import { seedCatalog, getActiveCatalog, getTransferPricing } from './server/catalog';
+import { seedCatalog, getActiveCatalog, getTransferPricing, getDomainCatalogPricing } from './server/catalog';
 import {
   getAdminPricingOverview,
   updateAdminPricing,
@@ -226,11 +226,19 @@ async function startServer() {
     return res.status(code).json(health);
   });
 
-app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {    return registerAuth(req, res);  });  app.post('/api/auth/login', authLoginLimiter, async (req, res) => {    return loginAuth(req, res);  });  app.post('/api/auth/logout', async (req, res) => {    return logoutAuth(req, res);  });  app.get('/api/auth/me', async (req, res) => {    return meAuth(req, res);  });  app.post('/api/auth/2fa/setup', async (req, res) => {    return setupTwoFactorAuth(req, res);  });  app.post('/api/auth/2fa/verify-setup', authTwoFactorCodeLimiter, async (req, res) => {    return verifyTwoFactorSetup(req, res);  });  app.post('/api/auth/2fa/verify', authTwoFactorCodeLimiter, async (req, res) => {    return verifyTwoFactorCodeAuth(req, res);  });  app.post('/api/auth/2fa/disable', async (req, res) => {    return disableTwoFactorAuth(req, res);  });  app.post('/api/auth/2fa/complete-login', authTwoFactorLimiter, async (req, res) => {    return completeTwoFactorLoginAuth(req, res);  });  // API Route 0:
-  app.post('/api/auth/email-verification/send', authEmailVerificationLimiter, async (req, res) => { return sendEmailVerificationAuth(req, res); });
-  app.post('/api/auth/email-verification/verify', authEmailVerificationLimiter, async (req, res) => { return verifyEmailAuth(req, res); });
-  app.post('/api/auth/password-reset/request', authPasswordResetLimiter, async (req, res) => { return requestPasswordResetAuth(req, res); });
-  app.post('/api/auth/password-reset/confirm', authPasswordResetLimiter, async (req, res) => { return resetPasswordAuth(req, res); });
+  app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => registerAuth(req, res));
+  app.post('/api/auth/login', authLoginLimiter, async (req, res) => loginAuth(req, res));
+  app.post('/api/auth/logout', async (req, res) => logoutAuth(req, res));
+  app.get('/api/auth/me', async (req, res) => meAuth(req, res));
+  app.post('/api/auth/2fa/setup', async (req, res) => setupTwoFactorAuth(req, res));
+  app.post('/api/auth/2fa/verify-setup', authTwoFactorCodeLimiter, async (req, res) => verifyTwoFactorSetup(req, res));
+  app.post('/api/auth/2fa/verify', authTwoFactorCodeLimiter, async (req, res) => verifyTwoFactorCodeAuth(req, res));
+  app.post('/api/auth/2fa/disable', async (req, res) => disableTwoFactorAuth(req, res));
+  app.post('/api/auth/2fa/complete-login', authTwoFactorLimiter, async (req, res) => completeTwoFactorLoginAuth(req, res));
+  app.post('/api/auth/email-verification/send', authEmailVerificationLimiter, async (req, res) => sendEmailVerificationAuth(req, res));
+  app.post('/api/auth/email-verification/verify', authEmailVerificationLimiter, async (req, res) => verifyEmailAuth(req, res));
+  app.post('/api/auth/password-reset/request', authPasswordResetLimiter, async (req, res) => requestPasswordResetAuth(req, res));
+  app.post('/api/auth/password-reset/confirm', authPasswordResetLimiter, async (req, res) => resetPasswordAuth(req, res));
 
   app.get('/api/domains/check.php', async (req, res) => {
     const domain = (req.query.domain as string || '').trim().toLowerCase();
@@ -1038,6 +1046,35 @@ app.post('/api/auth/register', authRegistrationLimiter, async (req, res) => {   
       return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ configured: false, error: err.message });
+    }
+  });
+
+  // GET /api/domains/pricing - Catálogo comercial de TLDs y precios de dominios
+  // Mantiene estrictamente separados:
+  // - coste mayorista ResellerClub (providerCostUSD / providerTransferCostUSD)
+  // - precio comercial Banelio (registrationPriceUSD / transferPriceUSD / renewalPriceUSD)
+  // - operación registro vs transferencia
+  app.get('/api/domains/pricing', async (req, res) => {
+    try {
+      const result = await getDomainCatalogPricing(prisma);
+      const requestedTld = typeof req.query.tld === 'string'
+        ? req.query.tld.trim().toLowerCase().replace(/^\./, '')
+        : null;
+
+      if (requestedTld) {
+        const item = result.items.find((i) => i.tld.toLowerCase() === requestedTld);
+        if (!item) {
+          return res.status(404).json({
+            success: false,
+            error: `TLD .${requestedTld} no configurado en el catálogo comercial.`
+          });
+        }
+        return res.json({ success: true, item });
+      }
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
     }
   });
 

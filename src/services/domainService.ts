@@ -147,7 +147,23 @@ export interface TransferPricingEntry {
   billingPeriod: string;
 }
 
+export interface DomainTldPricing {
+  tld: string;
+  sku: string;
+  registrationPriceUSD: number;
+  transferPriceUSD: number | null;
+  renewalPriceUSD: number | null;
+  providerCostUSD?: number;
+  providerTransferCostUSD?: number | null;
+  providerRenewalCostUSD?: number | null;
+  currency: string;
+  isPopular: boolean;
+  isPromo: boolean;
+  category?: string;
+}
+
 let transferPricingCache: { fetchedAt: number; entries: TransferPricingEntry[] } | null = null;
+let domainPricingCache: { fetchedAt: number; entries: DomainTldPricing[] } | null = null;
 
 /**
  * Obtiene el pricing REAL de transferencias/renewal desde el backend.
@@ -172,7 +188,11 @@ export async function fetchTransferPricing(force = false): Promise<TransferPrici
       return [];
     }
     const data = await res.json();
-    const entries = Array.isArray(data) ? (data as TransferPricingEntry[]) : [];
+    const entries = Array.isArray(data?.items)
+      ? (data.items as TransferPricingEntry[])
+      : Array.isArray(data)
+        ? (data as TransferPricingEntry[])
+        : [];
     transferPricingCache = { fetchedAt: Date.now(), entries };
     return entries;
   } catch {
@@ -182,12 +202,79 @@ export async function fetchTransferPricing(force = false): Promise<TransferPrici
 }
 
 /**
+ * Obtiene el catálogo completo de precios de dominios por TLD desde el backend Banelio (/api/domains/pricing).
+ * Mantiene estrictamente separados costos mayoristas de ResellerClub y precios comerciales de Banelio.
+ */
+export async function fetchDomainPricing(force = false): Promise<DomainTldPricing[]> {
+  if (!force && domainPricingCache && Date.now() - domainPricingCache.fetchedAt < 300000) {
+    return domainPricingCache.entries;
+  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch('/api/domains/pricing', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      domainPricingCache = domainPricingCache || { fetchedAt: Date.now(), entries: [] };
+      return domainPricingCache.entries;
+    }
+    const data = await res.json();
+    const entries = Array.isArray(data?.items)
+      ? (data.items as DomainTldPricing[])
+      : Array.isArray(data)
+        ? (data as DomainTldPricing[])
+        : [];
+    domainPricingCache = { fetchedAt: Date.now(), entries };
+    return entries;
+  } catch {
+    domainPricingCache = domainPricingCache || { fetchedAt: Date.now(), entries: [] };
+    return domainPricingCache.entries;
+  }
+}
+
+/**
+ * Obtiene el precio comercial REAL de registro de Banelio para un TLD.
+ * Devuelve null si el TLD no está en el catálogo comercial o no tiene precio activo.
+ */
+export async function getDomainRegistrationPriceFor(tld: string): Promise<number | null> {
+  const cleanTld = tld.trim().toLowerCase().replace(/^\./, '');
+  const entries = await fetchDomainPricing();
+  const match = entries.find((e) => e.tld.toLowerCase() === cleanTld);
+  if (match && typeof match.registrationPriceUSD === 'number' && match.registrationPriceUSD > 0) {
+    return match.registrationPriceUSD;
+  }
+  return null;
+}
+
+/**
+ * Obtiene la información comercial de un TLD en Banelio (precio registro, transfer, promo, categoría).
+ */
+export async function getTldPricingInfo(tld: string): Promise<DomainTldPricing | null> {
+  const cleanTld = tld.trim().toLowerCase().replace(/^\./, '');
+  const entries = await fetchDomainPricing();
+  return entries.find((e) => e.tld.toLowerCase() === cleanTld) || null;
+}
+
+/**
  * Busca el precio real de transferencia para un TLD dado desde el pricing del servidor.
  * Devuelve null si no está configurado (el frontend debe mostrar un mensaje honesto).
  */
 async function getTransferPriceFor(tld: string): Promise<number | null> {
+  const cleanTld = tld.trim().toLowerCase().replace(/^\./, '');
+  // 1. Consultar si el catálogo general de dominios tiene transferPriceUSD configurado
+  const domainEntries = await fetchDomainPricing();
+  const domainMatch = domainEntries.find((e) => e.tld.toLowerCase() === cleanTld);
+  if (domainMatch && typeof domainMatch.transferPriceUSD === 'number' && domainMatch.transferPriceUSD > 0) {
+    return domainMatch.transferPriceUSD;
+  }
+
+  // 2. Consultar /api/transfers/pricing
   const entries = await fetchTransferPricing();
-  const match = entries.find((e) => e.operation === 'transfer' && e.tld.toLowerCase() === tld.toLowerCase());
+  const match = entries.find((e) => e.operation === 'transfer' && e.tld.toLowerCase() === cleanTld);
   return match ? match.price : null;
 }
 
@@ -202,7 +289,22 @@ export async function checkDomainAvailability(
 ): Promise<DomainSearchResult> {
   const normalizedDomain = domain.trim().toLowerCase();
   const tld = normalizedDomain.split('.').slice(1).join('.') || 'com';
-  const resolvedPrice = priceUSD ?? null;
+  
+  let resolvedPrice = priceUSD ?? null;
+  let resolvedPromo = isPromo;
+
+  // Si no se proporcionó precio explícito, consultar el catálogo comercial real
+  if (resolvedPrice === null || resolvedPrice === undefined) {
+    const tldInfo = await getTldPricingInfo(tld);
+    if (tldInfo) {
+      if (typeof tldInfo.registrationPriceUSD === 'number' && tldInfo.registrationPriceUSD > 0) {
+        resolvedPrice = tldInfo.registrationPriceUSD;
+      }
+      if (!isPromo && tldInfo.isPromo) {
+        resolvedPromo = true;
+      }
+    }
+  }
 
   try {
     const controller = new AbortController();
@@ -226,7 +328,7 @@ export async function checkDomainAvailability(
         status: 'error',
         statusText: 'No disponible temporalmente',
         priceUSD: resolvedPrice,
-        isPromo,
+        isPromo: resolvedPromo,
         errorMsg: 'Estamos verificando el dominio. Inténtalo nuevamente.'
       };
     }
@@ -242,7 +344,7 @@ export async function checkDomainAvailability(
         status: 'error',
         statusText: 'No disponible temporalmente',
         priceUSD: resolvedPrice,
-        isPromo,
+        isPromo: resolvedPromo,
         errorMsg: 'No pudimos completar la consulta. Inténtalo nuevamente.'
       };
     }
@@ -255,7 +357,7 @@ export async function checkDomainAvailability(
         status: 'error',
         statusText: 'No disponible',
         priceUSD: resolvedPrice,
-        isPromo,
+        isPromo: resolvedPromo,
         errorMsg: 'Estamos verificando el dominio. Inténtalo en un momento.'
       };
     }
@@ -275,7 +377,7 @@ export async function checkDomainAvailability(
         rawStatus,
         statusText: 'Disponible',
         priceUSD: resolvedPrice,
-        isPromo
+        isPromo: resolvedPromo
       };
     } else if (
       rawStatus === 'regthroughothers' ||
@@ -291,7 +393,7 @@ export async function checkDomainAvailability(
         rawStatus,
         statusText: 'No disponible',
         priceUSD: resolvedPrice,
-        isPromo
+        isPromo: resolvedPromo
       };
     } else {
       return {
@@ -302,7 +404,7 @@ export async function checkDomainAvailability(
         rawStatus,
         statusText: 'No disponible',
         priceUSD: resolvedPrice,
-        isPromo
+        isPromo: resolvedPromo
       };
     }
   } catch (networkError: any) {
@@ -314,7 +416,7 @@ export async function checkDomainAvailability(
       status: 'error',
       statusText: isTimeout ? 'Tiempo de espera agotado' : 'Sin conexión',
       priceUSD: resolvedPrice,
-      isPromo,
+      isPromo: resolvedPromo,
       errorMsg: isTimeout
         ? 'El servidor tardó en responder. Por favor reintenta.'
         : 'No fue posible contactar con el servicio de verificación.'
