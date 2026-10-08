@@ -97,7 +97,6 @@ export default function DomainsLanding() {
     return cart.some((item) => item.name.toLowerCase() === domainName.toLowerCase() && item.type === 'DOMAIN');
   };
 
-  const transferPriceConfigured = transferPricing.length > 0;
   const resolveTransferTld = (domainName: string) => domainName.substring(domainName.indexOf('.') + 1).replace(/\./g, '-');
   const getTransferPrice = (domainName: string): number | null => {
     const tld = resolveTransferTld(domainName);

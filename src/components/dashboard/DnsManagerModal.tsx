@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserService, DnsRecord } from '../../types';
-import { X, Plus, Trash2, Globe, Shield, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Plus, Trash2, Globe, Shield } from 'lucide-react';
 
 interface DnsManagerModalProps {
   service: UserService | null;
@@ -15,7 +15,7 @@ export default function DnsManagerModal({ service, isOpen, onClose }: DnsManager
   const [type, setType] = useState<DnsRecord['type']>('A');
   const [host, setHost] = useState('@');
   const [value, setValue] = useState('');
-  const [ttl, setTtl] = useState(3600);
+  const ttl = 3600;
   const [priority, setPriority] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeNsTab, setActiveNsTab] = useState<'RECORDS' | 'NAMESERVERS'>('RECORDS');

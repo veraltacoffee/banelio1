@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Check, Mail, ShieldCheck, Smartphone, Lock, Server } from 'lucide-react';
-import { formatMoney, formatMoneyExact } from '../../utils/pricing';
+import { Check, ShieldCheck, Smartphone, Lock } from 'lucide-react';
+import { formatMoneyExact } from '../../utils/pricing';
 import { calculateCommercialDiscount, DEFAULT_DISCOUNT_CONFIG, getProductPriceResult } from '../../services/pricingEngine';
 
 export default function EmailLanding() {

@@ -17,7 +17,6 @@ import {
   EyeOff,
   User,
   Users,
-  Building,
   Mail,
   Server,
   Database,
@@ -27,7 +26,7 @@ import {
   ChevronUp,
   Info
 } from 'lucide-react';
-import AddonConfigModal, { AddonConfigModalProps } from './AddonConfigModal';
+import AddonConfigModal from './AddonConfigModal';
 
 export default function CartModal() {
   const {

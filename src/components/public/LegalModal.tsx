@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, FileText, Lock, Cookie, Scale, CheckCircle2, ChevronRight, Download, Printer } from 'lucide-react';
+import { X, Shield, FileText, Lock, Cookie, Scale, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export type LegalDocType = 'PRIVACY' | 'COOKIES' | 'ARCO' | 'TERMS' | 'AUP' | 'DOMAIN_AGREEMENT';

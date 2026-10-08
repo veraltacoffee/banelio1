@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Users, Mail, Lock, Globe, DollarSign, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Eye, EyeOff, Sparkles, Percent } from 'lucide-react';
+import { Users, Mail, Lock, Globe, DollarSign, ArrowRight, AlertCircle, Eye, EyeOff, Sparkles, Percent } from 'lucide-react';
 
 interface AffiliateAuthViewProps {
   onCancel?: () => void;

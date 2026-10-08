@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import HostingPlans from './HostingPlans';
-import { Zap, ShieldCheck, Cpu, HardDrive, RefreshCw, Headphones } from 'lucide-react';
+import { Zap, HardDrive, Headphones } from 'lucide-react';
 
 export default function HostingLanding() {
   const { t, language } = useApp();

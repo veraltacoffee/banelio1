@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cookie, Shield, Check, X, Settings2, Sliders } from 'lucide-react';
+import { Cookie, X, Settings2, Sliders } from 'lucide-react';
 
 interface CookiePreferences {
   essential: boolean;

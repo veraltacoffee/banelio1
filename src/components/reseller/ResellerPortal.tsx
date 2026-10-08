@@ -24,12 +24,10 @@ import {
 export default function ResellerPortal() {
   const {
     commissions,
-    payouts,
     requestPayout,
     resellerPromoCode,
     currency,
     affiliateUser,
-    logoutAffiliate,
     language,
     t
   } = useApp();
@@ -129,7 +127,6 @@ export default function ResellerPortal() {
 
   // Calculate totals
   const totalEarnedUSD = commissions.reduce((acc, c) => acc + c.amountUSD, 0);
-  const pendingHoldUSD = commissions.filter((c) => c.status === 'PENDING_HOLD').reduce((acc, c) => acc + c.amountUSD, 0);
   const availableBalanceUSD = commissions.filter((c) => c.status === 'AVAILABLE').reduce((acc, c) => acc + c.amountUSD, 0);
 
   const handleCopyLink = () => {

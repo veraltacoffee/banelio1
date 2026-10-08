@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Mail, CheckCircle2, AlertCircle, RefreshCw, X, Send, ShieldCheck, Sparkles } from 'lucide-react';
+import { Mail, CheckCircle2, AlertCircle, RefreshCw, X, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface EmailConfirmationModalProps {

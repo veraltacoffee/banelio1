@@ -294,7 +294,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : INITIAL_TICKETS;
   });
 
-  const [commissions, setCommissions] = useState<ResellerCommission[]>(() => {
+  const [commissions] = useState<ResellerCommission[]>(() => {
     const saved = localStorage.getItem('gh_commissions');
     return saved ? JSON.parse(saved) : INITIAL_COMMISSIONS;
   });

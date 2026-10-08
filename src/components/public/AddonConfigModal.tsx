@@ -9,11 +9,7 @@ import {
   Server,
   Shield,
   Database,
-  ArrowRight,
-  Sparkles,
-  Zap,
-  Lock,
-  Globe
+  ArrowRight
 } from 'lucide-react';
 import { ServiceType } from '../../types';
 

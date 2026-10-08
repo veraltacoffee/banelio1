@@ -24,19 +24,14 @@ import {
   Smartphone,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink,
   Plus,
   Download,
   Key,
   Shield,
   Lock,
   ArrowRight,
-  Clock,
   Sparkles,
-  Building,
-  MapPin,
   Send,
-  HelpCircle,
   Check
 } from 'lucide-react';
 

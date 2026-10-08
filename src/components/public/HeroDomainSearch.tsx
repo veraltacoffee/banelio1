@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/pricing';
-import { Search, Loader2, CheckCircle2, XCircle, ShoppingBag, Shield, RefreshCw, Info, AlertCircle, ArrowRight } from 'lucide-react';
+import { Search, Loader2, CheckCircle2, XCircle, ShoppingBag, Shield, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import WhoisModal from '../shared/WhoisModal';
 import DomainTransferModal from './DomainTransferModal';
 import { sanitizeDomainInput, checkDomainAvailability, checkDomainTransferEligibility, fetchTransferPricing, TransferPricingEntry, DomainSearchResult } from '../../services/domainService';

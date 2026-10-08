@@ -11,7 +11,6 @@ import {
   updateAdminPricing,
   getAdminInternalMetrics
 } from './server/pricing';
-import { Currency } from './src/types';
 import { normalizeCountryCode, getTaxForCountry, getSupportedCountries } from './server/tax';
 import { getHealth } from './server/health';
 import {
@@ -67,41 +66,6 @@ function getRegistryConfig() {
     baseUrl,
     isConfigured: Boolean(registryId && apiKey)
   };
-}
-
-async function queryRegistry(endpoint: string, queryParams: Record<string, string>) {
-  const config = getRegistryConfig();
-  if (!config.isConfigured) {
-    throw new Error('REGISTRY_NOT_CONFIGURED');
-  }
-
-  const url = new URL(endpoint, config.baseUrl);
-  if (config.registryId) url.searchParams.set('partner-id', config.registryId);
-  if (config.apiKey) url.searchParams.set('api-key', config.apiKey);
-
-  for (const [key, value] of Object.entries(queryParams)) {
-    if (value !== undefined && value !== null) {
-      url.searchParams.set(key, value);
-    }
-  }
-
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'Banelio-Cloud-App/1.0'
-    }
-  });
-
-  const rawText = await response.text();
-  let data: any;
-  try {
-    data = JSON.parse(rawText);
-  } catch (e) {
-    data = { raw: rawText };
-  }
-
-  return { status: response.status, ok: response.ok, data };
 }
 
 async function startServer() {

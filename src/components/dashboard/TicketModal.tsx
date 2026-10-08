@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SupportTicket } from '../../types';
-import { X, MessageSquare, Send, User, Shield, Clock, AlertCircle } from 'lucide-react';
+import { X, MessageSquare, Send, User, Shield } from 'lucide-react';
 
 interface TicketModalProps {
   ticket: SupportTicket | null;

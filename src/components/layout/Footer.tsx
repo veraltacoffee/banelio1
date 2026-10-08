@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Globe, Shield, Server, Mail, Lock, Heart, ArrowUpRight, Scale, BookOpen, Phone, MessageSquare } from 'lucide-react';
+import { ArrowUpRight, Scale, Phone } from 'lucide-react';
 import { LegalDocType } from '../public/LegalModal';
 
 interface FooterProps {
@@ -9,7 +9,7 @@ interface FooterProps {
 }
 
 export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
-  const { setRole, t, language } = useApp();
+  const { setRole, t } = useApp();
 
   const socialLinks = [
     {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Lock, Mail, User, Phone, Building, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Eye, EyeOff, Sparkles, KeyRound } from 'lucide-react';
+import { Lock, Mail, User, Phone, Building, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Eye, EyeOff, KeyRound } from 'lucide-react';
 import TwoFactorModal from './TwoFactorModal';
 
 interface CustomerAuthViewProps {

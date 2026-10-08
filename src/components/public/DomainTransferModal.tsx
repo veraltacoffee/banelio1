@@ -13,8 +13,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  ShoppingCart,
-  Check
+  ShoppingCart
 } from 'lucide-react';
 import {
   TransferCustomerData,

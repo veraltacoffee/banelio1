@@ -9,7 +9,6 @@ export function generateInvoicePDF(order: Order): void {
   const primaryColor = [73, 101, 42]; // #B8F23A GREEN
   const darkSlate = [7, 7, 7]; // #070707 BLACK
   const mutedGray = [85, 90, 82]; // #555A52 GRAY 01
-  const lightBg = [247, 248, 240]; // #F7F8F0 IVORY
 
   // Header Banner
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);

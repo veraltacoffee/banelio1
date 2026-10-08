@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Lock, CheckCircle2, AlertCircle, RefreshCw, Copy, Check, X, KeyRound, Smartphone } from 'lucide-react';
+import { ShieldCheck, AlertCircle, RefreshCw, Copy, Check, X, KeyRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface TwoFactorModalProps {
@@ -11,11 +11,8 @@ interface TwoFactorModalProps {
 
 export default function TwoFactorModal({ isOpen, onClose, mode, onSuccess }: TwoFactorModalProps) {
   const {
-    customerUser,
-    pendingTwoFactorAuth,
     completeTwoFactorLogin,
     enableTwoFactor,
-    disableTwoFactor,
     verifyTwoFactorCode,
     language,
     addToast

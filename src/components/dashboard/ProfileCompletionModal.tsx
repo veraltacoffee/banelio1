@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, User, Building, Mail, Phone, MapPin, Globe, ShieldCheck, CheckCircle2, FileText, Sparkles } from 'lucide-react';
+import { X, User, Building, Mail, Phone, MapPin, Globe, CheckCircle2, FileText, Sparkles } from 'lucide-react';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;

@@ -115,6 +115,9 @@ Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 - `src/components/public/ResellerPromoSection.tsx`: sección promocional redundante sin importación.
 - `src/components/auth/QuickAuthModal.tsx`: modal de autenticación provisional reemplazado por pestañas integradas en checkout.
 - `src/components/layout/RoleBar.tsx`: barra de desarrollo reemplazada completamente por `Navbar.tsx`.
+- `queryRegistry` en `server.ts`: función alternativa no utilizada que puenteaba directamente a ResellerClub obviando el bridge PHP en IONOS.
+- Código muerto y variables/funciones huérfanas en `AdminDashboard.tsx` (`editingTld`, `editCost`, `editMargin`, `editMarkup`, `editPromo`, `startEditTld`, `saveTldEdit`, `updateTldConfig`).
+- Imports y variables no utilizadas en más de 20 componentes y utilidades (`Footer`, `CustomerDashboard`, `CheckoutModal`, `CartModal`, `TwoFactorModal`, `EmailConfirmationModal`, `CustomerAuthView`, `AffiliateAuthView`, `AddonConfigModal`, `DomainTransferModal`, `DomainsLanding`, `HeroDomainSearch`, `HostingLanding`, `EmailLanding`, `LegalModal`, `DnsManagerModal`, `ProfileCompletionModal`, `TicketModal`, `WhatsAppFloatingButton`, `ResellerPortal`, `pdfGenerator.ts`, `AppContext.tsx`).
 - `HTTP`: archivo vacío de 0 bytes en la raíz del proyecto.
 - `AUDIT/CONTEXT.md` y carpeta `AUDIT/`: directorio y archivo vacíos de 0 bytes.
 - `estructura.txt`: archivo de volcado obsoleto que referenciaba dependencias inexistentes (`bun.lock`).
@@ -128,6 +131,7 @@ Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 - `src/data/mockData.ts` y `src/data/blogData.ts`: artículos de conocimiento técnico y datos base de la plataforma.
 - Modelos Prisma `CatalogItem`, `Order`, `Customer`, `Session`, `PendingTwoFactorAuth`, `EmailVerificationToken`, `PasswordResetToken`, `Entitlement`: esenciales para el flujo comercial y seguridad.
 - Módulos de Stripe, PayPal y OXXO en `server/payments.ts`: necesarios para el checkout de Banelio.
+- WHOIS/RDAP bootstrap (`/api/domains/whois` y `WhoisModal.tsx`): servicio ICANN oficial para inspección pública de dominios ocupados (no compite con ResellerClub ya que ResellerClub solo comercializa disponibilidad).
 
 ## Pending
 - `RESELLERCLUB-PROVISIONING-WORKER`: automatizar el aprovisionamiento de dominios y servicios en ResellerClub una vez que la orden ha sido confirmada como `PAID` en Banelio.
@@ -140,13 +144,14 @@ Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 
 ## Change history
 - **2026-10-08:**
-  - Depuración y consolidación del repositorio en la rama `cleanup/banelio-resellerclub`.
+  - Depuración y consolidación profunda del repositorio en la rama `cleanup/banelio-resellerclub`.
   - Eliminación de dependencias no utilizadas (`@google/genai`).
-  - Eliminación de 4 componentes abandonados (`CleanHomeLanding.tsx`, `ResellerPromoSection.tsx`, `QuickAuthModal.tsx`, `RoleBar.tsx`).
-  - Eliminación de archivos vacíos y documentación histórica obsoleta (`HTTP`, `AUDIT/`, `estructura.txt`, `BANELIO_AUDITORIA.md`, `BANELIO_AUDIT.md`, `AUTH_IMPLEMENTATION_SPEC.md`).
-  - Formateo y estandarización limpia de rutas de autenticación en `server.ts`.
-  - Creación del archivo autoritativo `docs/AI-CONTEXT.md`.
-  - Validación completa con TypeScript (`tsc --noEmit`) y build (`compile_applet`) exitosos.
+  - Eliminación de componentes abandonados (`CleanHomeLanding.tsx`, `ResellerPromoSection.tsx`, `QuickAuthModal.tsx`, `RoleBar.tsx`).
+  - Eliminación de la función redundante `queryRegistry` en `server.ts` que duplicaba el bridge oficial PHP.
+  - Eliminación de código muerto y estado huérfano de edición local de TLDs en `AdminDashboard.tsx`.
+  - Limpieza exhaustiva de todos los imports y variables no utilizadas en componentes (`CustomerDashboard`, `CheckoutModal`, `CartModal`, `TwoFactorModal`, `EmailConfirmationModal`, `Footer`, etc.).
+  - Incorporación de `bun.lock` a `.gitignore` para preservar `package-lock.json` como único lockfile npm sin interferencias.
+  - Validación completa con `tsc --noEmit --noUnusedLocals` (0 errores), `lint` (PASS) y `build` (PASS).
 
 ## Next task
 `RESELLERCLUB-PROVISIONING-WORKER`: Implementar el procesador server-side de aprovisionamiento que despacha llamadas automáticas a la API de ResellerClub (registro/transferencia) al confirmarse el pago de una orden en Banelio.

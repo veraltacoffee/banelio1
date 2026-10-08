@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/pricing';
-import { TldConfig, PayoutRequest, AuditLogEntry, SupportTicket } from '../../types';
+import { SupportTicket } from '../../types';
 import TicketModal from '../dashboard/TicketModal';
 import {
   INITIAL_PROVIDER_COSTS,
   calculateGrossMarginPrice,
-  calculateRealizedGrossMargin,
   applyCommercialRounding,
-  ProviderCost,
   InternalPricingMetrics
 } from '../../services/pricingEngine';
 import {
@@ -16,15 +14,10 @@ import {
   DollarSign,
   Server,
   Users,
-  Settings,
   RefreshCw,
-  Edit2,
   Check,
   X,
   UserCheck,
-  Eye,
-  AlertTriangle,
-  CheckCircle2,
   FileText,
   Activity,
   Search
@@ -33,7 +26,6 @@ import {
 export default function AdminDashboard() {
   const {
     tlds,
-    updateTldConfig,
     payouts,
     updatePayoutStatus,
     auditLogs,
@@ -48,7 +40,6 @@ export default function AdminDashboard() {
   } = useApp();
 
   const [activeAdminTab, setActiveAdminTab] = useState<'PRICING' | 'CUSTOMERS' | 'PAYOUTS' | 'AUDIT' | 'TICKETS' | 'API_CONFIG'>('PRICING');
-  const [editingTld, setEditingTld] = useState<TldConfig | null>(null);
 
   // Central Commercial Pricing State
   const [pricingSearch, setPricingSearch] = useState('');
@@ -134,34 +125,6 @@ export default function AdminDashboard() {
     } finally {
       setIsTestingApi(false);
     }
-  };
-
-  // TLD Edit Form State
-  const [editCost, setEditCost] = useState(0);
-  const [editMargin, setEditMargin] = useState(0.35);
-  const [editMarkup, setEditMarkup] = useState(2.0);
-  const [editPromo, setEditPromo] = useState(false);
-
-  const startEditTld = (tld: TldConfig) => {
-    setEditingTld(tld);
-    setEditCost(tld.providerCost);
-    setEditMargin(tld.marginPercent);
-    setEditMarkup(tld.fixedMarkup);
-    setEditPromo(!!tld.isPromo);
-  };
-
-  const saveTldEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTld) return;
-
-    updateTldConfig(editingTld.tld, {
-      providerCost: Number(editCost),
-      marginPercent: Number(editMargin),
-      fixedMarkup: Number(editMarkup),
-      isPromo: editPromo
-    });
-
-    setEditingTld(null);
   };
 
   React.useEffect(() => {
