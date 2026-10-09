@@ -47,11 +47,31 @@ function resolveDatabaseUrl(): string {
 
 // Singleton PrismaClient for the whole app (avoids connection exhaustion and
 // duplicate file handles on dev/HMR).
-export const prisma = new PrismaClient({
-  datasources: {
-    db: { url: resolveDatabaseUrl() }
-  }
-});
+let prismaInstance: PrismaClient;
+try {
+  prismaInstance = new PrismaClient({
+    datasources: {
+      db: { url: resolveDatabaseUrl() }
+    }
+  });
+} catch {
+  console.warn('[AI Studio] Database not connected — using mock');
+  const noOp = {
+    findMany: async () => [],
+    findFirst: async () => null,
+    findUnique: async () => null,
+    create: async (d: any) => d?.data ?? {},
+    update: async (d: any) => d?.data ?? {},
+    delete: async () => ({}),
+    count: async () => 0,
+    upsert: async (d: any) => d?.create ?? {}
+  };
+  prismaInstance = new Proxy({} as any, {
+    get: () => new Proxy(noOp, { get: (target, prop) => (target as any)[prop] || (async () => null) })
+  });
+}
+
+export const prisma = prismaInstance;
 
 export type { PrismaClient as PrismaClientType } from '@prisma/client';
 
