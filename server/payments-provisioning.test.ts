@@ -415,3 +415,110 @@ test('9. Servicios complementarios (Hosting / Correo / SSL): no se activan autom
     await prisma.order.delete({ where: { id: created.id } });
   }
 });
+
+test('10. Datos de registrante: rechazo si faltan datos obligatorios y prohibición de datos ficticios (Regla 7)', async () => {
+  const dummyMissingContactOrder = {
+    id: 'ord_missing_contact_' + Date.now(),
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
+    currency: 'USD',
+    subtotal: 10.0,
+    tax: 0,
+    total: 10.0,
+    items: [
+      {
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: 'incomplete-registrant.com',
+        registrant: {
+          name: 'Cliente Incompleto',
+          email: 'incompleto@ejemplo.com'
+          // Falta teléfono, dirección física, ciudad y país
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: dummyMissingContactOrder as any });
+
+  try {
+    const result = await provisionPaidOrder(created.id);
+    assert.equal(result.success, false);
+    assert.equal(result.status, 'FAILED');
+    assert.match(result.error || '', /Faltan datos obligatorios de contacto del registrante/);
+    assert.match(result.error || '', /No se permite el uso de información ficticia/);
+
+    const inDb = await prisma.order.findUnique({ where: { id: created.id } });
+    assert.equal(inDb?.provisionStatus, 'FAILED');
+    assert.match(inDb?.failureReason || '', /Faltan datos obligatorios/);
+  } finally {
+    await prisma.order.delete({ where: { id: created.id } });
+  }
+});
+
+test('11. Transferencia de dominio: inicio con proveedor pasa a PROVISIONING y TRANSFER_INITIATED, NUNCA marca PROVISIONED prematuramente (Regla 9)', async () => {
+  const dummyTransferOrder = {
+    id: 'ord_transfer_prov_' + Date.now(),
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
+    currency: 'USD',
+    subtotal: 12.99,
+    tax: 0,
+    total: 12.99,
+    items: [
+      {
+        sku: 'DOMAIN_TRANSFER',
+        category: 'DOMAIN',
+        isTransfer: true,
+        domain: 'transfer-real-test.com',
+        eppCode: 'AuthCode12345!',
+        registrant: {
+          name: 'Registrante Transfer',
+          email: 'admin@transfer-real-test.com',
+          phone: '5512345678',
+          address: 'Paseo de la Reforma 222',
+          city: 'Ciudad de Mexico',
+          country: 'MX',
+          state: 'CDMX',
+          postalCode: '06600'
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: dummyTransferOrder as any });
+
+  try {
+    const result = await provisionPaidOrder(created.id, {
+      bridgeFetch: async () => {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'transfer',
+            domain: 'transfer-real-test.com',
+            orderId: 'RC_TRANS_ORD_554433',
+            status: 'TRANSFER_INITIATED'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    });
+
+    assert.equal(result.success, true);
+    // REGLA 9: No marcar la orden como PROVISIONED cuando el proveedor solo aceptó la solicitud de transferencia
+    assert.equal(result.status, 'PROVISIONING', 'El estado de la orden en transferencia debe ser PROVISIONING, no PROVISIONED');
+    assert.equal(result.results?.[0]?.status, 'TRANSFER_INITIATED');
+    assert.equal(result.results?.[0]?.providerOrderId, 'RC_TRANS_ORD_554433');
+    assert.match(result.message || '', /En espera de confirmación y liberación por el registry/);
+
+    const inDb = await prisma.order.findUnique({ where: { id: created.id } });
+    assert.equal(inDb?.provisionStatus, 'PROVISIONING', 'En base de datos debe ser PROVISIONING');
+    assert.equal(inDb?.failureReason, null);
+  } finally {
+    await prisma.order.delete({ where: { id: created.id } });
+  }
+});

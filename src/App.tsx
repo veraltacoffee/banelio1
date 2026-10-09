@@ -19,16 +19,14 @@ import { CookieConsentBanner } from './components/public/CookieConsentBanner';
 import { WhatsAppFloatingButton } from './components/public/WhatsAppFloatingButton';
 import CustomerDashboard from './components/dashboard/CustomerDashboard';
 import ResellerPortal from './components/reseller/ResellerPortal';
-import AdminDashboard from './components/admin/AdminDashboard';
 import CustomerAuthView from './components/auth/CustomerAuthView';
 import AffiliateAuthView from './components/auth/AffiliateAuthView';
-import AdminAuthView from './components/auth/AdminAuthView';
 import CartModal from './components/public/CartModal';
 import CheckoutModal from './components/public/CheckoutModal';
 import { BlogPost } from './types';
 
 function MainAppContent() {
-  const { role, setRole, customerUser, affiliateUser, isAdminAuthenticated } = useApp();
+  const { role, setRole, customerUser, affiliateUser } = useApp();
   
   const getInitialPath = () => {
     if (typeof window !== 'undefined') {
@@ -166,14 +164,6 @@ function MainAppContent() {
             <ResellerPortal />
           ) : (
             <AffiliateAuthView onCancel={() => setRole('PUBLIC')} />
-          )
-        )}
-
-        {role === 'ADMIN' && (
-          (isAdminAuthenticated || customerUser?.role === 'ADMIN') ? (
-            <AdminDashboard />
-          ) : (
-            <AdminAuthView onCancel={() => setRole('PUBLIC')} />
           )
         )}
       </main>

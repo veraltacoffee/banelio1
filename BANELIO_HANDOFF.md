@@ -1,10 +1,11 @@
 # BANELIO HANDOFF
 
-## 1. Fuente de verdad y rama de trabajo
-- **Repositorio GitHub:** `veraltacoffee/banelio1`
-- **Rama:** `main` es actualmente la rama estable y fuente de verdad de Banelio.
-- Las cuentas de AI Studio trabajan secuencialmente sobre el mismo repositorio y sincronizan sus cambios mediante GitHub.
-- No crear ramas adicionales salvo autorización explícita para una tarea concreta.
+## 1. Entorno de trabajo y fuente de verdad operativa
+- **Repositorio Oficial:** GitHub `veraltacoffee/banelio1` (rama `main`).
+- **Régimen Operativo Temporal:** El entorno activo de desarrollo es este proyecto en **Google AI Studio**.
+- **Desacoplamiento de Sincronización:** El trabajo NO se detiene ni bloquea por incidencias de sincronización con GitHub. No se intenta reparar, reconectar ni cambiar el repositorio o rama.
+- **Respaldo de Seguridad:** El archivo ZIP descargado de Google AI Studio constituye la copia de seguridad oficial del estado actual.
+- **Regla de integridad:** No eliminar ni sobrescribir archivos locales por el hecho de que GitHub no refleje todavía los cambios más recientes. No afirmar que GitHub está sincronizado si no se comprueba directamente.
 
 ## 2. Orden obligatorio de lectura para iniciar sesión
 Toda nueva sesión o cuenta de AI Studio debe leer el contexto persistente oficial en este orden exacto:
@@ -14,40 +15,34 @@ Toda nueva sesión o cuenta de AI Studio debe leer el contexto persistente ofici
 4. `BANELIO_WORK_STATE.md`
 5. `BANELIO_TASKS.md`
 
-Después de leer estos cuatro archivos, leer únicamente los archivos específicos relacionados con la tarea autorizada.
+Tras esta lectura, no releerlos completos y leer únicamente los archivos específicos relacionados con la tarea autorizada.
 
 ## 3. Estado actual del proyecto
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Vite SPA integrado en `server.ts`.
-- **Backend:** Node.js v22, Express 4, Prisma ORM 6.19.3 con SQLite (`prisma/dev.db`).
+- **Backend:** Node.js v22, Express 4, Prisma ORM 6.19.3 con SQLite (`prisma/dev.db`), 10 migraciones aplicadas.
 - **Autenticación:** Server-side con sesiones persistidas en base de datos (`Session`), bcryptjs, 2FA TOTP, tokens de verificación por email y rate limiting.
-- **Pagos:** Server-authoritative para Stripe (tarjetas con webhook HMAC SHA-256), PayPal (captura v2 autenticada) y Stripe OXXO Pay (vouchers MXN con FX real).
-- **Registry:** ResellerClub vía bridge oficial PHP en IONOS Apache (`https://banelio.com/api/domains/transfer.php`).
-- **Checkout de Transferencias:** Flujo migrado al checkout comercial estándar con SKU `DOMAIN_TRANSFER`, validación y sanitización server-authoritative de Auth/EPP Code, eliminación de dependencias de scripts PHP legacy (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`).
-- **Estado técnico:** `/api/health` OK, base de datos operativa, compilación y linter limpios (0 errores).
+- **Pagos:** Server-authoritative para Stripe (tarjetas con webhook HMAC SHA-256), PayPal (captura v2 autenticada) y Stripe OXXO Pay (vouchers MXN con FX real y deduplicación estricta).
+- **Registry & Aprovisionamiento:** ResellerClub vía bridge oficial PHP en IONOS Apache (`server/php/`). Eliminación total de datos ficticios/hardcoded de registrante (Regla 7), y semántica veraz de estados: transferencias de dominio se registran como `PROVISIONING` / `TRANSFER_INITIATED` (Regla 9).
+- **Pruebas y Validación:** 11 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS, `compile_applet` exitoso, `lint_applet` limpio (0 errores).
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
-- La tarea `DOMAIN-TRANSFER-CHECKOUT` ha sido finalizada y verificada con éxito.
+- El proyecto se encuentra estabilizado en Google AI Studio a la espera de la siguiente tarea explícitamente autorizada.
 
 ## 5. Tareas del sistema
-- **ÚLTIMA TAREA COMPLETADA:** `DOMAIN-TRANSFER-CHECKOUT` (Status: `COMPLETED`).
-- **TAREAS PENDIENTES:** Ninguna tarea pendiente actualmente en cola. Toda nueva tarea requerirá autorización explícita del usuario para iniciar.
+- **ÚLTIMA TAREA COMPLETADA:** `SECURITY-PAYMENTS-PROVISIONING-HARDENING` (Status: `COMPLETED`).
+- **TAREAS PENDIENTES:** Pruebas de integración de extremo a extremo con credenciales reales de ResellerClub en IONOS.
 
 ## 6. Último trabajo realizado
-- Migración y consolidación completa del flujo de transferencia de dominios al checkout comercial estándar de Banelio:
-  1. Verificación remota de transferibilidad delegada exclusivamente a `server/php/domains/transfer.php` (`/api/domains/transfer.php`).
-  2. Modal de transferencia (`src/components/public/DomainTransferModal.tsx`) con 4 pasos (Dominio, Titular, Auth/EPP Code y Resumen).
-  3. Código Auth/EPP protegido en memoria de React (nunca expuesto en storage local, URLs ni consola).
-  4. Adición al carrito con SKU `DOMAIN_TRANSFER`, vinculación de contacto de titular ICANN y precio resuelto.
-  5. Checkout comercial (`src/components/public/CheckoutModal.tsx`) con indicador de clave EPP verificada y soporte multi-pasarela.
-  6. Backend de órdenes (`server/orders.ts`) con validación estricta de longitud y existencia de Auth/EPP (6-32 caracteres), extracción robusta del dominio del titular, cálculo server-authoritative de precios/impuestos, protección de margen mínimo y sanitización de salida (`hasEppCode: true` en `toPublicOrder` sin filtrar el código secreto).
-  7. Retirada de toda dependencia de scripts PHP históricos (`transfer-order.php`, `transfer-auth.php`, `transfer-status.php`).
-  8. Validación integral con `tsc --noEmit` (PASS) y `compile_applet` (PASS).
+- Eliminación de datos ficticios en `server/php/domains/provision.php`, `customer.php`, `contacts.php` y `server/provisioning.ts`.
+- Semántica honesta de ciclo de vida de aprovisionamiento: transferencias pasan a `PROVISIONING` / `TRANSFER_INITIATED`, nunca marcadas prematuramente como `PROVISIONED`.
+- Despliegue de migraciones en SQLite local y ejecución exitosa de la suite completa de 11 tests.
 
-## 7. Protocolo de continuidad multi-cuenta
-- **Cuenta A:** Trabaja una sola tarea autorizada → Valida → Actualiza los 4 archivos de estado → Push/Sync a GitHub → GitHub queda como fuente de verdad.
-- **Cuenta B:** Abre nueva conversación → Lee los 4 archivos en el orden exacto → Continúa desde GitHub → Trabaja únicamente la tarea autorizada.
-- **Cuenta C:** Mismo procedimiento secuencial.
+## 7. Protocolo de continuidad
+- **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.
+- **Validación:** Ejecuta `lint_applet` y `compile_applet` al finalizar.
+- **Cierre documental:** Actualiza los 4 archivos de estado (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
+- **Respaldo:** El ZIP descargable de AI Studio sirve como snapshot seguro e íntegro.
 
 ## 8. Bloqueadores
 `NONE`
@@ -57,6 +52,6 @@ Esperar la definición y autorización explícita del usuario para la siguiente 
 
 ## 10. Reglas de seguridad
 - Trabajar únicamente en la tarea explícitamente autorizada.
-- No modificar archivos fuera del alcance autorizado de cada tarea.
-- No iniciar automáticamente una tarea PENDING.
-- Después de modificar código, actualizar obligatoriamente los archivos de estado y sincronizar con GitHub `main`.
+- Modificar únicamente los archivos listados en `ALLOWED FILES` de la tarea.
+- No modificar arquitectura, Prisma, base de datos, dependencias, `.env`, pagos, autenticación ni infraestructura sin autorización explícita.
+- No detener el trabajo por estado de sincronización con GitHub.

@@ -18,7 +18,7 @@ export function generateInvoicePDF(order: Order): void {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
   doc.setTextColor(darkSlate[0], darkSlate[1], darkSlate[2]);
-  doc.text('GLOBALHOST CLOUD', 15, 32);
+  doc.text('BANELIO', 15, 32);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');

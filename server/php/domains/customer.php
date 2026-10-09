@@ -84,14 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $company = isset($postData['company']) ? trim($postData['company']) : $name;
     $address = isset($postData['address']) ? trim($postData['address']) : (isset($postData['address1']) ? trim($postData['address1']) : '');
     $city = isset($postData['city']) ? trim($postData['city']) : '';
-    $state = isset($postData['state']) ? trim($postData['state']) : 'Sinaloa';
-    $country = isset($postData['country']) ? strtoupper(trim($postData['country'])) : 'MX';
-    $zipcode = isset($postData['zipcode']) ? trim($postData['zipcode']) : (isset($postData['zip']) ? trim($postData['zip']) : '82000');
-    $telCc = isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : '52';
-    $telNo = isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : '6691000000';
+    $state = isset($postData['state']) ? trim($postData['state']) : '';
+    $country = isset($postData['country']) ? strtoupper(trim($postData['country'])) : '';
+    $zipcode = isset($postData['zipcode']) ? trim($postData['zipcode']) : (isset($postData['zip']) ? trim($postData['zip']) : '');
+    $telCc = isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : (isset($postData['tel-no-cc']) ? preg_replace('/\D/', '', $postData['tel-no-cc']) : '');
+    $telNo = isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : (isset($postData['tel-no']) ? preg_replace('/\D/', '', $postData['tel-no']) : '');
     $lang = isset($postData['lang']) ? trim($postData['lang']) : 'es';
 
-    // Validación de obligatorios
+    // Validación estricta de datos reales obligatorios (sin valores ficticios)
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         send_json_response(['success' => false, 'error' => 'El correo electrónico es obligatorio y debe ser válido.'], 400);
     }
@@ -103,6 +103,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (empty($city)) {
         send_json_response(['success' => false, 'error' => 'La ciudad es obligatoria.'], 400);
+    }
+    if (empty($state)) {
+        send_json_response(['success' => false, 'error' => 'El estado o provincia es obligatorio.'], 400);
+    }
+    if (empty($country)) {
+        send_json_response(['success' => false, 'error' => 'El código de país es obligatorio.'], 400);
+    }
+    if (empty($zipcode)) {
+        send_json_response(['success' => false, 'error' => 'El código postal es obligatorio.'], 400);
+    }
+    if (empty($telNo)) {
+        send_json_response(['success' => false, 'error' => 'El número telefónico es obligatorio.'], 400);
+    }
+    if (empty($telCc)) {
+        $telCc = '1';
     }
 
     try {

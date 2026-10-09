@@ -106,6 +106,15 @@ try {
 
     $customerEmail = isset($registrant['email']) ? trim(strtolower($registrant['email'])) : (isset($postData['email']) ? trim(strtolower($postData['email'])) : '');
     $customerName = isset($registrant['name']) ? trim($registrant['name']) : (isset($postData['name']) ? trim($postData['name']) : '');
+    $companyName = !empty($registrant['company']) ? trim($registrant['company']) : (!empty($registrant['org']) ? trim($registrant['org']) : $customerName);
+
+    $regAddress = !empty($registrant['address']) ? trim($registrant['address']) : (isset($postData['address']) ? trim($postData['address']) : '');
+    $regCity = !empty($registrant['city']) ? trim($registrant['city']) : (isset($postData['city']) ? trim($postData['city']) : '');
+    $regState = !empty($registrant['state']) ? trim($registrant['state']) : (isset($postData['state']) ? trim($postData['state']) : '');
+    $regCountry = !empty($registrant['country']) ? strtoupper(trim($registrant['country'])) : (isset($postData['country']) ? strtoupper(trim($postData['country'])) : '');
+    $regZip = !empty($registrant['postalCode']) ? trim($registrant['postalCode']) : (!empty($registrant['zipcode']) ? trim($registrant['zipcode']) : (isset($postData['zipcode']) ? trim($postData['zipcode']) : ''));
+    $regPhone = !empty($registrant['phone']) ? preg_replace('/\D/', '', $registrant['phone']) : (isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : '');
+    $regPhoneCc = !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : (isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : '1');
 
     // 1. Resolver o registrar el cliente en ResellerClub si no se pasó customer_id
     if (empty($customerId)) {
@@ -123,12 +132,21 @@ try {
                 $customerId = (string)$existingCustomer['customerid'];
             }
         } catch (Exception $e) {
-            // No existe, procederemos a registrarlo
+            // No existe, procederemos a registrarlo con datos reales
         }
 
         if (empty($customerId)) {
-            if (empty($customerName)) {
-                $customerName = explode('@', $customerEmail)[0];
+            if (empty($customerName) || strlen($customerName) < 3) {
+                send_json_response([
+                    'success' => false,
+                    'error' => 'El nombre completo del registrante es obligatorio para crear la cuenta en ResellerClub.'
+                ], 400);
+            }
+            if (empty($regAddress) || empty($regCity) || empty($regState) || empty($regCountry) || empty($regZip) || empty($regPhone)) {
+                send_json_response([
+                    'success' => false,
+                    'error' => 'Faltan datos obligatorios del registrante (dirección, ciudad, estado, código postal o teléfono) para registrar al cliente en el proveedor. No se permite el uso de información ficticia.'
+                ], 400);
             }
 
             $passwd = 'Bnl!' . bin2hex(random_bytes(6)) . '9A';
@@ -136,14 +154,14 @@ try {
                 'username' => $customerEmail,
                 'passwd' => $passwd,
                 'name' => $customerName,
-                'company' => !empty($registrant['company']) ? trim($registrant['company']) : (!empty($registrant['org']) ? trim($registrant['org']) : $customerName),
-                'address-line-1' => !empty($registrant['address']) ? trim($registrant['address']) : 'Av. Central 100',
-                'city' => !empty($registrant['city']) ? trim($registrant['city']) : 'Mazatlán',
-                'state' => !empty($registrant['state']) ? trim($registrant['state']) : 'Sinaloa',
-                'country' => !empty($registrant['country']) ? strtoupper(trim($registrant['country'])) : 'MX',
-                'zipcode' => !empty($registrant['postalCode']) ? trim($registrant['postalCode']) : (!empty($registrant['zipcode']) ? trim($registrant['zipcode']) : '82000'),
-                'tel-no-cc' => !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : '52',
-                'tel-no' => !empty($registrant['phone']) ? preg_replace('/\D/', '', $registrant['phone']) : '6691000000',
+                'company' => !empty($companyName) ? $companyName : $customerName,
+                'address-line-1' => $regAddress,
+                'city' => $regCity,
+                'state' => $regState,
+                'country' => $regCountry,
+                'zipcode' => $regZip,
+                'tel-no-cc' => $regPhoneCc,
+                'tel-no' => $regPhone,
                 'lang-pref' => 'es'
             ];
 
@@ -179,18 +197,24 @@ try {
         } catch (Exception $e) {}
 
         if (empty($contactId)) {
-            $cName = !empty($customerName) ? $customerName : 'Registrante Banelio';
+            if (empty($customerName) || empty($customerEmail) || empty($regAddress) || empty($regCity) || empty($regCountry) || empty($regPhone)) {
+                send_json_response([
+                    'success' => false,
+                    'error' => 'Faltan datos de contacto válidos del registrante para crear el registro WHOIS en ResellerClub. No se permite el uso de información ficticia.'
+                ], 400);
+            }
+
             $contactParams = [
-                'name' => $cName,
-                'company' => !empty($registrant['company']) ? trim($registrant['company']) : (!empty($registrant['org']) ? trim($registrant['org']) : $cName),
+                'name' => $customerName,
+                'company' => !empty($companyName) ? $companyName : $customerName,
                 'email' => $customerEmail,
-                'address-line-1' => !empty($registrant['address']) ? trim($registrant['address']) : 'Av. Central 100',
-                'city' => !empty($registrant['city']) ? trim($registrant['city']) : 'Mazatlán',
-                'state' => !empty($registrant['state']) ? trim($registrant['state']) : 'Sinaloa',
-                'country' => !empty($registrant['country']) ? strtoupper(trim($registrant['country'])) : 'MX',
-                'zipcode' => !empty($registrant['postalCode']) ? trim($registrant['postalCode']) : (!empty($registrant['zipcode']) ? trim($registrant['zipcode']) : '82000'),
-                'tel-no-cc' => !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : '52',
-                'tel-no' => !empty($registrant['phone']) ? preg_replace('/\D/', '', $registrant['phone']) : '6691000000',
+                'address-line-1' => $regAddress,
+                'city' => $regCity,
+                'state' => !empty($regState) ? $regState : 'N/A',
+                'country' => $regCountry,
+                'zipcode' => !empty($regZip) ? $regZip : '00000',
+                'tel-no-cc' => $regPhoneCc,
+                'tel-no' => $regPhone,
                 'customer-id' => $customerId,
                 'type' => 'Contact'
             ];
@@ -245,6 +269,11 @@ try {
             ], 502);
         }
 
+        $rcStatus = is_array($resellerResponse) && isset($resellerResponse['status'])
+            ? trim($resellerResponse['status'])
+            : 'Success';
+        $isProvisioned = strtolower($rcStatus) === 'success' || strtolower($rcStatus) === 'active';
+
         send_json_response([
             'success' => true,
             'action' => 'register',
@@ -253,8 +282,11 @@ try {
             'customerId' => $customerId,
             'contactId' => $contactId,
             'years' => $years,
-            'status' => 'PROVISIONED',
-            'message' => "Dominio {$domainClean} registrado exitosamente en ResellerClub."
+            'status' => $isProvisioned ? 'PROVISIONED' : 'PENDING_REGISTRATION',
+            'providerStatus' => $rcStatus,
+            'message' => $isProvisioned
+                ? "Dominio {$domainClean} registrado exitosamente en ResellerClub."
+                : "Registro de {$domainClean} enviado al proveedor. Estado actual: {$rcStatus}."
         ], 200);
 
     } elseif ($action === 'transfer') {
@@ -300,8 +332,8 @@ try {
             'orderId' => $orderId,
             'customerId' => $customerId,
             'contactId' => $contactId,
-            'status' => 'PROVISIONED',
-            'message' => "Orden de transferencia para {$domainClean} iniciada exitosamente en ResellerClub."
+            'status' => 'TRANSFER_INITIATED',
+            'message' => "Orden de transferencia para {$domainClean} iniciada exitosamente en ResellerClub (ID: {$orderId}). En espera de confirmación y liberación por el registry."
         ], 200);
 
     } else {

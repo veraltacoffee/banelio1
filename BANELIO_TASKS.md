@@ -12,7 +12,7 @@
 - **FORBIDDEN FILES:** Todos los archivos de código de aplicación (`src/*`, `server/*`, `prisma/*`, `package.json`, etc.)
 - **DEPENDENCIES:** Ninguna
 - **VALIDATION:** Verificación de consistencia entre los 4 documentos, `lint_applet` (PASS), `compile_applet` (PASS).
-- **HANDOFF:** Los 4 archivos de contexto persistente quedan alineados, sin contradicciones y sincronizados con GitHub `main`.
+- **HANDOFF:** Los 4 archivos de contexto persistente quedan alineados y sin contradicciones.
 
 ---
 
@@ -48,9 +48,36 @@
 
 ---
 
+### TASK: SECURITY-PAYMENTS-PROVISIONING-HARDENING
+- **TASK ID:** SECURITY-PAYMENTS-PROVISIONING-HARDENING
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Security & Backend Architecture
+- **OBJECTIVE:** Corregir bloqueantes de seguridad en el puente PHP, validación de pagos y aprovisionamiento de dominios. Eliminar datos ficticios de contacto (Regla 7), garantizar semántica veraz de estados evitando marcar PROVISIONED en transferencias que solo han sido iniciadas (Regla 9), desplegar las 10 migraciones Prisma en la base local SQLite y validar suite de 11 tests automatizados.
+- **ALLOWED FILES:**
+  - `server/php/domains/provision.php`
+  - `server/php/domains/customer.php`
+  - `server/php/domains/contacts.php`
+  - `server/provisioning.ts`
+  - `server/payments-provisioning.test.ts`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+- **FORBIDDEN FILES:** `src/*` componentes visuales de UI
+- **DEPENDENCIES:** Prisma SQLite `dev.db`, ResellerClub PHP Bridge
+- **VALIDATION:**
+  - `npm test` ejecutando 11 tests con 100% PASS.
+  - `tsc --noEmit` limpio (0 errores).
+  - `compile_applet` exitoso.
+  - Validación de que ningún dato de contacto ficticio (`Av. Central 100`, `Mazatlán`, etc.) es inyectado.
+  - Validación de que órdenes de transferencia se registran como `PROVISIONING` y `TRANSFER_INITIATED`, nunca prematuramente como `PROVISIONED`.
+- **HANDOFF:** Sistema blindado y documentado verazmente.
+
+---
+
 ## IN PROGRESS
 
-*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado a la espera de autorización explícita para la siguiente tarea).*
+*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado en Google AI Studio a la espera de autorización explícita para la siguiente tarea).*
 
 ---
 

@@ -205,12 +205,6 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button onClick={() => setRole('ADMIN')} className="text-[#FCFCF8] font-bold hover:text-[#B8F23A] transition-colors flex items-center gap-1 cursor-pointer">
-                  <span>{t('footer_super_admin')}</span>
-                  <ArrowUpRight size={11} />
-                </button>
-              </li>
-              <li>
                 <button onClick={() => setRole('CUSTOMER')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer">
                   {t('footer_client_panel')}
                 </button>

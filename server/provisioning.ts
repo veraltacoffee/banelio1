@@ -23,6 +23,7 @@ export interface ProvisionDomainItemResult {
   action: 'register' | 'transfer';
   success: boolean;
   providerOrderId?: string;
+  status?: 'PROVISIONED' | 'TRANSFER_INITIATED' | 'FAILED' | 'PENDING';
   error?: string;
 }
 
@@ -169,20 +170,22 @@ export async function provisionPaidOrder(
       }
     }
 
-    // 3. Comprobar datos obligatorios del contacto/registrante
+    // 3. Comprobar datos obligatorios del contacto/registrante (sin inventar datos ficticios)
     const registrant = item.registrant && typeof item.registrant === 'object' ? item.registrant : null;
     const customer = order.customer;
 
     const contactName = registrant?.name || customer?.name || '';
     const contactEmail = registrant?.email || customer?.email || '';
-    const contactPhone = registrant?.phone || customer?.phone || '6691000000';
-    const contactAddress = registrant?.address || 'Av. Central 100';
-    const contactCity = registrant?.city || 'Mazatlán';
-    const contactCountry = registrant?.country || 'MX';
+    const contactPhone = registrant?.phone || customer?.phone || '';
+    const contactAddress = registrant?.address || '';
+    const contactCity = registrant?.city || '';
+    const contactCountry = registrant?.country || '';
+    const contactState = registrant?.state || '';
+    const contactPostalCode = registrant?.postalCode || registrant?.zipcode || '';
 
-    if (!contactName || !contactEmail) {
+    if (!contactName || !contactEmail || !contactPhone || !contactAddress || !contactCity || !contactCountry) {
       hasFailure = true;
-      firstFailureMessage = `Faltan datos obligatorios de contacto (nombre y email) para el registrante de ${domainName}.`;
+      firstFailureMessage = `Faltan datos obligatorios de contacto del registrante (nombre, correo, teléfono, dirección, ciudad o país) para aprovisionar ${domainName}. No se permite el uso de información ficticia.`;
       results.push({
         sku: item.sku,
         domain: domainName,
@@ -205,8 +208,8 @@ export async function provisionPaidOrder(
         address: contactAddress,
         city: contactCity,
         country: contactCountry,
-        state: registrant?.state || 'Sinaloa',
-        postalCode: registrant?.postalCode || '82000',
+        state: contactState,
+        postalCode: contactPostalCode,
         company: registrant?.org || registrant?.company || contactName
       }
     };
@@ -262,12 +265,17 @@ export async function provisionPaidOrder(
 
       // Éxito confirmado y verificable del proveedor
       const providerOrderId = String(bridgeData.orderId);
+      const isTransferAction = action === 'transfer';
+      const isItemProvisioned = !isTransferAction && (bridgeData.status === 'PROVISIONED' || String(bridgeData.status).toUpperCase() === 'SUCCESS');
+      const itemStatus = isItemProvisioned ? 'PROVISIONED' : (isTransferAction ? 'TRANSFER_INITIATED' : 'PENDING');
+
       results.push({
         sku: item.sku,
         domain: domainName,
         action,
         success: true,
-        providerOrderId
+        providerOrderId,
+        status: itemStatus
       });
 
       // Actualizar Entitlement asociado en Prisma
@@ -285,15 +293,17 @@ export async function provisionPaidOrder(
             await prisma.entitlement.update({
               where: { id: entitlement.id },
               data: {
-                status: 'PROVISIONED',
-                provisionedAt: new Date(),
+                status: isItemProvisioned ? 'PROVISIONED' : 'ACTIVATED',
+                activatedAt: entitlement.activatedAt || new Date(),
+                provisionedAt: isItemProvisioned ? new Date() : null,
                 config: {
                   ...((entitlement.config as any) || {}),
                   domain: domainName,
                   provider: 'resellerclub',
                   providerOrderId,
                   action,
-                  provisionedAt: new Date().toISOString()
+                  transferStatus: isTransferAction ? 'TRANSFER_INITIATED' : undefined,
+                  updatedAt: new Date().toISOString()
                 }
               }
             });
@@ -340,11 +350,17 @@ export async function provisionPaidOrder(
     };
   }
 
-  // Todos los dominios aprovisionados exitosamente
+  // Verificar si todas las líneas están completamente provisionadas o si hay transferencias en curso
+  const allProvisioned = results.length > 0 && results.every((r) => r.status === 'PROVISIONED');
+  const finalOrderStatus = allProvisioned ? 'PROVISIONED' : 'PROVISIONING';
+  const finalMessage = allProvisioned
+    ? 'Aprovisionamiento de dominios completado exitosamente con confirmación de ResellerClub.'
+    : 'Orden de transferencia iniciada exitosamente en el proveedor. En espera de confirmación y liberación por el registry.';
+
   await prisma.order.update({
     where: { id: orderId },
     data: {
-      provisionStatus: 'PROVISIONED',
+      provisionStatus: finalOrderStatus,
       failureReason: null
     }
   });
@@ -352,8 +368,8 @@ export async function provisionPaidOrder(
   return {
     success: true,
     orderId,
-    status: 'PROVISIONED',
-    message: 'Aprovisionamiento de dominios completado exitosamente con confirmación de ResellerClub.',
+    status: finalOrderStatus,
+    message: finalMessage,
     results
   };
 }

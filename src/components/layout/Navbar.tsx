@@ -241,7 +241,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   {language === 'en' ? 'Exit Panel' : 'Salir'}
                 </button>
               </div>
-            ) : role === 'RESELLER' ? (
+            ) : (
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-[#070707] bg-[#B8F23A] border border-[#B8F23A] px-3 py-1.5 rounded-xl">
                   {t('nav_affiliate_portal')}
@@ -252,19 +252,6 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   className="text-xs font-bold text-[#555A52] hover:text-[#070707] bg-[#F7F8F0] border border-[#8A8F98] px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
                 >
                   {language === 'en' ? 'Exit Portal' : 'Salir'}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-[#070707] bg-[#B8F23A] px-3 py-1.5 rounded-xl">
-                  {t('nav_admin_console')}
-                </span>
-                <button
-                  id="navbar-admin-logout-btn"
-                  onClick={() => setRole('PUBLIC')}
-                  className="text-xs font-bold text-[#555A52] hover:text-[#070707] bg-[#F7F8F0] border border-[#8A8F98] px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
-                >
-                  {language === 'en' ? 'Exit Admin' : 'Salir'}
                 </button>
               </div>
             )}
