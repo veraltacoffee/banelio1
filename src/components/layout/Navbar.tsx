@@ -28,11 +28,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
   const [isLangSelectorOpen, setIsLangSelectorOpen] = useState(false);
 
   const navItems = [
-    { route: '/dominios', label: t('nav_domains'), icon: <Globe size={16} /> },
-    { route: '/hosting', label: t('nav_hosting'), icon: <Server size={16} /> },
-    { route: '/email', label: t('nav_email'), icon: <Mail size={16} /> },
-    { route: '/ssl', label: t('nav_ssl'), icon: <Shield size={16} /> },
-    { route: '/blog', label: t('nav_blog'), icon: <BookOpen size={16} /> }
+    { route: '/dominios', label: t('nav_domains'), icon: <Globe size={16} /> }
   ];
 
   return (
@@ -290,24 +286,12 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               <span>{item.label}</span>
             </button>
           ))}
-          <div className="pt-3 border-t border-[#8A8F98] flex gap-2">
+          <div className="pt-3 border-t border-[#8A8F98]">
             <button
               onClick={() => { setRole('CUSTOMER'); setIsMobileMenuOpen(false); }}
-              className="flex-1 bg-[#B8F23A] text-[#070707] font-bold py-2.5 rounded-xl text-xs shadow-xs"
+              className="w-full bg-[#B8F23A] text-[#070707] font-bold py-2.5 rounded-xl text-xs shadow-xs"
             >
               {t('nav_customer_panel')}
-            </button>
-            <button
-              onClick={() => { setRole('RESELLER'); setIsMobileMenuOpen(false); }}
-              className="flex-1 bg-[#F7F8F0] text-[#070707] border border-[#8A8F98] font-bold py-2.5 rounded-xl text-xs"
-            >
-              {t('nav_affiliate_portal')}
-            </button>
-            <button
-              onClick={() => { setRole('ADMIN'); setIsMobileMenuOpen(false); }}
-              className="flex-1 bg-[#070707] text-white font-bold py-2.5 rounded-xl text-xs"
-            >
-              {t('nav_admin_console')}
             </button>
           </div>
         </div>

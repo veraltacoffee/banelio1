@@ -26,7 +26,6 @@ import {
   ChevronUp,
   Info
 } from 'lucide-react';
-import AddonConfigModal from './AddonConfigModal';
 
 export default function CartModal() {
   const {
@@ -62,17 +61,6 @@ export default function CartModal() {
   const [expandedRegistrantIds, setExpandedRegistrantIds] = useState<Record<string, boolean>>({});
   const [showSharedRegistrantForm, setShowSharedRegistrantForm] = useState<boolean>(false);
   const [transferErrors, setTransferErrors] = useState<Record<string, string>>({});
-
-  // Addon popup state
-  const [addonModalConfig, setAddonModalConfig] = useState<{
-    isOpen: boolean;
-    type: 'EMAIL' | 'HOSTING' | 'SSL' | 'BACKUP';
-    domain: string;
-  }>({
-    isOpen: false,
-    type: 'EMAIL',
-    domain: 'tudominio.com'
-  });
 
   if (!isCartOpen) return null;
 
@@ -593,107 +581,6 @@ export default function CartModal() {
                   })}
                 </div>
 
-                {/* ADD-ONS CROSS-SELL POPUP SECTION BEFORE CHECKOUT */}
-                <div className="p-4 bg-gradient-to-br from-[#F8F9F3] to-[#F7F8F0] rounded-2xl border border-[#8A8F98] space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={16} className="text-[#B8F23A]" />
-                      <h4 className="font-black text-xs uppercase tracking-wider text-[#070707]">
-                        {language === 'en' ? 'Power up your domain before checkout' : 'Potencia tu Dominio con Complementos'}
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#070707] bg-[#B8F23A] px-2 py-0.5 rounded-full border border-[#B8F23A]">
-                      1-Clic
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-[#555A52]">
-                    Agrega correo corporativo, hosting NVMe o certificados SSL vinculados a tu dominio con un solo clic.
-                  </p>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                    {/* Addon 1: Email */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAddonModalConfig({
-                          isOpen: true,
-                          type: 'EMAIL',
-                          domain: primaryDomainName
-                        })
-                      }
-                      className="p-2.5 bg-white hover:bg-[#F8F9F3] border border-[#8A8F98] hover:border-[#B8F23A] rounded-xl text-left transition-all cursor-pointer group shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <Mail size={16} className="text-[#B8F23A]" />
-                        <Plus size={12} className="text-[#858A82] group-hover:text-[#070707]" />
-                      </div>
-                      <span className="font-black text-xs text-[#070707] block leading-tight">Correo Pro</span>
-                      <span className="text-[10px] text-[#555A52]">{formatMoney(1.99, currency)}/m</span>
-                    </button>
-
-                    {/* Addon 2: Hosting NVMe */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAddonModalConfig({
-                          isOpen: true,
-                          type: 'HOSTING',
-                          domain: primaryDomainName
-                        })
-                      }
-                      className="p-2.5 bg-white hover:bg-[#F8F9F3] border border-[#8A8F98] hover:border-[#B8F23A] rounded-xl text-left transition-all cursor-pointer group shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <Server size={16} className="text-[#B8F23A]" />
-                        <Plus size={12} className="text-[#858A82] group-hover:text-[#070707]" />
-                      </div>
-                      <span className="font-black text-xs text-[#070707] block leading-tight">Hosting NVMe</span>
-                      <span className="text-[10px] text-[#555A52]">{formatMoney(3.99, currency)}/m</span>
-                    </button>
-
-                    {/* Addon 3: SSL Wildcard */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAddonModalConfig({
-                          isOpen: true,
-                          type: 'SSL',
-                          domain: primaryDomainName
-                        })
-                      }
-                      className="p-2.5 bg-white hover:bg-[#F8F9F3] border border-[#8A8F98] hover:border-[#B8F23A] rounded-xl text-left transition-all cursor-pointer group shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <Shield size={16} className="text-[#B8F23A]" />
-                        <Plus size={12} className="text-[#858A82] group-hover:text-[#070707]" />
-                      </div>
-                      <span className="font-black text-xs text-[#070707] block leading-tight">SSL Wildcard</span>
-                      <span className="text-[10px] text-[#555A52]">{formatMoney(9.99, currency)}/a</span>
-                    </button>
-
-                    {/* Addon 4: Backup Cloud */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAddonModalConfig({
-                          isOpen: true,
-                          type: 'BACKUP',
-                          domain: primaryDomainName
-                        })
-                      }
-                      className="p-2.5 bg-white hover:bg-[#F8F9F3] border border-[#8A8F98] hover:border-[#B8F23A] rounded-xl text-left transition-all cursor-pointer group shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <Database size={16} className="text-[#B8F23A]" />
-                        <Plus size={12} className="text-[#858A82] group-hover:text-[#070707]" />
-                      </div>
-                      <span className="font-black text-xs text-[#070707] block leading-tight">Cloud Backup</span>
-                      <span className="text-[10px] text-[#555A52]">{formatMoney(1.49, currency)}/m</span>
-                    </button>
-                  </div>
-                </div>
-
                 {/* Promo Code Input */}
                 <div className="pt-1">
                   {promoCode ? (
@@ -785,14 +672,6 @@ export default function CartModal() {
           )}
         </div>
       </div>
-
-      {/* ADDON CONFIGURATION POPUP MODAL */}
-      <AddonConfigModal
-        isOpen={addonModalConfig.isOpen}
-        onClose={() => setAddonModalConfig((prev) => ({ ...prev, isOpen: false }))}
-        addonType={addonModalConfig.type}
-        associatedDomain={addonModalConfig.domain}
-      />
     </div>
   );
 }

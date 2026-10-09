@@ -867,8 +867,13 @@ export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
  * márgenes internos ni reglas privadas del negocio.
  */
 export async function getActiveCatalog(prisma: PrismaClientType) {
+  // Retira temporalmente del catálogo comercial público servicios sin integración
+  // verificada de proveedor (hosting, correo, SSL). Conserva dominios activos verificados.
   const rows = await prisma.catalogItem.findMany({
-    where: { active: true },
+    where: {
+      active: true,
+      category: 'DOMAIN'
+    },
     orderBy: { sku: 'asc' }
   });
 

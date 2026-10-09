@@ -79,10 +79,10 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         
         {/* Adjusted Grid with balanced column distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
           
           {/* Brand Col */}
-          <div className="lg:col-span-2 space-y-3.5">
+          <div className="space-y-3.5">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onNavigate('/')}>
               <img
                 src="https://res.cloudinary.com/hxbmhqiq/image/upload/f_auto,q_auto/LOGO_BANELIO_wide_2"
@@ -158,61 +158,17 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                 </button>
               </li>
               <li>
+                <button onClick={() => setRole('CUSTOMER')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  {t('footer_client_panel')}
+                </button>
+              </li>
+              <li>
                 <span className="text-[#686D65]">{t('footer_whois_free')}</span>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Hosting & Cloud */}
-          <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px]">{t('footer_col_infra')}</h4>
-            <ul className="space-y-1.5">
-              <li>
-                <button onClick={() => onNavigate('/hosting')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  {t('footer_hosting_nvme')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('/email')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  {t('footer_pro_email')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('/ssl')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  {t('footer_ssl_certs')}
-                </button>
-              </li>
-              <li>
-                <span className="text-[#686D65]">{t('footer_litespeed')}</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Socios & Recursos */}
-          <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px]">{t('footer_col_platform')}</h4>
-            <ul className="space-y-1.5">
-              <li>
-                <button onClick={() => onNavigate('/blog')} className="text-[#FCFCF8] hover:text-[#B8F23A] transition-colors flex items-center gap-1 cursor-pointer">
-                  <span>BLOG</span>
-                  <ArrowUpRight size={11} className="text-[#B8F23A]" />
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('/afiliados')} className="text-[#B8F23A] font-bold hover:text-[#B8F23A] transition-colors flex items-center gap-1 cursor-pointer">
-                  <span>{t('footer_affiliates')}</span>
-                  <ArrowUpRight size={11} />
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setRole('CUSTOMER')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer">
-                  {t('footer_client_panel')}
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 5: Legal México (Complete compliance menu) */}
+          {/* Col 3: Legal México (Complete compliance menu) */}
           <div className="space-y-2.5">
             <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
               <Scale className="w-3 h-3 text-[#B8F23A]" />

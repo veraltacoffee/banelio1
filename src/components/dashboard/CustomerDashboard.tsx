@@ -1068,15 +1068,15 @@ export default function CustomerDashboard() {
                 </p>
                 <p className="text-xs text-[#555A52] max-w-md mx-auto">
                   {language === 'en'
-                    ? 'Contract cPanel Hosting, Corporate Titan Mailboxes, or Wildcard SSL certificates to see them here.'
-                    : 'Contrata planes de Hosting cPanel, correo corporativo Titan o certificados SSL para administrarlos desde este panel.'}
+                    ? 'Register your domains and manage DNS records, contacts and auth codes directly from this panel.'
+                    : 'Registra tus dominios y administra zonas DNS, contactos y códigos de transferencia directamente desde este panel.'}
                 </p>
                 <button
                   onClick={() => setRole('PUBLIC')}
                   className="px-5 py-2.5 bg-[#B8F23A] text-[#070707] font-black text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-2 mt-2"
                 >
                   <Plus size={14} />
-                  <span>{language === 'en' ? 'View Hosting Plans' : 'Ver Planes de Hosting'}</span>
+                  <span>{language === 'en' ? 'Search Domains' : 'Buscar Dominios'}</span>
                 </button>
               </div>
             ) : (

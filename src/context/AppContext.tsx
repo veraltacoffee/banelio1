@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   AuditLogEntry,
-  BlogPost,
   CartItem,
   Currency,
   DnsRecord,
@@ -29,7 +28,6 @@ import {
   INITIAL_TICKETS,
   INITIAL_TLDS
 } from '../data/mockData';
-import { INITIAL_BLOG_POSTS } from '../data/blogData';
 import { COUNTRY_TAX_RATES, CURRENCIES, calculateTldRetailPrice, convertCurrency, detectUserLocation } from '../utils/pricing';
 import { TRANSLATIONS, getTranslation } from '../utils/translations';
 import {
@@ -173,10 +171,6 @@ interface AppContextType {
   impersonatedCustomerName: string | null;
   startImpersonation: (customerName: string) => void;
   stopImpersonation: () => void;
-  blogPosts: BlogPost[];
-  addBlogPost: (post: Omit<BlogPost, 'id'>) => void;
-  updateBlogPost: (id: string, updates: Partial<BlogPost>) => void;
-  deleteBlogPost: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -307,17 +301,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     const saved = localStorage.getItem('gh_audit');
     return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
-  });
-
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => {
-    const saved = localStorage.getItem('banelio_blog_posts');
-    const catalogIds = new Set(INITIAL_BLOG_POSTS.map((p) => p.id));
-    const customPosts = saved ? JSON.parse(saved).filter((p) => !catalogIds.has(p.id)) : [];
-    const catalogPosts = INITIAL_BLOG_POSTS.filter((p) => {
-      const stored = saved ? JSON.parse(saved).find((s) => s.id === p.id) : undefined;
-      return stored ? { ...p, ...stored } : p;
-    });
-    return [...customPosts, ...catalogPosts];
   });
 
   // User Authentication States
@@ -737,43 +720,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('gh_audit', JSON.stringify(auditLogs));
   }, [auditLogs]);
-  useEffect(() => {
-    localStorage.setItem('banelio_blog_posts', JSON.stringify(blogPosts));
-  }, [blogPosts]);
-
-  // Blog CRUD methods
-  const addBlogPost = (post: Omit<BlogPost, 'id'>) => {
-    const id = `post-${Date.now()}`;
-    const newPost: BlogPost = { ...post, id };
-    setBlogPosts(prev => [newPost, ...prev]);
-    addAuditLog('CREATE_BLOG_POST', 'BLOG', `Se publicó el artículo: ${newPost.title}`, id);
-    addToast({
-      type: 'success',
-      title: 'Artículo Publicado',
-      message: `El post "${newPost.title}" ya está visible en el blog.`
-    });
-  };
-
-  const updateBlogPost = (id: string, updates: Partial<BlogPost>) => {
-    setBlogPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-    addAuditLog('UPDATE_BLOG_POST', 'BLOG', `Se actualizó el artículo ID: ${id}`, id);
-    addToast({
-      type: 'info',
-      title: 'Artículo Actualizado',
-      message: 'Los cambios se han guardado exitosamente.'
-    });
-  };
-
-  const deleteBlogPost = (id: string) => {
-    const postToDelete = blogPosts.find(p => p.id === id);
-    setBlogPosts(prev => prev.filter(p => p.id !== id));
-    addAuditLog('DELETE_BLOG_POST', 'BLOG', `Se eliminó el artículo: ${postToDelete?.title || id}`, id);
-    addToast({
-      type: 'warning',
-      title: 'Artículo Eliminado',
-      message: 'El artículo ha sido removido del blog.'
-    });
-  };
 
   // Toast Helpers
   const addToast = (toast: Omit<Toast, 'id'>) => {
@@ -1474,11 +1420,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         t: (key: keyof typeof TRANSLATIONS['es']) => getTranslation(language, key),
         impersonatedCustomerName,
         startImpersonation,
-        stopImpersonation,
-        blogPosts,
-        addBlogPost,
-        updateBlogPost,
-        deleteBlogPost
+        stopImpersonation
       }}
     >
       {children}
