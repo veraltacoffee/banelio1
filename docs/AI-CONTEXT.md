@@ -143,6 +143,12 @@ Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 4. **Bridge Oficial en IONOS:** El backend Node.js se comunica con la API de ResellerClub mediante scripts PHP protegidos alojados en `https://banelio.com/api/` para mantener credenciales y whitelists de IP seguras.
 
 ## Change history
+- **2026-10-09:**
+  - Corrección y blindaje de la migración `20261009004012_add_stripe_events_and_provisioning_operations` como estrictamente no destructiva, restaurando y preservando los modelos comerciales históricos en Prisma.
+  - Activación de costos mayoristas de transferencia (`providerTransferCostUSD`) en `pricingEngine.ts`, permitiendo precios reales y autoritativos en `/api/transfers/pricing` para dominios transferibles.
+  - Normalización en creación de pedidos (`server/orders.ts`) para resolver el costo de proveedor por TLD cuando se solicita una transferencia (`DOMAIN_TRANSFER`).
+  - Ampliación y validación de la suite de pruebas automatizadas a 23/23 tests pasando (`npm test`), verificación de tipos limpia (`tsc --noEmit`) y compilación exitosa (`npm run build`).
+
 - **2026-10-08:**
   - Depuración y consolidación profunda del repositorio en la rama `cleanup/banelio-resellerclub`.
   - Eliminación de dependencias no utilizadas (`@google/genai`).

@@ -518,7 +518,7 @@ export function convertUsdToLocal(
  * `providerCostKnown` is explicitly set to false and marked as pending configuration.
  */
 export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
-  // DOMAINS - Registration
+  // DOMAINS - Registration & Transfer
   'tld-com': {
     sku: 'tld-com',
     productName: '.com',
@@ -526,6 +526,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 9.80,
     providerRenewalCostUSD: 10.20,
+    providerTransferCostUSD: 9.80,
     providerCostKnown: true,
     internalSource: 'wholesale-contract-2026',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -538,6 +539,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 11.20,
     providerRenewalCostUSD: 11.80,
+    providerTransferCostUSD: 11.20,
     providerCostKnown: true,
     internalSource: 'wholesale-contract-2026',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -550,6 +552,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 10.50,
     providerRenewalCostUSD: 11.00,
+    providerTransferCostUSD: 10.50,
     providerCostKnown: true,
     internalSource: 'wholesale-contract-2026',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -562,6 +565,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 18.50,
     providerRenewalCostUSD: 19.00,
+    providerTransferCostUSD: 18.50,
     providerCostKnown: true,
     internalSource: 'nic-mx-partner',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -574,6 +578,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 14.00,
     providerRenewalCostUSD: 14.50,
+    providerTransferCostUSD: 14.00,
     providerCostKnown: true,
     internalSource: 'nic-mx-partner',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -586,6 +591,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 65.00,
     providerRenewalCostUSD: 65.00,
+    providerTransferCostUSD: 65.00,
     providerCostKnown: true,
     internalSource: 'wholesale-contract-2026',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -598,6 +604,7 @@ export const INITIAL_PROVIDER_COSTS: Record<string, ProviderCost> = {
     operation: 'REGISTRATION',
     providerCostUSD: 34.00,
     providerRenewalCostUSD: 36.00,
+    providerTransferCostUSD: 34.00,
     providerCostKnown: true,
     internalSource: 'wholesale-contract-2026',
     updatedAt: '2026-09-25T00:00:00Z',
@@ -1017,9 +1024,9 @@ export function getProductPriceResult(
 
   const costUSD =
     operation === 'RENEWAL'
-      ? cost.providerRenewalCostUSD
+      ? (cost.providerRenewalCostUSD ?? cost.providerCostUSD)
       : operation === 'TRANSFER'
-        ? cost.providerTransferCostUSD
+        ? (cost.providerTransferCostUSD ?? cost.providerRenewalCostUSD ?? cost.providerCostUSD)
         : cost.providerCostUSD;
 
   if (

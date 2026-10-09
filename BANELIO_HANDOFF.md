@@ -22,25 +22,25 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Backend:** Node.js v22, Express 4, Prisma ORM 6.19.3 con SQLite (`prisma/dev.db`), 11 migraciones aplicadas.
 - **Autenticación Puente PHP:** Firma HMAC-SHA256 con ventana de 300s (`PHP_BRIDGE_SECRET`), validación estricta y protección en todos los endpoints de ResellerClub.
 - **Deduplicación Webhooks:** Tabla persistente `StripeWebhookEvent` (`RECEIVED`, `PROCESSING`, `PROCESSED`, `FAILED`), protección atómica contra entregas simultáneas.
-- **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas y recuperación multi-dominio.
+- **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
+- **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 20 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS, `compile_applet` exitoso, `lint_applet` limpio (0 errores).
+- **Pruebas y Validación:** 23 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS (23/23), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
-- El proyecto se encuentra estabilizado en Google AI Studio a la espera de la siguiente tarea explícitamente autorizada.
+- El proyecto se encuentra completamente validado y estabilizado a la espera de credenciales de producción para pruebas end-to-end con ResellerClub.
 
 ## 5. Tareas del sistema
-- **ÚLTIMA TAREA COMPLETADA:** `FINAL-SECURITY-PAYMENTS-PROVISIONING-IMPLEMENTATION` (Status: `COMPLETED`).
+- **ÚLTIMA TAREA COMPLETADA:** `MASTER-VALIDATION-DOMAINS-DELIVERY` (Status: `COMPLETED`).
 - **TAREAS PENDIENTES:** Pruebas de integración de extremo a extremo con credenciales reales de ResellerClub en IONOS.
 
 ## 6. Último trabajo realizado
-- Implementación de firma HMAC-SHA256 entre Node.js y el puente PHP (`server/phpBridgeAuth.ts`, `server/php/reseller/config.php`).
-- Eliminación total de datos ficticios y fallbacks ('6691000000', '1', '52', 'N/A', '00000') en backend TS y PHP.
-- Migración `20261009004012_add_stripe_events_and_provisioning_operations` creada y aplicada.
-- Deduplicación persistente de Stripe con atomic claiming y recuperación segura.
-- Aprovisionamiento idempotente con manejo de `UNCERTAIN` ante timeout de red y control de acceso estricto a órdenes sin `customerId`.
-- Suite ampliada y validada: 20 de 20 tests aprobados al 100%.
+- Migración `20261009004012_add_stripe_events_and_provisioning_operations` corregida como no destructiva, restaurando y preservando los modelos comerciales históricos en Prisma sin pérdida de datos.
+- Configuración de costos mayoristas de transferencia (`providerTransferCostUSD`) en `pricingEngine.ts` y activación del endpoint `/api/transfers/pricing`.
+- Resolución de SKUs en creación de pedidos (`server/orders.ts`) para soportar transferencias de dominio (`DOMAIN_TRANSFER` -> TLD) con protección de márgenes.
+- Ampliación de la suite de pruebas con 3 nuevos escenarios (21: reintento de aprovisionamiento, 22: validación y sanitización de transferencias/EPP, 23: creación autoritativa de pedidos e impuestos).
+- Suite automatizada ampliada y validada: 23 de 23 tests aprobados al 100%.
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.

@@ -12,7 +12,8 @@ import {
   markStripeWebhookEventFailed
 } from './payments';
 import { provisionPaidOrder, retryProvisionOrder } from './provisioning';
-import { authorizeOrderAccess } from './orders';
+import { authorizeOrderAccess, createOrder, toPublicOrder, OrderValidationError } from './orders';
+import { seedCatalog } from './catalog';
 import { buildBridgeAuthHeaders, verifyBridgeAuth } from './phpBridgeAuth';
 import { prisma } from './db';
 
@@ -921,3 +922,201 @@ test('20. Hosting, correo y SSL sin integración real: no se marcan como aprovis
     await prisma.order.delete({ where: { id: created.id } });
   }
 });
+
+// ============================================================================
+// 21. Reintento de aprovisionamiento tras fallo: recupera orden y procesa exitosamente
+// ============================================================================
+test('21. Reintento de aprovisionamiento tras fallo: recupera orden y procesa exitosamente', async () => {
+  const retryOrderId = 'ord_retry_test_' + Date.now();
+  const domainName = 'banelio-retry-test.com';
+
+  const orderData = {
+    id: retryOrderId,
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'FAILED',
+    failureReason: 'Error transitorio previo de conexión.',
+    currency: 'USD',
+    subtotal: 12.0,
+    tax: 0,
+    total: 12.0,
+    items: [
+      {
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: domainName,
+        registrant: {
+          name: 'Cliente Reintento',
+          email: 'retry@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Av. Reforma 100',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          zipcode: '06600'
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: orderData as any });
+
+  try {
+    let bridgeCalled = false;
+    const result = await retryProvisionOrder(retryOrderId, {
+      bridgeFetch: async () => {
+        bridgeCalled = true;
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'register',
+            domain: domainName,
+            orderId: 'RC_ORDER_RETRY_123',
+            status: 'SUCCESS'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.status, 'PROVISIONED');
+    assert.equal(bridgeCalled, true);
+
+    const updatedOrder = await prisma.order.findUnique({ where: { id: retryOrderId } });
+    assert.equal(updatedOrder?.provisionStatus, 'PROVISIONED');
+    assert.equal(updatedOrder?.failureReason, null);
+
+    const op = await prisma.provisioningOperation.findUnique({
+      where: { operationKey: `${retryOrderId}:domain-com:${domainName}` }
+    });
+    assert.equal(op?.status, 'CONFIRMED');
+    assert.equal(op?.providerOrderId, 'RC_ORDER_RETRY_123');
+  } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId: retryOrderId } });
+    await prisma.order.delete({ where: { id: retryOrderId } });
+  }
+});
+
+// ============================================================================
+// 22. Validación de transferencia: exige Auth/EPP Code y no lo expone en la orden pública
+// ============================================================================
+test('22. Validación de transferencia: exige Auth/EPP Code y no lo expone en la orden pública', async () => {
+  await seedCatalog(prisma);
+
+  // 22a. Sin código EPP debe arrojar error de validación
+  await assert.rejects(
+    async () => {
+      await createOrder({
+        items: [
+          {
+            sku: 'DOMAIN_TRANSFER',
+            domain: 'transfer-no-epp.com',
+            isTransfer: true
+            // sin eppCode
+          }
+        ]
+      });
+    },
+    (err: any) => {
+      assert.ok(err instanceof OrderValidationError);
+      assert.equal(err.status, 400);
+      assert.match(err.message, /Auth\/EPP es obligatorio/i);
+      return true;
+    }
+  );
+
+  // 22b. Con código EPP inválido (< 6 caracteres)
+  await assert.rejects(
+    async () => {
+      await createOrder({
+        items: [
+          {
+            sku: 'DOMAIN_TRANSFER',
+            domain: 'transfer-short-epp.com',
+            isTransfer: true,
+            eppCode: '123'
+          }
+        ]
+      });
+    },
+    (err: any) => {
+      assert.ok(err instanceof OrderValidationError);
+      assert.equal(err.status, 400);
+      assert.match(err.message, /entre 6 y 32 caracteres/i);
+      return true;
+    }
+  );
+
+  // 22c. Con código EPP válido: se crea y se sanitiza en toPublicOrder (hasEppCode: true sin filtrar el texto plano)
+  const validTransferOrder = await createOrder({
+    countryCode: 'MX',
+    items: [
+      {
+        sku: 'DOMAIN_TRANSFER',
+        domain: 'transfer-valid-epp.com',
+        isTransfer: true,
+        eppCode: 'SecretAuthCode123!'
+      }
+    ]
+  });
+
+  try {
+    assert.ok(validTransferOrder.order.id);
+    const publicItem = validTransferOrder.order.items[0];
+    assert.equal(publicItem.hasEppCode, true);
+    assert.equal(publicItem.eppCode, undefined, 'El código EPP no debe exponerse en texto plano en la orden pública');
+
+    // Comprobar que en la base de datos el valor completo sí fue almacenado de forma segura
+    const stored = await prisma.order.findUnique({ where: { id: validTransferOrder.order.id } });
+    const storedItems = stored?.items as any[];
+    assert.equal(storedItems[0].eppCode, 'SecretAuthCode123!');
+  } finally {
+    await prisma.order.delete({ where: { id: validTransferOrder.order.id } });
+  }
+});
+
+// ============================================================================
+// 23. Creación server-authoritative de orden: precios e impuestos calculados en backend
+// ============================================================================
+test('23. Creación server-authoritative de orden: precios e impuestos calculados en backend', async () => {
+  const result = await createOrder({
+    countryCode: 'MX',
+    items: [
+      {
+        sku: 'domain-com',
+        quantity: 1,
+        periodYearsOrMonths: 1,
+        periodUnit: 'year'
+      }
+    ],
+    customer: {
+      registrant: {
+        country: 'MX'
+      }
+    }
+  });
+
+  try {
+    const { order } = result;
+    assert.ok(order.id);
+    assert.equal(order.status, 'CREATED');
+    assert.equal(order.paymentStatus, 'PENDING_PAYMENT');
+    assert.equal(order.currency, 'USD');
+
+    // El catálogo tiene domain-com (precio retail authoritativo)
+    const catalogItem = await prisma.catalogItem.findUnique({ where: { sku: 'domain-com' } });
+    const expectedSubtotal = Number(catalogItem?.price);
+    assert.equal(order.subtotal, expectedSubtotal);
+
+    // Impuesto México (16% IVA)
+    const expectedTax = Math.round(expectedSubtotal * 0.16 * 100) / 100;
+    assert.equal(order.tax, expectedTax);
+    assert.equal(order.total, Math.round((expectedSubtotal + expectedTax) * 100) / 100);
+  } finally {
+    await prisma.order.delete({ where: { id: result.order.id } });
+  }
+});
+

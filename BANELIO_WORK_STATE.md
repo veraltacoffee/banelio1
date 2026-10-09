@@ -1,26 +1,26 @@
 # BANELIO WORK STATE
 
 ## FECHA DE ACTUALIZACIÓN
-2026-10-08
+2026-10-09
 
 ## RAMA
 `main` en el repositorio GitHub `veraltacoffee/banelio1`.
 
 ## ESTADO DE SINCRONIZACIÓN
-Implementación final y verificación completa de los 5 bloqueantes de seguridad, pagos y aprovisionamiento:
-1. Bloqueante A: Autenticación HMAC-SHA256 servidor a servidor entre el backend Node.js y el puente PHP en IONOS (`PHP_BRIDGE_SECRET`, ventana de 300s, `timingSafeEqual`/`hash_equals`, aplicado en `provision.php`, `customer.php`, `contacts.php`, `my-domains.php` y `test-connection.php`).
-2. Bloqueante B: Eliminación total de valores ficticios y fallbacks predeterminados (eliminación de prefijos telefónicos hardcoded como '1' o '52', teléfonos como '6691000000', 'N/A' y '00000'; exigencia de datos completos auténticos del registrante en TS y PHP).
-3. Bloqueante C: Deduplicación persistente de eventos de Stripe mediante nuevo modelo Prisma `StripeWebhookEvent` (`eventId` único, estados `RECEIVED`, `PROCESSING`, `PROCESSED`, `FAILED`, manejo atómico de concurrencia y separación del aprovisionamiento).
-4. Bloqueante D: Aprovisionamiento idempotente y recuperable mediante modelo Prisma `ProvisioningOperation` (clave única estable `${orderId}:${sku}:${domain}`, estados `PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`, protección contra concurrencia, prevención de reenvíos a ciegas, aislamiento en órdenes multi-dominio, y control estricto de autorización en órdenes con y sin `customerId`).
-5. Bloqueante E: Seguridad y validación autoritativa en pasarelas de pago (OXXO MXN, Stripe Card USD, PayPal server-side capture) y servicios complementarios honestos sin activación automática falsa.
+Finalización, validación y entrega completa de los flujos comerciales de dominios, pagos, transferencias y aprovisionamiento:
+1. Base de datos y Migraciones: Migración `20261009004012_add_stripe_events_and_provisioning_operations` corregida y blindada como estrictamente no destructiva, preservando los modelos comerciales históricos (`PricingProfile`, `ProviderCostRecord`, etc.) en `prisma/schema.prisma` y `prisma/dev.db`. Todas las 11 migraciones están aplicadas y `prisma migrate status` confirma el esquema al día.
+2. Transferencias de Dominios: Costos mayoristas de transferencia (`providerTransferCostUSD`) activados en el motor de precios, habilitando cotizaciones y precios reales en `/api/transfers/pricing`. Validación estricta de códigos Auth/EPP (6-32 caracteres) y sanitización en respuestas públicas sin exponer claves en texto plano.
+3. Pagos y Pedidos: Validación autoritativa de órdenes con cálculo server-side de impuestos y totales, resolución inteligente de SKUs por TLD en transferencias (`DOMAIN_TRANSFER`), deduplicación persistente de webhooks (`StripeWebhookEvent`) y control de acceso estricto a órdenes.
+4. Aprovisionamiento e Idempotencia: Aprovisionamiento seguro con registro por operación (`ProvisioningOperation`), prevención de reenvíos a ciegas (`UNCERTAIN`), reintentos controlados (`retryProvisionOrder`) y aislamiento multi-dominio.
+5. Autenticación Puente PHP: Firma canónica HMAC-SHA256 entre Node.js y el puente PHP IONOS sin valores ficticios ni credenciales hardcodeadas.
 
 ## ESTADO GENERAL
 ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
-- Suite de pruebas obligatorias: 20 tests en `server/payments-provisioning.test.ts` con 100% PASS.
-- Base de datos: 11 migraciones Prisma aplicadas en SQLite (`prisma/dev.db`) sin alteración de datos existentes.
+- Suite de pruebas automatizadas: 23 tests en `server/payments-provisioning.test.ts` con 100% PASS (23/23).
+- Base de datos: 11 migraciones Prisma aplicadas en SQLite (`prisma/dev.db`) con cero advertencias de pérdida de datos.
 - Typescript & Lint: `tsc --noEmit` limpio con 0 errores.
 - Build: compilación de producción Vite + esbuild exitosa.
-- Cero fugas de secretos: variables de entorno documentadas por nombre en `.env.example`, sin credenciales en frontend ni logs.
+- Cero fugas de secretos: variables de entorno documentadas en `.env.example`, sin credenciales en frontend ni logs.
 
 ## ARQUITECTURA RESUMIDA
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide React, Vite SPA integrado en `server.ts`.

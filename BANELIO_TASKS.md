@@ -91,6 +91,38 @@
 
 ---
 
+### TASK: MASTER-VALIDATION-DOMAINS-DELIVERY
+- **TASK ID:** MASTER-VALIDATION-DOMAINS-DELIVERY
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** AI Studio System & Backend Engineer
+- **OBJECTIVE:** Finalización, validación obligatoria y entrega de los flujos de dominios:
+  1. Base de datos: Corrección no destructiva de la migración `20261009004012_add_stripe_events_and_provisioning_operations`, restauración de modelos históricos en `prisma/schema.prisma` y validación con `npx prisma migrate status`.
+  2. Precios y transferencias: Activación de `providerTransferCostUSD` en `pricingEngine.ts`, normalización de transferencias por TLD (`DOMAIN_TRANSFER`), verificación del endpoint `/api/transfers/pricing`.
+  3. Pedidos y pagos: Validación de Auth/EPP Code y cálculo de impuestos y totales server-authoritative.
+  4. Pruebas: Ampliación a 23 escenarios de prueba automatizada en `server/payments-provisioning.test.ts` con 100% de éxito.
+- **ALLOWED FILES:**
+  - `prisma/migrations/20261009004012_add_stripe_events_and_provisioning_operations/migration.sql`
+  - `prisma/schema.prisma`
+  - `server/orders.ts`
+  - `server/payments-provisioning.test.ts`
+  - `src/services/pricingEngine.ts`
+  - `CLAUDE_HANDOFF.md`
+  - `docs/AI-CONTEXT.md`
+  - `BANELIO_HANDOFF.md`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+- **DEPENDENCIES:** Prisma SQLite `dev.db`, ResellerClub PHP Bridge, Stripe Webhooks
+- **VALIDATION:**
+  - `npm test` ejecutando 23/23 tests automatizados con 100% PASS.
+  - `npm run lint` (`tsc --noEmit`) con 0 errores.
+  - `npm run build` exitoso (Vite + esbuild).
+  - `npx prisma migrate status`: Database schema is up to date (11 migraciones aplicadas).
+  - `/api/transfers/pricing` configurado y retornando precios reales.
+- **HANDOFF:** Flujos de dominios, pagos, transferencias y aprovisionamiento finalizados, validados y documentados para Claude o herramientas posteriores.
+
+---
+
 ## IN PROGRESS
 
 *(Ninguna tarea en ejecución. El sistema se encuentra estabilizado en Google AI Studio a la espera de autorización explícita para la siguiente tarea).*

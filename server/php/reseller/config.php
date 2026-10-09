@@ -144,12 +144,20 @@ function get_resellerclub_config() {
 
     // Extraer de constantes o variables de entorno
     $resellerId = defined('RESELLERCLUB_RESELLER_ID') ? RESELLERCLUB_RESELLER_ID : (
-        defined('RESELLER_ID') ? RESELLER_ID : (
-            getenv('RESELLERCLUB_RESELLER_ID') ?: (
-                getenv('RESELLER_ID') ?: (
-                    isset($_ENV['RESELLERCLUB_RESELLER_ID']) ? $_ENV['RESELLERCLUB_RESELLER_ID'] : (
-                        isset($GLOBALS['resellerId']) ? $GLOBALS['resellerId'] : (
-                            isset($GLOBALS['authUserId']) ? $GLOBALS['authUserId'] : ''
+        defined('RESELLERCLUB_AUTH_USER_ID') ? RESELLERCLUB_AUTH_USER_ID : (
+            defined('RESELLER_ID') ? RESELLER_ID : (
+                getenv('RESELLERCLUB_RESELLER_ID') ?: (
+                    getenv('RESELLERCLUB_AUTH_USER_ID') ?: (
+                        getenv('RESELLER_ID') ?: (
+                            getenv('RESELLERCLUB_REST_USER_ID') ?: (
+                                isset($_ENV['RESELLERCLUB_RESELLER_ID']) ? $_ENV['RESELLERCLUB_RESELLER_ID'] : (
+                                    isset($_ENV['RESELLERCLUB_AUTH_USER_ID']) ? $_ENV['RESELLERCLUB_AUTH_USER_ID'] : (
+                                        isset($GLOBALS['resellerId']) ? $GLOBALS['resellerId'] : (
+                                            isset($GLOBALS['authUserId']) ? $GLOBALS['authUserId'] : ''
+                                        )
+                                    )
+                                )
+                            )
                         )
                     )
                 )

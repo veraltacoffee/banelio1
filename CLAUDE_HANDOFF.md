@@ -9,11 +9,13 @@ Este documento describe el estado exacto, la arquitectura, los cambios realizado
 - **Objetivo Central:** Comercialización y gestión de nombres de dominio (búsqueda, disponibilidad en tiempo real, registro, transferencia con código EPP/Auth, checkout seguro, panel de cliente y aprovisionamiento vía ResellerClub).
 - **Estado Técnico:**
   - Base de código limpia, modular y sin código muerto ni mocks en el flujo de dominios.
-  - Retirados temporalmente de la UI y del catálogo comercial: hosting, correo, SSL, soluciones bundle, afiliados, blog y consola administrativa no funcional (preservando los modelos de datos y migraciones para futuras fases).
-  - 20/20 pruebas de seguridad, pagos y aprovisionamiento aprobadas (`npm test`).
+  - Retirados temporalmente de la UI y del catálogo comercial: hosting, correo, SSL, soluciones bundle, afiliados, blog y consola administrativa no funcional (preservando íntegramente los modelos de datos y migraciones para futuras fases).
+  - 23/23 pruebas de seguridad, pagos, transferencias y aprovisionamiento aprobadas (`npm test`).
   - Cero errores de tipado TypeScript (`tsc --noEmit`).
   - Compilación de producción exitosa (Vite + esbuild CJS bundle).
-- **Rama Git:** `cleanup/resellerclub-core`
+  - Migración `20261009004012_add_stripe_events_and_provisioning_operations` corregida como no destructiva, preservando modelos comerciales históricos (`PricingProfile`, `ProviderCostRecord`, `ProductPriceVersion`, `SolutionDefinition`, `SolutionComponent`, `CommercialOffer`, `FxProtectionConfig`) y `solutionId` en `Entitlement`.
+  - Precios de transferencias configurados y activos en `/api/transfers/pricing` con costos de proveedor reales.
+- **Rama Git:** `main`
 
 ---
 

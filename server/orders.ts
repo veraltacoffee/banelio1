@@ -337,7 +337,10 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     ) / 100;
 
     // Rastrear costo interno del proveedor para proteger piso de margen mínimo
-    const priceResult = getProductPriceResult(sku, 'USD', undefined, {
+    const pricingSku = (sku === 'DOMAIN_TRANSFER' && domainName && domainName.includes('.'))
+      ? `domain-${domainName.split('.').slice(1).join('.').replace(/\./g, '-')}`
+      : sku;
+    const priceResult = getProductPriceResult(pricingSku, 'USD', undefined, {
       operation: isDomainTransfer ? 'TRANSFER' : undefined
     });
 
@@ -389,7 +392,8 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
   const discount = Math.min(requestedDiscount, maxAllowedDiscount, subtotal);
 
   // ---- Tax rate server-side (Subfase 3) ----
-  const countryCode = normalizeCountryCode(input.countryCode);
+  const rawCountry = input.countryCode || input.customer?.registrant?.country || (input.customer as any)?.country;
+  const countryCode = normalizeCountryCode(rawCountry);
   if (!countryCode) {
     throw new OrderValidationError(400, 'Código de país inválido. Usa ISO 3166-1 alpha-2.');
   }
