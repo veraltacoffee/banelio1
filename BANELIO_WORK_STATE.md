@@ -73,8 +73,8 @@ NINGUNA.
 `NONE`
 
 ## VALIDACIONES TÉCNICAS
-- `npm test` (20/20 tests PASS, 100% de éxito).
+- `npm test` (23/23 tests PASS, 100% de éxito).
 - `compile_applet`: PASS.
 - `lint_applet` (`tsc --noEmit`): PASS (0 errores).
 - `npm run build`: PASS (Vite + esbuild exitoso).
-- Base de datos Prisma: 11 migraciones aplicadas correctamente.
+- Base de datos Prisma: 11 migraciones aplicadas correctamente en SQLite (`prisma/dev.db`).
