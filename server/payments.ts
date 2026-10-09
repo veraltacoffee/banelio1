@@ -144,6 +144,159 @@ export function parseStripeWebhookEvent(
 }
 
 // ---------------------------------------------------------------------------
+// Validación estricta y autoritativa de PaymentIntent y orden (Stripe & OXXO)
+// ---------------------------------------------------------------------------
+
+export interface PaymentMetadata {
+  _paymentMetadata: boolean;
+  method: 'OXXO_PAY' | 'STRIPE_CARD' | 'PAYPAL';
+  paymentIntentId: string;
+  expectedAmountCents: number;
+  expectedCurrency: string;
+  fxRate?: number;
+  orderTotalUSD: number;
+  createdAt: string;
+}
+
+export function getOrderPaymentMetadata(order: any): PaymentMetadata | null {
+  if (!order || !Array.isArray(order.items)) return null;
+  const found = order.items.find(
+    (item: any) => item && typeof item === 'object' && item._paymentMetadata === true
+  );
+  return found ? (found as PaymentMetadata) : null;
+}
+
+const processedStripeEvents = new Set<string>();
+const MAX_PROCESSED_EVENTS = 5000;
+
+export function isStripeEventProcessed(eventId: string): boolean {
+  if (!eventId || typeof eventId !== 'string') return false;
+  return processedStripeEvents.has(eventId);
+}
+
+export function markStripeEventProcessed(eventId: string): void {
+  if (!eventId || typeof eventId !== 'string') return;
+  if (processedStripeEvents.size >= MAX_PROCESSED_EVENTS) {
+    const first = processedStripeEvents.values().next().value;
+    if (first) processedStripeEvents.delete(first);
+  }
+  processedStripeEvents.add(eventId);
+}
+
+export function clearProcessedStripeEvents(): void {
+  processedStripeEvents.clear();
+}
+
+/**
+ * Valida un PaymentIntent recibido por webhook contra los datos reales de la orden en Prisma.
+ * - Para OXXO Pay: la moneda debe ser 'mxn' y el importe debe coincidir con el voucher MXN esperado.
+ * - Para Tarjeta: la moneda debe ser 'usd' (o la moneda de la orden) y el importe debe coincidir con el total USD.
+ * - Evita confirmar pagos con datos ausentes, corruptos o inconsistentes.
+ */
+export function validateStripePaymentIntentForOrder(
+  order: any,
+  dataObject: any
+): { valid: boolean; error?: string; expectedAmountCents?: number; expectedCurrency?: string } {
+  if (!order) {
+    return { valid: false, error: 'Orden no proporcionada para validación.' };
+  }
+  if (!dataObject || typeof dataObject !== 'object') {
+    return { valid: false, error: 'Objeto de pago no válido en el evento.' };
+  }
+
+  const piId = String(dataObject.id || '').trim();
+  if (!piId || !piId.startsWith('pi_')) {
+    return { valid: false, error: 'ID de PaymentIntent no válido o ausente.' };
+  }
+
+  if (order.gatewayReference && order.gatewayReference !== piId) {
+    return {
+      valid: false,
+      error: `La referencia del PaymentIntent (${piId}) no coincide con la orden (${order.gatewayReference}).`
+    };
+  }
+
+  const status = String(dataObject.status || '').toLowerCase();
+  if (status !== 'succeeded') {
+    return {
+      valid: false,
+      error: `El estado del PaymentIntent no es exitoso (recibido: ${status || 'desconocido'}).`
+    };
+  }
+
+  const receivedAmountCents = Number(dataObject.amount_received ?? dataObject.amount ?? NaN);
+  const receivedCurrency = String(dataObject.currency || '').toLowerCase();
+
+  if (!Number.isFinite(receivedAmountCents) || receivedAmountCents <= 0) {
+    return { valid: false, error: 'Importe cobrado ausente o no válido en el evento.' };
+  }
+  if (!receivedCurrency) {
+    return { valid: false, error: 'Moneda cobrada ausente en el evento.' };
+  }
+
+  const paymentMeta = getOrderPaymentMetadata(order);
+  const isOxxo =
+    order.paymentMethod === 'OXXO_PAY' ||
+    paymentMeta?.method === 'OXXO_PAY' ||
+    receivedCurrency === 'mxn';
+
+  if (isOxxo) {
+    // Para OXXO, la moneda obligatoria y autoritativa es MXN
+    if (receivedCurrency !== 'mxn') {
+      return {
+        valid: false,
+        error: `Moneda inconsistente para pago OXXO: esperado=mxn, recibido=${receivedCurrency}.`
+      };
+    }
+
+    if (!paymentMeta || paymentMeta.expectedCurrency.toLowerCase() !== 'mxn' || !paymentMeta.expectedAmountCents) {
+      return {
+        valid: false,
+        error: 'Referencia de importe OXXO MXN esperado ausente o inconsistente en el registro de la orden.'
+      };
+    }
+
+    const expectedAmountCents = paymentMeta.expectedAmountCents;
+    const expectedCurrency = 'mxn';
+
+    if (receivedAmountCents !== expectedAmountCents) {
+      return {
+        valid: false,
+        error: `El importe cobrado en OXXO no coincide con el voucher esperado: esperado=${expectedAmountCents} mxn, recibido=${receivedAmountCents} mxn.`,
+        expectedAmountCents,
+        expectedCurrency
+      };
+    }
+
+    return { valid: true, expectedAmountCents, expectedCurrency };
+  }
+
+  // Tarjeta (moneda base de la orden, por defecto USD)
+  const expectedCurrency = String(paymentMeta?.expectedCurrency || order.currency || 'usd').toLowerCase();
+  const expectedAmountCents = paymentMeta?.expectedAmountCents ?? Math.round(Number(order.total) * 100);
+
+  if (receivedCurrency !== expectedCurrency) {
+    return {
+      valid: false,
+      error: `Moneda inconsistente: esperado=${expectedCurrency}, recibido=${receivedCurrency}.`,
+      expectedAmountCents,
+      expectedCurrency
+    };
+  }
+
+  if (receivedAmountCents !== expectedAmountCents) {
+    return {
+      valid: false,
+      error: `Importe cobrado no coincide con la orden: esperado=${expectedAmountCents} ${expectedCurrency}, recibido=${receivedAmountCents} ${receivedCurrency}.`,
+      expectedAmountCents,
+      expectedCurrency
+    };
+  }
+
+  return { valid: true, expectedAmountCents, expectedCurrency };
+}
+
+// ---------------------------------------------------------------------------
 // Stripe: PaymentIntent (tarjeta) y OXXO Pay
 // ---------------------------------------------------------------------------
 

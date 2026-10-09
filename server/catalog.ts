@@ -125,6 +125,8 @@ function buildDomainItems(): CatalogItemDef[] {
   return TLD_CONFIGS.map((c) => {
     const sku = `domain-${c.tld}`;
     const pricing = getProductPriceResult(sku);
+    const isCostKnown = pricing.providerCostKnown && pricing.providerCostUSD > 0;
+    const isVendible = isCostKnown && pricing.retailPriceUSD > 0;
     return {
       sku,
       name: `.${c.tld}`,
@@ -133,13 +135,13 @@ function buildDomainItems(): CatalogItemDef[] {
       price: pricing.retailPriceUSD,
       currency: 'USD',
       billingPeriod: 'YEAR',
-      active: pricing.retailPriceUSD > 0,
+      active: isVendible,
       metadata: {
         commercialCategory: 'DOMAIN_REGISTRATION',
-        provider: 'pending_validation',
+        provider: 'resellerclub',
         operation: 'REGISTRATION',
         billingPeriodUnit: 'year',
-        status: pricing.retailPriceUSD > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        status: isVendible ? 'ACTIVE' : 'PENDING_CONFIG',
         tld: c.tld,
         allowedDurationsYears: [1, 2, 3, 5, 10],
         requiresEppCode: false,
@@ -202,7 +204,7 @@ function buildTransferItems(): CatalogItemDef[] {
         active: true,
         metadata: {
           commercialCategory: 'DOMAIN_TRANSFER',
-          provider: 'pending_validation',
+          provider: 'resellerclub',
           operation: 'TRANSFER',
           billingPeriodUnit: 'year',
           status: 'ACTIVE',
@@ -223,6 +225,8 @@ function buildRenewalItems(): CatalogItemDef[] {
   return RENEWAL_TLDS.map((c): CatalogItemDef => {
     const sku = `domain-${c.tld.replace(/\./g, '-')}-renew`;
     const pricing = getProductPriceResult(sku);
+    const isCostKnown = pricing.providerCostKnown && pricing.providerCostUSD > 0;
+    const isVendible = isCostKnown && pricing.retailPriceUSD > 0;
 
     return {
       sku,
@@ -232,13 +236,13 @@ function buildRenewalItems(): CatalogItemDef[] {
       price: pricing.retailPriceUSD,
       currency: 'USD',
       billingPeriod: 'YEAR',
-      active: pricing.retailPriceUSD > 0,
+      active: isVendible,
       metadata: {
         commercialCategory: 'DOMAIN_RENEWAL',
-        provider: 'pending_validation',
+        provider: 'resellerclub',
         operation: 'RENEWAL',
         billingPeriodUnit: 'year',
-        status: pricing.retailPriceUSD > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
+        status: isVendible ? 'ACTIVE' : 'PENDING_CONFIG',
         tld: c.tld,
         allowedDurationsYears: [1, 2, 3],
         requiresEppCode: false,
@@ -295,7 +299,7 @@ function buildHostingItems(): CatalogItemDef[] {
       active: monthlyPrice > 0,
       metadata: {
         commercialCategory,
-        provider: 'pending_validation',
+        provider: 'banelio_internal',
         operation: 'MONTHLY',
         billingPeriodUnit: 'month',
         status: monthlyPrice > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
@@ -318,7 +322,7 @@ function buildHostingItems(): CatalogItemDef[] {
       active: annualPrice > 0,
       metadata: {
         commercialCategory,
-        provider: 'pending_validation',
+        provider: 'banelio_internal',
         operation: 'YEARLY',
         billingPeriodUnit: 'year',
         status: annualPrice > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
@@ -394,7 +398,7 @@ function buildEmailItems(): CatalogItemDef[] {
       active: price > 0,
       metadata: {
         commercialCategory: 'BUSINESS_EMAIL',
-        provider: 'pending_validation',
+        provider: 'banelio_internal',
         operation: p.period === 'YEAR' ? 'YEARLY' : 'MONTHLY',
         billingPeriodUnit: p.period === 'YEAR' ? 'year' : 'month',
         status: price > 0 ? 'ACTIVE' : 'PENDING_CONFIG',
@@ -836,6 +840,7 @@ export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
   let created = 0;
   for (const item of CATALOG_DEFINITION) {
     const existing = await prisma.catalogItem.findUnique({ where: { sku: item.sku } });
+    const isVendible = item.active !== false && item.price > 0 && item.metadata.status === 'ACTIVE';
     const data = {
       name: item.name,
       description: item.description,
@@ -843,7 +848,7 @@ export async function seedCatalog(prisma: PrismaClientType): Promise<number> {
       price: item.price,
       currency: item.currency || 'USD',
       billingPeriod: item.billingPeriod,
-      active: item.active !== false && item.price > 0,
+      active: isVendible,
       metadata: (item.metadata as Prisma.InputJsonValue) || undefined
     };
     if (!existing) {

@@ -49,8 +49,12 @@ import {
   stripeCreatePaymentIntent,
   stripeRetrievePaymentIntent,
   paypalCreateOrder,
-  paypalCaptureOrder
+  paypalCaptureOrder,
+  validateStripePaymentIntentForOrder,
+  isStripeEventProcessed,
+  markStripeEventProcessed
 } from './server/payments';
+import { provisionPaidOrder, retryProvisionOrder } from './server/provisioning';
 
 // Lazy client helper for Banelio Cloud Registry API
 function getRegistryConfig() {
@@ -611,9 +615,25 @@ async function startServer() {
         description: `Banelio Order ${orderId}`
       });
 
+      const existingItems = Array.isArray(order.items) ? (order.items as any[]) : [];
+      const cleanItems = existingItems.filter((it: any) => !it || !it._paymentMetadata);
+      const paymentMetadata = {
+        _paymentMetadata: true,
+        method: 'STRIPE_CARD',
+        paymentIntentId: intent.id,
+        expectedAmountCents: Math.round(totalUSD * 100),
+        expectedCurrency: (order.currency || 'usd').toLowerCase(),
+        orderTotalUSD: totalUSD,
+        createdAt: new Date().toISOString()
+      };
+
       await prisma.order.update({
         where: { id: orderId },
-        data: { gatewayReference: intent.id, paymentMethod: 'STRIPE_CARD' }
+        data: {
+          gatewayReference: intent.id,
+          paymentMethod: 'STRIPE_CARD',
+          items: [...cleanItems, paymentMetadata] as any
+        }
       });
 
       return res.json({
@@ -805,6 +825,14 @@ async function startServer() {
       }
 
       const result = await markOrderPaid(order.id, capture.captureId || capture.rawId || String(orderId));
+      if (result.changed && !result.alreadyPaid) {
+        try {
+          await provisionPaidOrder(order.id);
+        } catch (provErr: any) {
+          console.error(`BANELIO: error de aprovisionamiento en PayPal orden ${order.id}:`, provErr.message);
+        }
+      }
+      const finalOrder = await getOrderById(order.id);
       return res.json({
         configured: true,
         status: 'COMPLETED',
@@ -812,7 +840,7 @@ async function startServer() {
         captureId: capture.captureId,
         amount: received === null ? null : received.toFixed(2),
         currency: capture.currency,
-        order: result.order
+        order: finalOrder || result.order
       });
     } catch (err: any) {
       const msg = err?.message || 'error';
@@ -855,7 +883,8 @@ async function startServer() {
       }
 
       const totalUSD = Number(order.total);
-      const amountCentsMXN = await usdToMxnCents(totalUSD);
+      const fxRate = await getUsdMxnRate();
+      const amountCentsMXN = Math.round(totalUSD * fxRate * 100);
 
       const customerEmail = String((req.body || {}).customerEmail || '').trim() || undefined;
       const customerName = String((req.body || {}).customerName || '').trim() || undefined;
@@ -873,9 +902,26 @@ async function startServer() {
         return res.status(502).json({ configured: true, error: 'Stripe no devolvió una referencia OXXO.' });
       }
 
+      const existingItems = Array.isArray(order.items) ? (order.items as any[]) : [];
+      const cleanItems = existingItems.filter((it: any) => !it || !it._paymentMetadata);
+      const paymentMetadata = {
+        _paymentMetadata: true,
+        method: 'OXXO_PAY',
+        paymentIntentId: intent.id,
+        expectedAmountCents: amountCentsMXN,
+        expectedCurrency: 'mxn',
+        fxRate,
+        orderTotalUSD: totalUSD,
+        createdAt: new Date().toISOString()
+      };
+
       await prisma.order.update({
         where: { id: orderId },
-        data: { gatewayReference: intent.id, paymentMethod: 'OXXO_PAY' }
+        data: {
+          gatewayReference: intent.id,
+          paymentMethod: 'OXXO_PAY',
+          items: [...cleanItems, paymentMetadata] as any
+        }
       });
       const expiresAt = typeof oxxoDetails.expires_after === 'number'
         ? new Date(oxxoDetails.expires_after * 1000).toISOString()
@@ -945,34 +991,47 @@ async function startServer() {
       const piId = typeof dataObject.id === 'string' ? dataObject.id : '';
 
       if (type === 'payment_intent.succeeded' && piId) {
+        // 1. Deduplicación de eventos webhook por event.id
+        if (event.id && isStripeEventProcessed(event.id)) {
+          return res.json({ received: true, duplicate: true, message: 'Evento ya procesado previamente.' });
+        }
+
         const order = await prisma.order.findFirst({ where: { gatewayReference: piId } });
-        if (order) {
-          const expectedAmountCents = Math.round(Number(order.total) * 100);
-          const receivedAmountCents = Number(
-            dataObject.amount_received ?? dataObject.amount ?? NaN
+        if (!order) {
+          console.warn(`BANELIO: webhook ${type} recibido pero no existe orden para gatewayReference ${piId}`);
+          return res.status(404).json({ received: false, error: 'Orden no encontrada para este PaymentIntent.' });
+        }
+
+        // Si la orden ya está confirmada como pagada, no duplicar procesamiento ni aprovisionamiento
+        if (order.paymentStatus === 'PAYMENT_CONFIRMED' || order.status === 'PAID') {
+          if (event.id) markStripeEventProcessed(event.id);
+          return res.json({ received: true, alreadyPaid: true });
+        }
+
+        // 2. Validación estricta del PaymentIntent (moneda, importe OXXO en MXN vs Tarjeta en USD, estado succeeded)
+        const validation = validateStripePaymentIntentForOrder(order, dataObject);
+        if (!validation.valid) {
+          console.error(
+            `BANELIO: webhook ${type} rechazado para orden ${order.id}: ${validation.error}`
           );
-          const expectedCurrency = String(order.currency || 'usd').toLowerCase();
-          const receivedCurrency = String(dataObject.currency || '').toLowerCase();
+          return res.status(400).json({
+            received: false,
+            error: validation.error || 'Importe o moneda no válidos.'
+          });
+        }
 
-          if (
-            !Number.isFinite(receivedAmountCents) ||
-            receivedAmountCents !== expectedAmountCents ||
-            receivedCurrency !== expectedCurrency
-          ) {
-            console.error(
-              `BANELIO: webhook ${type} rechazado para orden ${order.id}: ` +
-              `importe/moneda no coinciden. ` +
-              `esperado=${expectedAmountCents} ${expectedCurrency}, ` +
-              `recibido=${receivedAmountCents} ${receivedCurrency || 'unknown'}`
-            );
-            return res.status(400).json({
-              received: false,
-              error: 'El importe o la moneda del pago no coinciden con la orden.'
-            });
+        const markResult = await markOrderPaid(order.id, piId);
+        if (event.id) markStripeEventProcessed(event.id);
+        console.log(`BANELIO: webhook ${type} -> orden ${order.id} a PAYMENT_CONFIRMED.`);
+
+        // 3. Aprovisionamiento posterior al pago confirmado
+        if (markResult.changed && !markResult.alreadyPaid) {
+          try {
+            const provResult = await provisionPaidOrder(order.id);
+            console.log(`BANELIO: resultado aprovisionamiento orden ${order.id}: ${provResult.status}`);
+          } catch (provErr: any) {
+            console.error(`BANELIO: error en aprovisionamiento orden ${order.id}:`, provErr.message);
           }
-
-          await markOrderPaid(order.id, piId);
-          console.log(`BANELIO: webhook ${type} -> orden ${order.id} a PAYMENT_CONFIRMED (provision NO activado).`);
         }
       } else if (type === 'payment_intent.payment_failed' && piId) {
         const order = await prisma.order.findFirst({ where: { gatewayReference: piId } });
@@ -1238,6 +1297,27 @@ async function startServer() {
       if (err instanceof OrderValidationError) {
         return res.status(err.status).json({ success: false, error: err.message });
       }
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // POST /api/orders/:id/retry-provision - Reintento seguro e idempotente de aprovisionamiento
+  app.post('/api/orders/:id/retry-provision', async (req, res) => {
+    try {
+      const customer = await getAuthenticatedCustomer(req);
+      const orderId = req.params.id;
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) {
+        return res.status(404).json({ success: false, error: 'Orden no encontrada.' });
+      }
+
+      if (order.customerId && (!customer || (order.customerId !== customer.id && customer.role !== 'ADMIN'))) {
+        return res.status(403).json({ success: false, error: 'Acceso no autorizado a esta orden.' });
+      }
+
+      const result = await retryProvisionOrder(orderId);
+      return res.json({ success: result.success, ...result });
+    } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message });
     }
   });

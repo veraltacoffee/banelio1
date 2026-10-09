@@ -340,6 +340,14 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     const priceResult = getProductPriceResult(sku, 'USD', undefined, {
       operation: isDomainTransfer ? 'TRANSFER' : undefined
     });
+
+    if (def.category === 'DOMAIN' && (!priceResult.providerCostKnown || priceResult.providerCostUSD <= 0)) {
+      throw new OrderValidationError(
+        400,
+        `El costo mayorista del proveedor para el dominio ${sku} no está configurado y no es vendible.`
+      );
+    }
+
     const lineCostUSD = priceResult.providerCostKnown && priceResult.providerCostUSD > 0
       ? priceResult.providerCostUSD * quantity * (isDomainTransfer ? 1 : periods)
       : 0;
@@ -649,14 +657,15 @@ export function toPublicOrder(order: any) {
     gatewayReference: order.gatewayReference || null,
     failureReason: order.failureReason || null,
     items: Array.isArray(order.items)
-      ? order.items.map((item: any) => {
-          if (!item || typeof item !== 'object') return item;
-          const { eppCode, ...safeItem } = item;
-          return {
-            ...safeItem,
-            ...(eppCode ? { hasEppCode: true } : {})
-          };
-        })
+      ? order.items
+          .filter((item: any) => item && typeof item === 'object' && !item._paymentMetadata)
+          .map((item: any) => {
+            const { eppCode, ...safeItem } = item;
+            return {
+              ...safeItem,
+              ...(eppCode ? { hasEppCode: true } : {})
+            };
+          })
       : [],
     createdAt: order.createdAt?.toISOString?.() || null,
     updatedAt: order.updatedAt?.toISOString?.() || null
