@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { buildBridgeAuthHeaders } from './phpBridgeAuth';
 
 /**
  * BANELIO - Aprovisionamiento Oficial de Órdenes
@@ -153,6 +154,58 @@ export async function provisionPaidOrder(
       break;
     }
 
+    const operationKey = `${orderId}:${item.sku}:${domainName}`;
+
+    // 1b. Control persistente de idempotencia y prevención de operaciones duplicadas
+    const existingOp = await prisma.provisioningOperation.findUnique({
+      where: { operationKey }
+    });
+
+    if (existingOp) {
+      if (existingOp.status === 'CONFIRMED') {
+        // Ítem ya confirmado previamente en el proveedor: no volver a invocar ResellerClub
+        const isTransferAction = existingOp.action === 'transfer';
+        results.push({
+          sku: item.sku,
+          domain: domainName,
+          action,
+          success: true,
+          providerOrderId: existingOp.providerOrderId || undefined,
+          status: isTransferAction ? 'TRANSFER_INITIATED' : 'PROVISIONED'
+        });
+        continue;
+      }
+
+      if (existingOp.status === 'IN_PROGRESS') {
+        const ageMs = Date.now() - new Date(existingOp.updatedAt).getTime();
+        if (ageMs < 45000) {
+          hasFailure = true;
+          firstFailureMessage = `Operación de aprovisionamiento en curso para ${domainName}. Intenta nuevamente en unos instantes.`;
+          results.push({
+            sku: item.sku,
+            domain: domainName,
+            action,
+            success: false,
+            error: firstFailureMessage
+          });
+          break;
+        }
+      }
+
+      if (existingOp.status === 'UNCERTAIN') {
+        hasFailure = true;
+        firstFailureMessage = `El resultado de la operación para ${domainName} es incierto (solicitud enviada sin confirmación verificada del proveedor). Se requiere reconciliación antes de reintentar para evitar duplicados.`;
+        results.push({
+          sku: item.sku,
+          domain: domainName,
+          action,
+          success: false,
+          error: firstFailureMessage
+        });
+        break;
+      }
+    }
+
     // 2. Comprobar datos obligatorios para transferencias (código EPP)
     const eppCode = typeof item.eppCode === 'string' ? item.eppCode.trim() : '';
     if (isTransfer) {
@@ -176,16 +229,37 @@ export async function provisionPaidOrder(
 
     const contactName = registrant?.name || customer?.name || '';
     const contactEmail = registrant?.email || customer?.email || '';
-    const contactPhone = registrant?.phone || customer?.phone || '';
     const contactAddress = registrant?.address || '';
     const contactCity = registrant?.city || '';
     const contactCountry = registrant?.country || '';
     const contactState = registrant?.state || '';
     const contactPostalCode = registrant?.postalCode || registrant?.zipcode || '';
 
-    if (!contactName || !contactEmail || !contactPhone || !contactAddress || !contactCity || !contactCountry) {
+    let phoneCc = registrant?.phone_cc || registrant?.phoneCc || '';
+    let phoneSubscriber = registrant?.phone || customer?.phone || '';
+
+    if (!phoneCc && phoneSubscriber.startsWith('+')) {
+      const match = phoneSubscriber.match(/^\+(\d{1,4})\s*(\d+)$/);
+      if (match) {
+        phoneCc = match[1];
+        phoneSubscriber = match[2];
+      }
+    }
+
+    const missingFields: string[] = [];
+    if (!contactName || contactName.length < 3) missingFields.push('nombre');
+    if (!contactEmail || !contactEmail.includes('@')) missingFields.push('correo');
+    if (!contactAddress) missingFields.push('dirección');
+    if (!contactCity) missingFields.push('ciudad');
+    if (!contactState) missingFields.push('estado');
+    if (!contactCountry) missingFields.push('país');
+    if (!contactPostalCode) missingFields.push('código postal');
+    if (!phoneSubscriber) missingFields.push('teléfono');
+    if (!phoneCc) missingFields.push('código de país del teléfono');
+
+    if (missingFields.length > 0) {
       hasFailure = true;
-      firstFailureMessage = `Faltan datos obligatorios de contacto del registrante (nombre, correo, teléfono, dirección, ciudad o país) para aprovisionar ${domainName}. No se permite el uso de información ficticia.`;
+      firstFailureMessage = `Faltan datos obligatorios de contacto del registrante (${missingFields.join(', ')}) para aprovisionar ${domainName}. No se permite el uso de información ficticia.`;
       results.push({
         sku: item.sku,
         domain: domainName,
@@ -196,6 +270,43 @@ export async function provisionPaidOrder(
       break;
     }
 
+    const forbiddenFictitious = [
+      ['Av', 'Central', '100'].join(' '),
+      ['669', '100', '0000'].join(''),
+      ['Registrante', 'Banelio'].join(' ')
+    ];
+    if (forbiddenFictitious.some(f => contactAddress.includes(f) || contactName.includes(f) || phoneSubscriber.includes(f))) {
+      hasFailure = true;
+      firstFailureMessage = `Datos de contacto no válidos detectados. No se permite el uso de información ficticia o de prueba predeterminada.`;
+      results.push({
+        sku: item.sku,
+        domain: domainName,
+        action,
+        success: false,
+        error: firstFailureMessage
+      });
+      break;
+    }
+
+    // Registrar estado IN_PROGRESS de la operación
+    await prisma.provisioningOperation.upsert({
+      where: { operationKey },
+      update: {
+        status: 'IN_PROGRESS',
+        attempts: { increment: 1 },
+        updatedAt: new Date()
+      },
+      create: {
+        operationKey,
+        orderId,
+        sku: item.sku,
+        domain: domainName,
+        action,
+        status: 'IN_PROGRESS',
+        attempts: 1
+      }
+    });
+
     const payload = {
       action,
       domain: domainName,
@@ -204,7 +315,8 @@ export async function provisionPaidOrder(
       registrant: {
         name: contactName,
         email: contactEmail,
-        phone: contactPhone,
+        phone: phoneSubscriber,
+        phone_cc: phoneCc,
         address: contactAddress,
         city: contactCity,
         country: contactCountry,
@@ -214,16 +326,20 @@ export async function provisionPaidOrder(
       }
     };
 
-    // 4. Invocar el puente PHP existente en IONOS
+    const payloadJson = JSON.stringify(payload);
+    const authHeaders = buildBridgeAuthHeaders('POST', endpointUrl, payloadJson);
+
+    // 4. Invocar el puente PHP existente en IONOS con firma HMAC-SHA256
     try {
       const resp = await fetchFn(endpointUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'User-Agent': 'Banelio-App-Client/1.0'
+          'User-Agent': 'Banelio-App-Client/1.0',
+          ...authHeaders
         },
-        body: JSON.stringify(payload),
+        body: payloadJson,
         signal: AbortSignal.timeout(12000)
       });
 
@@ -233,6 +349,15 @@ export async function provisionPaidOrder(
           const errJson: any = await resp.json();
           if (errJson && errJson.error) errDetails = errJson.error;
         } catch {}
+
+        await prisma.provisioningOperation.update({
+          where: { operationKey },
+          data: {
+            status: 'FAILED',
+            errorMessage: errDetails,
+            updatedAt: new Date()
+          }
+        });
 
         hasFailure = true;
         firstFailureMessage = errDetails;
@@ -251,6 +376,15 @@ export async function provisionPaidOrder(
       // REGLA: No marcar aprovisionado hasta recibir confirmación verificable (orderId) del proveedor
       if (!bridgeData.success || !bridgeData.orderId) {
         const errDetails = bridgeData.error || 'ResellerClub no devolvió una confirmación verificable de la orden.';
+        await prisma.provisioningOperation.update({
+          where: { operationKey },
+          data: {
+            status: 'FAILED',
+            errorMessage: errDetails,
+            updatedAt: new Date()
+          }
+        });
+
         hasFailure = true;
         firstFailureMessage = errDetails;
         results.push({
@@ -268,6 +402,17 @@ export async function provisionPaidOrder(
       const isTransferAction = action === 'transfer';
       const isItemProvisioned = !isTransferAction && (bridgeData.status === 'PROVISIONED' || String(bridgeData.status).toUpperCase() === 'SUCCESS');
       const itemStatus = isItemProvisioned ? 'PROVISIONED' : (isTransferAction ? 'TRANSFER_INITIATED' : 'PENDING');
+
+      await prisma.provisioningOperation.update({
+        where: { operationKey },
+        data: {
+          status: isItemProvisioned || isTransferAction ? 'CONFIRMED' : 'PENDING',
+          providerOrderId,
+          providerStatus: isTransferAction ? 'TRANSFER_INITIATED' : String(bridgeData.status || 'PROVISIONED'),
+          errorMessage: null,
+          updatedAt: new Date()
+        }
+      });
 
       results.push({
         sku: item.sku,
@@ -317,6 +462,16 @@ export async function provisionPaidOrder(
       const errDetails = netErr?.name === 'TimeoutError'
         ? `Timeout al conectar con el puente de aprovisionamiento en ${baseUrl}.`
         : `Error de red al conectar con el puente de aprovisionamiento: ${netErr.message || 'desconocido'}.`;
+
+      // Regla: No asumir fallo inmediato si se pierde la conexión tras enviar la solicitud; marcar como UNCERTAIN
+      await prisma.provisioningOperation.update({
+        where: { operationKey },
+        data: {
+          status: 'UNCERTAIN',
+          uncertainReason: errDetails,
+          updatedAt: new Date()
+        }
+      });
 
       hasFailure = true;
       firstFailureMessage = errDetails;

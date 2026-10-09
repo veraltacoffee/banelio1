@@ -159,6 +159,7 @@ model Order {
   items            Json?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  provisioningOperations ProvisioningOperation[]
 
   @@index([customerId])
   @@index([status])
@@ -218,6 +219,56 @@ model Entitlement {
   updatedAt       DateTime          @updatedAt
 
   @@index([customerId])
+  @@index([orderId])
+  @@index([status])
+}
+
+enum StripeWebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model StripeWebhookEvent {
+  id           String                   @id @default(cuid())
+  eventId      String                   @unique
+  eventType    String
+  status       StripeWebhookEventStatus @default(RECEIVED)
+  receivedAt   DateTime                 @default(now())
+  processedAt  DateTime?
+  errorMessage String?
+  attempts     Int                      @default(1)
+
+  @@index([status])
+  @@index([eventType])
+}
+
+enum ProvisionOperationStatus {
+  PENDING
+  IN_PROGRESS
+  CONFIRMED
+  FAILED
+  UNCERTAIN
+}
+
+model ProvisioningOperation {
+  id               String                   @id @default(cuid())
+  operationKey     String                   @unique
+  orderId          String
+  order            Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku              String
+  domain           String
+  action           String
+  status           ProvisionOperationStatus @default(PENDING)
+  providerOrderId  String?
+  providerStatus   String?
+  errorMessage     String?
+  uncertainReason  String?
+  attempts         Int                      @default(0)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
   @@index([orderId])
   @@index([status])
 }

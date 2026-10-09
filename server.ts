@@ -37,7 +37,8 @@ import {
   markOrderRefunded,
   markOrderPaymentFailed,
   toPublicOrder,
-  OrderValidationError
+  OrderValidationError,
+  authorizeOrderAccess
 } from './server/orders';
 import {
   stripeConfigured,
@@ -52,9 +53,13 @@ import {
   paypalCaptureOrder,
   validateStripePaymentIntentForOrder,
   isStripeEventProcessed,
-  markStripeEventProcessed
+  markStripeEventProcessed,
+  claimStripeWebhookEvent,
+  markStripeWebhookEventProcessed,
+  markStripeWebhookEventFailed
 } from './server/payments';
 import { provisionPaidOrder, retryProvisionOrder } from './server/provisioning';
+import { buildBridgeAuthHeaders } from './server/phpBridgeAuth';
 
 // Lazy client helper for Banelio Cloud Registry API
 function getRegistryConfig() {
@@ -272,9 +277,11 @@ async function startServer() {
   // API Route 0.5: Customer lookup and contacts proxy
   app.get('/api/domains/customer.php', async (req, res) => {
     try {
-      const backendResponse = await fetch('https://banelio.com/api/domains/customer.php', {
+      const targetUrl = 'https://banelio.com/api/domains/customer.php';
+      const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
+      const backendResponse = await fetch(targetUrl, {
         method: 'GET',
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' }
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders }
       });
       if (backendResponse.ok) {
         const data = await backendResponse.json();
@@ -292,9 +299,11 @@ async function startServer() {
 
   app.get('/api/domains/contacts.php', async (req, res) => {
     try {
-      const backendResponse = await fetch('https://banelio.com/api/domains/contacts.php', {
+      const targetUrl = 'https://banelio.com/api/domains/contacts.php';
+      const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
+      const backendResponse = await fetch(targetUrl, {
         method: 'GET',
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' }
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders }
       });
       if (backendResponse.ok) {
         const data = await backendResponse.json();
@@ -322,8 +331,10 @@ async function startServer() {
     let resellerDetails: any = null;
 
     try {
-      const resp = await fetch('https://banelio.com/api/reseller/test-connection.php', {
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+      const targetUrl = 'https://banelio.com/api/reseller/test-connection.php';
+      const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
+      const resp = await fetch(targetUrl, {
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
         signal: AbortSignal.timeout(4000)
       });
       if (resp.ok) {
@@ -379,8 +390,10 @@ async function startServer() {
   // API Route: Verificación de infraestructura real en backend IONOS / ResellerClub
   app.get('/api/reseller/test-connection', async (_req, res) => {
     try {
-      const resp = await fetch('https://banelio.com/api/reseller/test-connection.php', {
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+      const targetUrl = 'https://banelio.com/api/reseller/test-connection.php';
+      const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
+      const resp = await fetch(targetUrl, {
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
         signal: AbortSignal.timeout(5000)
       });
       if (resp.ok) {
@@ -991,40 +1004,51 @@ async function startServer() {
       const piId = typeof dataObject.id === 'string' ? dataObject.id : '';
 
       if (type === 'payment_intent.succeeded' && piId) {
-        // 1. Deduplicación de eventos webhook por event.id
-        if (event.id && isStripeEventProcessed(event.id)) {
-          return res.json({ received: true, duplicate: true, message: 'Evento ya procesado previamente.' });
+        // 1. Deduplicación persistente en base de datos con manejo atómico de concurrencia
+        const claim = await claimStripeWebhookEvent(event.id, type);
+        if (!claim.claimed) {
+          if (claim.status === 'PROCESSED') {
+            return res.json({ received: true, duplicate: true, message: 'Evento ya procesado previamente.' });
+          }
+          if (claim.status === 'PROCESSING') {
+            return res.json({ received: true, concurrent: true, message: 'Evento actualmente en procesamiento concurrente.' });
+          }
+          return res.status(400).json({ received: false, error: claim.error || 'No fue posible registrar el evento.' });
         }
 
         const order = await prisma.order.findFirst({ where: { gatewayReference: piId } });
         if (!order) {
+          await markStripeWebhookEventFailed(event.id, `No existe orden para gatewayReference ${piId}`);
           console.warn(`BANELIO: webhook ${type} recibido pero no existe orden para gatewayReference ${piId}`);
           return res.status(404).json({ received: false, error: 'Orden no encontrada para este PaymentIntent.' });
         }
 
         // Si la orden ya está confirmada como pagada, no duplicar procesamiento ni aprovisionamiento
         if (order.paymentStatus === 'PAYMENT_CONFIRMED' || order.status === 'PAID') {
-          if (event.id) markStripeEventProcessed(event.id);
+          await markStripeWebhookEventProcessed(event.id);
           return res.json({ received: true, alreadyPaid: true });
         }
 
         // 2. Validación estricta del PaymentIntent (moneda, importe OXXO en MXN vs Tarjeta en USD, estado succeeded)
         const validation = validateStripePaymentIntentForOrder(order, dataObject);
         if (!validation.valid) {
+          const vErr = validation.error || 'Importe o moneda no válidos.';
+          await markStripeWebhookEventFailed(event.id, vErr);
           console.error(
-            `BANELIO: webhook ${type} rechazado para orden ${order.id}: ${validation.error}`
+            `BANELIO: webhook ${type} rechazado para orden ${order.id}: ${vErr}`
           );
           return res.status(400).json({
             received: false,
-            error: validation.error || 'Importe o moneda no válidos.'
+            error: vErr
           });
         }
 
         const markResult = await markOrderPaid(order.id, piId);
-        if (event.id) markStripeEventProcessed(event.id);
+        // Marcar evento como PROCESSED sólo tras confirmar el pago en la orden
+        await markStripeWebhookEventProcessed(event.id);
         console.log(`BANELIO: webhook ${type} -> orden ${order.id} a PAYMENT_CONFIRMED.`);
 
-        // 3. Aprovisionamiento posterior al pago confirmado
+        // 3. Aprovisionamiento posterior al pago confirmado (independiente de la transacción de pago)
         if (markResult.changed && !markResult.alreadyPaid) {
           try {
             const provResult = await provisionPaidOrder(order.id);
@@ -1285,10 +1309,11 @@ async function startServer() {
         });
       }
 
-      if (order.customerId !== customer.id && customer.role !== 'ADMIN') {
-        return res.status(404).json({
+      const authCheck = authorizeOrderAccess(customer, order);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.status === 403 && order.customerId ? 404 : authCheck.status).json({
           success: false,
-          error: 'Orden no encontrada.',
+          error: authCheck.error,
         });
       }
 
@@ -1311,8 +1336,9 @@ async function startServer() {
         return res.status(404).json({ success: false, error: 'Orden no encontrada.' });
       }
 
-      if (order.customerId && (!customer || (order.customerId !== customer.id && customer.role !== 'ADMIN'))) {
-        return res.status(403).json({ success: false, error: 'Acceso no autorizado a esta orden.' });
+      const authCheck = authorizeOrderAccess(customer, order);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.status).json({ success: false, error: authCheck.error });
       }
 
       const result = await retryProvisionOrder(orderId);

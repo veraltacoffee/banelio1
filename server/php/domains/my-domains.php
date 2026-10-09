@@ -11,6 +11,7 @@ require_once __DIR__ . '/../reseller/config.php';
 require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
+verify_banelio_bridge_auth();
 
 // Parámetros de identidad enviados por el backend Node de Banelio
 $customerId = isset($_GET['customer_id']) ? trim($_GET['customer_id']) : (isset($_GET['customer-id']) ? trim($_GET['customer-id']) : '');

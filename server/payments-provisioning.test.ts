@@ -1,187 +1,310 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   validateStripePaymentIntentForOrder,
   isStripeEventProcessed,
   markStripeEventProcessed,
   clearProcessedStripeEvents,
-  getOrderPaymentMetadata,
-  PaymentMetadata
+  claimStripeWebhookEvent,
+  markStripeWebhookEventProcessed,
+  markStripeWebhookEventFailed
 } from './payments';
-import { provisionPaidOrder, getBridgeBaseUrl } from './provisioning';
+import { provisionPaidOrder, retryProvisionOrder } from './provisioning';
+import { authorizeOrderAccess } from './orders';
+import { buildBridgeAuthHeaders, verifyBridgeAuth } from './phpBridgeAuth';
 import { prisma } from './db';
 
-test('1. Pagos OXXO en MXN: validación correcta contra referencia esperada', () => {
-  const oxxoOrder = {
-    id: 'ord_oxxo_test_1',
-    gatewayReference: 'pi_oxxo_123',
-    paymentMethod: 'OXXO_PAY',
-    currency: 'USD',
-    total: 20.0,
-    items: [
-      { sku: 'domain-com', name: '.com', price: 20.0 },
-      {
-        _paymentMetadata: true,
-        method: 'OXXO_PAY',
-        paymentIntentId: 'pi_oxxo_123',
-        expectedAmountCents: 36500, // 365.00 MXN (e.g. rate 18.25)
-        expectedCurrency: 'mxn',
-        fxRate: 18.25,
-        orderTotalUSD: 20.0,
-        createdAt: new Date().toISOString()
-      }
-    ]
-  };
-
-  // Evento válido de Stripe para OXXO en MXN
-  const validOxxoEvent = {
-    id: 'pi_oxxo_123',
-    status: 'succeeded',
-    currency: 'mxn',
-    amount: 36500,
-    amount_received: 36500
-  };
-
-  const result = validateStripePaymentIntentForOrder(oxxoOrder, validOxxoEvent);
-  assert.equal(result.valid, true);
-  assert.equal(result.expectedAmountCents, 36500);
-  assert.equal(result.expectedCurrency, 'mxn');
+// ============================================================================
+// 1. Solicitud PHP sin firma: rechazada
+// ============================================================================
+test('1. Solicitud PHP sin firma: rechazada', () => {
+  const result = verifyBridgeAuth(
+    'POST',
+    '/api/domains/provision.php',
+    JSON.stringify({ action: 'register', domain: 'banelio-test.com' }),
+    undefined, // Sin timestamp
+    undefined, // Sin firma
+    'test_secret_key_123'
+  );
+  assert.equal(result.valid, false);
+  assert.match(result.error || '', /firma de autenticación requerida/i);
 });
 
-test('2. Pagos OXXO en MXN: rechazo estricto si la moneda o importe son inconsistentes', () => {
-  const oxxoOrder = {
-    id: 'ord_oxxo_test_2',
-    gatewayReference: 'pi_oxxo_456',
-    paymentMethod: 'OXXO_PAY',
+// ============================================================================
+// 2. Firma incorrecta o vencida: rechazada
+// ============================================================================
+test('2. Firma incorrecta o vencida: rechazada', () => {
+  const secret = 'test_secret_key_123';
+  const pathUrl = '/api/domains/provision.php';
+  const body = JSON.stringify({ action: 'register', domain: 'banelio-test.com' });
+  const now = Math.floor(Date.now() / 1000);
+
+  // 2a. Firma incorrecta
+  const badSigResult = verifyBridgeAuth(
+    'POST',
+    pathUrl,
+    body,
+    String(now),
+    'deadbeef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+    secret
+  );
+  assert.equal(badSigResult.valid, false);
+  assert.match(badSigResult.error || '', /firma de autenticación inválida/i);
+
+  // 2b. Marca de tiempo vencida (> 300 segundos en el pasado)
+  const expiredTimestamp = String(now - 350);
+  const expiredHeaders = buildBridgeAuthHeaders('POST', pathUrl, body, now - 350, secret);
+  const expiredResult = verifyBridgeAuth(
+    'POST',
+    pathUrl,
+    body,
+    expiredTimestamp,
+    expiredHeaders['X-Banelio-Signature'],
+    secret
+  );
+  assert.equal(expiredResult.valid, false);
+  assert.match(expiredResult.error || '', /expirada/i);
+});
+
+// ============================================================================
+// 3. Solicitud válida firmada desde el backend: aceptada en la prueba controlada
+// ============================================================================
+test('3. Solicitud válida firmada desde el backend: aceptada en la prueba controlada', () => {
+  const secret = 'shared_secret_banelio_2026';
+  const pathUrl = '/api/domains/provision.php';
+  const body = JSON.stringify({ action: 'register', domain: 'banelio-firmado.com' });
+  const now = Math.floor(Date.now() / 1000);
+
+  const headers = buildBridgeAuthHeaders('POST', pathUrl, body, now, secret);
+  assert.ok(headers['X-Banelio-Timestamp']);
+  assert.ok(headers['X-Banelio-Signature']);
+
+  const verification = verifyBridgeAuth(
+    'POST',
+    pathUrl,
+    body,
+    headers['X-Banelio-Timestamp'],
+    headers['X-Banelio-Signature'],
+    secret,
+    now
+  );
+  assert.equal(verification.valid, true);
+});
+
+// ============================================================================
+// 4. Falta un dato obligatorio del registrante: no se llama a ResellerClub
+// ============================================================================
+test('4. Falta un dato obligatorio del registrante: no se llama a ResellerClub', async () => {
+  const dummyMissingFieldOrder = {
+    id: 'ord_missing_field_' + Date.now(),
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
     currency: 'USD',
+    subtotal: 10.0,
+    tax: 0,
     total: 10.0,
     items: [
       {
-        _paymentMetadata: true,
-        method: 'OXXO_PAY',
-        paymentIntentId: 'pi_oxxo_456',
-        expectedAmountCents: 18250, // 182.50 MXN
-        expectedCurrency: 'mxn',
-        fxRate: 18.25,
-        orderTotalUSD: 10.0,
-        createdAt: new Date().toISOString()
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: 'incomplete-fields.com',
+        registrant: {
+          name: 'Cliente Incompleto',
+          email: 'incompleto@ejemplo.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          // Faltan dirección, ciudad, estado, país y código postal
+        }
       }
     ]
   };
 
-  // Error: cobrado en USD (no es OXXO válido)
-  const usdEvent = {
-    id: 'pi_oxxo_456',
-    status: 'succeeded',
-    currency: 'usd',
-    amount: 1000,
-    amount_received: 1000
-  };
-  const resCurrency = validateStripePaymentIntentForOrder(oxxoOrder, usdEvent);
-  assert.equal(resCurrency.valid, false);
-  assert.match(resCurrency.error || '', /Moneda inconsistente para pago OXXO/);
+  const created = await prisma.order.create({ data: dummyMissingFieldOrder as any });
 
-  // Error: cobrado en MXN pero importe menor o alterado
-  const wrongAmountEvent = {
-    id: 'pi_oxxo_456',
-    status: 'succeeded',
-    currency: 'mxn',
-    amount: 15000,
-    amount_received: 15000
-  };
-  const resAmount = validateStripePaymentIntentForOrder(oxxoOrder, wrongAmountEvent);
-  assert.equal(resAmount.valid, false);
-  assert.match(resAmount.error || '', /El importe cobrado en OXXO no coincide con el voucher esperado/);
+  try {
+    let bridgeCalled = false;
+    const result = await provisionPaidOrder(created.id, {
+      bridgeFetch: async () => {
+        bridgeCalled = true;
+        return new Response('{}', { status: 200 });
+      }
+    });
 
-  // Error: datos de referencia ausentes en la orden
-  const corruptOrder = {
-    id: 'ord_oxxo_corrupt',
-    gatewayReference: 'pi_oxxo_456',
-    paymentMethod: 'OXXO_PAY',
-    currency: 'USD',
-    total: 10.0,
-    items: []
-  };
-  const resCorrupt = validateStripePaymentIntentForOrder(corruptOrder, {
-    id: 'pi_oxxo_456',
-    status: 'succeeded',
-    currency: 'mxn',
-    amount_received: 18250
-  });
-  assert.equal(resCorrupt.valid, false);
-  assert.match(resCorrupt.error || '', /Referencia de importe OXXO MXN esperado ausente/);
+    assert.equal(result.success, false);
+    assert.equal(result.status, 'FAILED');
+    assert.equal(bridgeCalled, false, 'No debe llamar al proveedor si faltan datos obligatorios');
+    assert.match(result.error || '', /Faltan datos obligatorios de contacto del registrante/);
+  } finally {
+    await prisma.order.delete({ where: { id: created.id } });
+  }
 });
 
-test('3. Pagos con tarjeta (Stripe card): validación en USD e importe de orden', () => {
-  const cardOrder = {
-    id: 'ord_card_test_1',
-    gatewayReference: 'pi_card_789',
-    paymentMethod: 'STRIPE_CARD',
+// ============================================================================
+// 5. Prefijo telefónico ausente: no se inventa uno
+// ============================================================================
+test('5. Prefijo telefónico ausente: no se inventa uno', async () => {
+  const dummyNoCcOrder = {
+    id: 'ord_no_phone_cc_' + Date.now(),
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
     currency: 'USD',
-    total: 15.5,
+    subtotal: 10.0,
+    tax: 0,
+    total: 10.0,
     items: [
       {
-        sku: 'domain-net',
-        name: '.net',
-        price: 15.5
-      },
-      {
-        _paymentMetadata: true,
-        method: 'STRIPE_CARD',
-        paymentIntentId: 'pi_card_789',
-        expectedAmountCents: 1550,
-        expectedCurrency: 'usd',
-        orderTotalUSD: 15.5,
-        createdAt: new Date().toISOString()
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: 'sin-prefijo-telefonico.com',
+        registrant: {
+          name: 'Juan Perez',
+          email: 'juan@banelio-real.com',
+          phone: '5512345678', // Sin código de país y sin phone_cc
+          address: 'Calle Reforma 100',
+          city: 'Ciudad de Mexico',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '06600'
+        }
       }
     ]
   };
 
-  const validCardEvent = {
-    id: 'pi_card_789',
-    status: 'succeeded',
-    currency: 'usd',
-    amount: 1550,
-    amount_received: 1550
-  };
+  const created = await prisma.order.create({ data: dummyNoCcOrder as any });
 
-  const result = validateStripePaymentIntentForOrder(cardOrder, validCardEvent);
-  assert.equal(result.valid, true);
-  assert.equal(result.expectedAmountCents, 1550);
-  assert.equal(result.expectedCurrency, 'usd');
+  try {
+    let bridgeCalled = false;
+    const result = await provisionPaidOrder(created.id, {
+      bridgeFetch: async () => {
+        bridgeCalled = true;
+        return new Response('{}', { status: 200 });
+      }
+    });
 
-  // Rechazo por importe incorrecto
-  const wrongCardAmount = {
-    id: 'pi_card_789',
-    status: 'succeeded',
-    currency: 'usd',
-    amount: 1000,
-    amount_received: 1000
-  };
-  const resWrong = validateStripePaymentIntentForOrder(cardOrder, wrongCardAmount);
-  assert.equal(resWrong.valid, false);
-  assert.match(resWrong.error || '', /Importe cobrado no coincide con la orden/);
+    assert.equal(result.success, false);
+    assert.equal(result.status, 'FAILED');
+    assert.equal(bridgeCalled, false, 'No debe inventarse el código de país del teléfono');
+    assert.match(result.error || '', /código de país del teléfono/i);
+  } finally {
+    await prisma.order.delete({ where: { id: created.id } });
+  }
 });
 
-test('4. Eventos duplicados: deduplicación e idempotencia de webhook', () => {
-  clearProcessedStripeEvents();
+// ============================================================================
+// 6. Búsqueda automatizada que detecte los valores ficticios conocidos en los flujos de aprovisionamiento
+// ============================================================================
+test('6. Búsqueda automatizada que detecte los valores ficticios conocidos en los flujos de aprovisionamiento', () => {
+  const filesToCheck = [
+    path.resolve(process.cwd(), 'server/php/domains/provision.php'),
+    path.resolve(process.cwd(), 'server/php/domains/customer.php'),
+    path.resolve(process.cwd(), 'server/php/domains/contacts.php'),
+    path.resolve(process.cwd(), 'server/provisioning.ts')
+  ];
 
-  const eventId = 'evt_test_dedup_001';
-  assert.equal(isStripeEventProcessed(eventId), false);
+  for (const filePath of filesToCheck) {
+    assert.ok(fs.existsSync(filePath), `El archivo ${filePath} debe existir.`);
+    const content = fs.readFileSync(filePath, 'utf8');
 
-  markStripeEventProcessed(eventId);
-  assert.equal(isStripeEventProcessed(eventId), true);
-
-  // Segundo evento idéntico es detectado
-  assert.equal(isStripeEventProcessed(eventId), true);
-
-  clearProcessedStripeEvents();
-  assert.equal(isStripeEventProcessed(eventId), false);
+    // Verificar que no contengan valores inventados o fallbacks hardcoded prohibidos
+    assert.equal(
+      content.includes('6691000000'),
+      false,
+      `Se encontró el teléfono ficticio 6691000000 en ${path.basename(filePath)}`
+    );
+    assert.equal(
+      content.includes("'N/A'") || content.includes('"N/A"'),
+      false,
+      `Se encontró fallback de estado N/A en ${path.basename(filePath)}`
+    );
+    assert.equal(
+      content.includes("'00000'") || content.includes('"00000"'),
+      false,
+      `Se encontró fallback de código postal 00000 en ${path.basename(filePath)}`
+    );
+  }
 });
 
-test('5. Órdenes no pagadas: aprovisionamiento no permitido', async () => {
+// ============================================================================
+// 7. Evento Stripe duplicado tras recuperar el estado desde la base de datos: no se procesa dos veces
+// ============================================================================
+test('7. Evento Stripe duplicado tras recuperar el estado desde la base de datos: no se procesa dos veces', async () => {
+  await clearProcessedStripeEvents();
+  const eventId = 'evt_db_dedup_' + Date.now();
+
+  const firstClaim = await claimStripeWebhookEvent(eventId, 'payment_intent.succeeded');
+  assert.equal(firstClaim.claimed, true);
+  assert.equal(firstClaim.status, 'NEW');
+
+  await markStripeWebhookEventProcessed(eventId);
+
+  // Segunda entrega del mismo evento tras persistir en DB
+  const secondClaim = await claimStripeWebhookEvent(eventId, 'payment_intent.succeeded');
+  assert.equal(secondClaim.claimed, false);
+  assert.equal(secondClaim.status, 'PROCESSED');
+
+  const isProcessed = await isStripeEventProcessed(eventId);
+  assert.equal(isProcessed, true);
+
+  await clearProcessedStripeEvents();
+});
+
+// ============================================================================
+// 8. Dos entregas simultáneas del mismo evento: una sola ejecución efectiva del procesamiento
+// ============================================================================
+test('8. Dos entregas simultáneas del mismo evento: una sola ejecución efectiva del procesamiento', async () => {
+  await clearProcessedStripeEvents();
+  const eventId = 'evt_concurrent_' + Date.now();
+
+  // Entregas paralelas exactamente simultáneas
+  const [claimA, claimB] = await Promise.all([
+    claimStripeWebhookEvent(eventId, 'payment_intent.succeeded'),
+    claimStripeWebhookEvent(eventId, 'payment_intent.succeeded')
+  ]);
+
+  const claimedCount = [claimA, claimB].filter((c) => c.claimed).length;
+  assert.equal(claimedCount, 1, 'Exactamente una solicitud concurrente debe reclamar el evento');
+
+  const inProgressCount = [claimA, claimB].filter((c) => !c.claimed && c.status === 'PROCESSING').length;
+  assert.equal(inProgressCount, 1, 'La solicitud concurrente secundaria debe reportar PROCESSING');
+
+  await clearProcessedStripeEvents();
+});
+
+// ============================================================================
+// 9. Fallo de procesamiento: recuperación segura sin marcar falsamente el evento como terminado
+// ============================================================================
+test('9. Fallo de procesamiento: recuperación segura sin marcar falsamente el evento como terminado', async () => {
+  await clearProcessedStripeEvents();
+  const eventId = 'evt_fail_recover_' + Date.now();
+
+  const claim = await claimStripeWebhookEvent(eventId, 'payment_intent.succeeded');
+  assert.equal(claim.claimed, true);
+
+  // Registrar fallo transitorio
+  await markStripeWebhookEventFailed(eventId, 'Error de conexión temporal a pasarela');
+
+  const isProcessed = await isStripeEventProcessed(eventId);
+  assert.equal(isProcessed, false, 'El evento fallido NUNCA debe marcarse como PROCESSED');
+
+  // Reintento posterior de entrega permite recuperación segura
+  const retryClaim = await claimStripeWebhookEvent(eventId, 'payment_intent.succeeded');
+  assert.equal(retryClaim.claimed, true, 'El reintento debe poder procesarse');
+
+  await clearProcessedStripeEvents();
+});
+
+// ============================================================================
+// 10. Orden no pagada: aprovisionamiento bloqueado
+// ============================================================================
+test('10. Orden no pagada: aprovisionamiento bloqueado', async () => {
   const dummyUnpaidOrder = {
-    id: 'ord_unpaid_test_' + Date.now(),
+    id: 'ord_unpaid_block_' + Date.now(),
     customerId: null,
     status: 'CREATED',
     paymentStatus: 'PENDING_PAYMENT',
@@ -193,9 +316,8 @@ test('5. Órdenes no pagadas: aprovisionamiento no permitido', async () => {
     items: [
       {
         sku: 'domain-com',
-        name: '.com',
         category: 'DOMAIN',
-        domain: 'unpaid-domain-test.com'
+        domain: 'unpaid-block.com'
       }
     ]
   };
@@ -212,50 +334,381 @@ test('5. Órdenes no pagadas: aprovisionamiento no permitido', async () => {
   }
 });
 
-test('6. Aprovisionamiento idempotente: orden ya PROVISIONED no repite llamadas al proveedor', async () => {
-  const dummyProvisionedOrder = {
-    id: 'ord_already_prov_' + Date.now(),
+// ============================================================================
+// 11. Orden con un cliente distinto al usuario autenticado: acceso denegado
+// ============================================================================
+test('11. Orden con un cliente distinto al usuario autenticado: acceso denegado', () => {
+  const orderOfCustomerA = {
+    id: 'ord_cust_a',
+    customerId: 'cust_id_AAA'
+  };
+
+  // Usuario B intentando acceder
+  const customerB = { id: 'cust_id_BBB', role: 'CUSTOMER' };
+  const authB = authorizeOrderAccess(customerB, orderOfCustomerA);
+  assert.equal(authB.authorized, false);
+  assert.equal(authB.status, 403);
+
+  // Administrador accediendo a la orden de Customer A
+  const admin = { id: 'cust_id_ADMIN', role: 'ADMIN' };
+  const authAdmin = authorizeOrderAccess(admin, orderOfCustomerA);
+  assert.equal(authAdmin.authorized, true);
+  assert.equal(authAdmin.status, 200);
+});
+
+// ============================================================================
+// 12. Orden sin customerId: no se permite eludir el control de acceso
+// ============================================================================
+test('12. Orden sin customerId: no se permite eludir el control de acceso', () => {
+  const guestOrder = {
+    id: 'ord_guest_xyz',
+    customerId: null
+  };
+
+  // Sin autenticación
+  const unauth = authorizeOrderAccess(null, guestOrder);
+  assert.equal(unauth.authorized, false);
+  assert.equal(unauth.status, 401);
+
+  // Cliente común (no admin) no puede operar órdenes sin customerId
+  const normalCustomer = { id: 'cust_id_CCC', role: 'CUSTOMER' };
+  const authNormal = authorizeOrderAccess(normalCustomer, guestOrder);
+  assert.equal(authNormal.authorized, false);
+  assert.equal(authNormal.status, 403);
+  assert.match(authNormal.error || '', /requieren autorización administrativa/);
+
+  // Administrador sí puede operar órdenes sin customerId
+  const admin = { id: 'cust_id_ADMIN', role: 'ADMIN' };
+  const authAdmin = authorizeOrderAccess(admin, guestOrder);
+  assert.equal(authAdmin.authorized, true);
+  assert.equal(authAdmin.status, 200);
+});
+
+// ============================================================================
+// 13. Dos intentos simultáneos de aprovisionamiento del mismo ítem: no duplican operaciones externas
+// ============================================================================
+test('13. Dos intentos simultáneos de aprovisionamiento del mismo ítem: no duplican operaciones externas', async () => {
+  const orderId = 'ord_concurrent_item_' + Date.now();
+  const domainName = 'concurrency-domain-test.com';
+  const sku = 'domain-com';
+
+  const dummyOrder = {
+    id: orderId,
     customerId: null,
     status: 'PAID',
     paymentStatus: 'PAYMENT_CONFIRMED',
-    provisionStatus: 'PROVISIONED',
+    provisionStatus: 'NONE',
     currency: 'USD',
-    subtotal: 12.0,
+    subtotal: 10.0,
     tax: 0,
-    total: 12.0,
+    total: 10.0,
     items: [
       {
-        sku: 'domain-com',
+        sku,
         category: 'DOMAIN',
-        domain: 'already-prov.com'
+        domain: domainName,
+        registrant: {
+          name: 'Registro Valido',
+          email: 'valido@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Insurgentes Sur 100',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '03900'
+        }
       }
     ]
   };
 
-  const created = await prisma.order.create({ data: dummyProvisionedOrder as any });
+  const created = await prisma.order.create({ data: dummyOrder as any });
+
+  // Pre-crear la operación en estado IN_PROGRESS
+  const opKey = `${orderId}:${sku}:${domainName}`;
+  await prisma.provisioningOperation.create({
+    data: {
+      operationKey: opKey,
+      orderId,
+      sku,
+      domain: domainName,
+      action: 'register',
+      status: 'IN_PROGRESS',
+      attempts: 1
+    }
+  });
 
   try {
-    let mockFetchCalled = false;
-    const result = await provisionPaidOrder(created.id, {
+    let mockCalled = false;
+    const result = await provisionPaidOrder(orderId, {
       bridgeFetch: async () => {
-        mockFetchCalled = true;
+        mockCalled = true;
         return new Response('{}', { status: 200 });
       }
     });
 
-    assert.equal(result.success, true);
-    assert.equal(result.status, 'PROVISIONED');
-    assert.equal(result.idempotent, true);
-    assert.equal(mockFetchCalled, false, 'No debe invocar al bridge si la orden ya está PROVISIONED');
+    assert.equal(result.success, false);
+    assert.equal(mockCalled, false, 'No debe llamar al proveedor si la operación ya está en curso');
+    assert.match(result.error || '', /en curso/);
   } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
     await prisma.order.delete({ where: { id: created.id } });
   }
 });
 
-test('7. Transferencias de dominios: requiere código EPP y datos obligatorios de contacto', async () => {
-  // Orden con transferencia sin EPP Code
-  const dummyTransferNoEpp = {
-    id: 'ord_trans_no_epp_' + Date.now(),
+// ============================================================================
+// 14. ResellerClub acepta una solicitud, pero la respuesta se pierde: no se reenvía a ciegas
+// ============================================================================
+test('14. ResellerClub acepta una solicitud, pero la respuesta se pierde: no se reenvía a ciegas', async () => {
+  const orderId = 'ord_lost_resp_' + Date.now();
+  const domainName = 'lost-response-test.com';
+  const sku = 'domain-com';
+
+  const dummyOrder = {
+    id: orderId,
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
+    currency: 'USD',
+    subtotal: 10.0,
+    tax: 0,
+    total: 10.0,
+    items: [
+      {
+        sku,
+        category: 'DOMAIN',
+        domain: domainName,
+        registrant: {
+          name: 'Registro Perdido',
+          email: 'perdido@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Paseo de la Reforma 500',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '06500'
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: dummyOrder as any });
+
+  try {
+    // 14a. Simular error de red / timeout tras enviar
+    const firstAttempt = await provisionPaidOrder(orderId, {
+      bridgeFetch: async () => {
+        throw new Error('Timeout al esperar respuesta del socket del proveedor');
+      }
+    });
+
+    assert.equal(firstAttempt.success, false);
+
+    // Verificar que en base de datos quedó como UNCERTAIN
+    const op = await prisma.provisioningOperation.findUnique({
+      where: { operationKey: `${orderId}:${sku}:${domainName}` }
+    });
+    assert.equal(op?.status, 'UNCERTAIN');
+
+    // 14b. Reintento: NO debe reenviar a ciegas a ResellerClub
+    let secondFetchCalled = false;
+    const retryAttempt = await retryProvisionOrder(orderId, {
+      bridgeFetch: async () => {
+        secondFetchCalled = true;
+        return new Response('{}', { status: 200 });
+      }
+    });
+
+    assert.equal(retryAttempt.success, false);
+    assert.equal(secondFetchCalled, false, 'No debe reenviar la solicitud a ciegas con resultado incierto');
+    assert.match(retryAttempt.error || '', /incierto/i);
+  } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
+    await prisma.order.delete({ where: { id: created.id } });
+  }
+});
+
+// ============================================================================
+// 15. Una orden con varios dominios y un fallo parcial: no se repiten los dominios ya confirmados
+// ============================================================================
+test('15. Una orden con varios dominios y un fallo parcial: no se repiten los dominios ya confirmados', async () => {
+  const orderId = 'ord_multi_domain_' + Date.now();
+  const domainA = 'dominio-confirmado-a.com';
+  const domainB = 'dominio-pendiente-b.com';
+
+  const multiOrder = {
+    id: orderId,
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
+    currency: 'USD',
+    subtotal: 20.0,
+    tax: 0,
+    total: 20.0,
+    items: [
+      {
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: domainA,
+        registrant: {
+          name: 'Registro Multi',
+          email: 'multi@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Av Universidad 100',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '03100'
+        }
+      },
+      {
+        sku: 'domain-net',
+        category: 'DOMAIN',
+        domain: domainB,
+        registrant: {
+          name: 'Registro Multi',
+          email: 'multi@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Av Universidad 100',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '03100'
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: multiOrder as any });
+
+  // Pre-confirmar dominio A en base de datos
+  await prisma.provisioningOperation.create({
+    data: {
+      operationKey: `${orderId}:domain-com:${domainA}`,
+      orderId,
+      sku: 'domain-com',
+      domain: domainA,
+      action: 'register',
+      status: 'CONFIRMED',
+      providerOrderId: 'RC_ORDER_DOM_A',
+      attempts: 1
+    }
+  });
+
+  try {
+    const calledDomains: string[] = [];
+
+    const result = await provisionPaidOrder(orderId, {
+      bridgeFetch: async (_url, init) => {
+        const body = JSON.parse((init?.body as string) || '{}');
+        calledDomains.push(body.domain);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'register',
+            domain: body.domain,
+            orderId: 'RC_ORDER_DOM_B',
+            status: 'PROVISIONED'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    });
+
+    assert.equal(result.success, true);
+    // Solo debe llamarse para dominio B; dominio A se recupera sin re-ejecución
+    assert.deepEqual(calledDomains, [domainB]);
+    assert.equal(result.results?.length, 2);
+    assert.equal(result.results?.[0]?.providerOrderId, 'RC_ORDER_DOM_A');
+    assert.equal(result.results?.[1]?.providerOrderId, 'RC_ORDER_DOM_B');
+  } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
+    await prisma.order.delete({ where: { id: created.id } });
+  }
+});
+
+// ============================================================================
+// 16. Registro pendiente: no se marca falsamente PROVISIONED
+// ============================================================================
+test('16. Registro pendiente: no se marca falsamente PROVISIONED', async () => {
+  const orderId = 'ord_pending_reg_' + Date.now();
+  const domainName = 'registro-pendiente.com';
+
+  const dummyOrder = {
+    id: orderId,
+    customerId: null,
+    status: 'PAID',
+    paymentStatus: 'PAYMENT_CONFIRMED',
+    provisionStatus: 'NONE',
+    currency: 'USD',
+    subtotal: 10.0,
+    tax: 0,
+    total: 10.0,
+    items: [
+      {
+        sku: 'domain-com',
+        category: 'DOMAIN',
+        domain: domainName,
+        registrant: {
+          name: 'Registro Pendiente',
+          email: 'pendiente@banelio.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Av Insurgentes 500',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '03100'
+        }
+      }
+    ]
+  };
+
+  const created = await prisma.order.create({ data: dummyOrder as any });
+
+  try {
+    const result = await provisionPaidOrder(orderId, {
+      bridgeFetch: async () => {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'register',
+            domain: domainName,
+            orderId: 'RC_PENDING_112233',
+            status: 'PENDING_REGISTRATION'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    });
+
+    assert.equal(result.success, true);
+    assert.notEqual(result.status, 'PROVISIONED', 'No debe marcarse como PROVISIONED');
+    assert.equal(result.status, 'PROVISIONING');
+    assert.equal(result.results?.[0]?.status, 'PENDING');
+
+    const inDb = await prisma.order.findUnique({ where: { id: orderId } });
+    assert.equal(inDb?.provisionStatus, 'PROVISIONING');
+  } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
+    await prisma.order.delete({ where: { id: created.id } });
+  }
+});
+
+// ============================================================================
+// 17. Transferencia aceptada: permanece pendiente de finalización
+// ============================================================================
+test('17. Transferencia aceptada: permanece pendiente de finalización', async () => {
+  const orderId = 'ord_trans_pending_' + Date.now();
+  const domainName = 'transfer-permanece-pendiente.com';
+
+  const dummyOrder = {
+    id: orderId,
     customerId: null,
     status: 'PAID',
     paymentStatus: 'PAYMENT_CONFIRMED',
@@ -269,119 +722,166 @@ test('7. Transferencias de dominios: requiere código EPP y datos obligatorios d
         sku: 'DOMAIN_TRANSFER',
         category: 'DOMAIN',
         isTransfer: true,
-        domain: 'midominio-transfer.com'
-        // Falta eppCode
-      }
-    ]
-  };
-
-  const created = await prisma.order.create({ data: dummyTransferNoEpp as any });
-
-  try {
-    const result = await provisionPaidOrder(created.id);
-    assert.equal(result.success, false);
-    assert.equal(result.status, 'FAILED');
-    assert.match(result.error || '', /El código Auth\/EPP es obligatorio/);
-
-    const refreshed = await prisma.order.findUnique({ where: { id: created.id } });
-    assert.equal(refreshed?.provisionStatus, 'FAILED');
-    assert.match(refreshed?.failureReason || '', /Auth\/EPP/);
-  } finally {
-    await prisma.order.delete({ where: { id: created.id } });
-  }
-});
-
-test('8. Aprovisionamiento verificable: confirmación real con provider orderId y manejo de errores', async () => {
-  const dummyOrderSuccess = {
-    id: 'ord_prov_success_' + Date.now(),
-    customerId: null,
-    status: 'PAID',
-    paymentStatus: 'PAYMENT_CONFIRMED',
-    provisionStatus: 'NONE',
-    currency: 'USD',
-    subtotal: 10.0,
-    tax: 0,
-    total: 10.0,
-    items: [
-      {
-        sku: 'domain-com',
-        category: 'DOMAIN',
-        domain: 'banelio-test-prov.com',
+        domain: domainName,
+        eppCode: 'AuthSecret123!',
         registrant: {
-          name: 'Admin Banelio',
-          email: 'contacto@banelio.com',
-          phone: '6691234567',
-          address: 'Av del Mar 10',
-          city: 'Mazatlan',
-          country: 'MX'
+          name: 'Registrante Transfer',
+          email: 'admin@transfer-permanece-pendiente.com',
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Paseo de la Reforma 222',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '06600'
         }
       }
     ]
   };
 
-  const created = await prisma.order.create({ data: dummyOrderSuccess as any });
+  const created = await prisma.order.create({ data: dummyOrder as any });
 
   try {
-    // 8a. Simulación de confirmación verificable desde el bridge de ResellerClub
-    const successResult = await provisionPaidOrder(created.id, {
+    const result = await provisionPaidOrder(orderId, {
       bridgeFetch: async () => {
         return new Response(
           JSON.stringify({
             success: true,
-            action: 'register',
-            domain: 'banelio-test-prov.com',
-            orderId: 'RC_ORDER_987654',
-            status: 'PROVISIONED'
+            action: 'transfer',
+            domain: domainName,
+            orderId: 'RC_TRANS_987',
+            status: 'TRANSFER_INITIATED'
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       }
     });
 
-    assert.equal(successResult.success, true);
-    assert.equal(successResult.status, 'PROVISIONED');
-    assert.equal(successResult.results?.[0]?.providerOrderId, 'RC_ORDER_987654');
+    assert.equal(result.success, true);
+    assert.equal(result.status, 'PROVISIONING', 'Transferencia aceptada permanece PROVISIONING');
+    assert.equal(result.results?.[0]?.status, 'TRANSFER_INITIATED');
 
-    const orderInDb = await prisma.order.findUnique({ where: { id: created.id } });
-    assert.equal(orderInDb?.provisionStatus, 'PROVISIONED');
-    assert.equal(orderInDb?.failureReason, null);
-
-    // 8b. Si el bridge responde con error (ej. endpoint no desplegado o rechazo de ResellerClub), NUNCA fingir éxito
-    const dummyOrderFail = await prisma.order.create({
-      data: {
-        ...dummyOrderSuccess,
-        id: 'ord_prov_fail_' + Date.now(),
-        provisionStatus: 'NONE'
-      } as any
-    });
-
-    const failResult = await provisionPaidOrder(dummyOrderFail.id, {
-      bridgeFetch: async () => {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Dominio no disponible o fondos insuficientes en cuenta mayorista.'
-          }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    });
-
-    assert.equal(failResult.success, false);
-    assert.equal(failResult.status, 'FAILED');
-    assert.match(failResult.error || '', /Dominio no disponible/);
-
-    const failInDb = await prisma.order.findUnique({ where: { id: dummyOrderFail.id } });
-    assert.equal(failInDb?.provisionStatus, 'FAILED');
-    assert.match(failInDb?.failureReason || '', /Dominio no disponible/);
-
-    await prisma.order.delete({ where: { id: dummyOrderFail.id } });
+    const inDb = await prisma.order.findUnique({ where: { id: orderId } });
+    assert.equal(inDb?.provisionStatus, 'PROVISIONING');
   } finally {
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
     await prisma.order.delete({ where: { id: created.id } });
   }
 });
 
-test('9. Servicios complementarios (Hosting / Correo / SSL): no se activan automáticamente', async () => {
+// ============================================================================
+// 18. OXXO con importe o moneda incorrectos: rechazado
+// ============================================================================
+test('18. OXXO con importe o moneda incorrectos: rechazado', () => {
+  const oxxoOrder = {
+    id: 'ord_oxxo_val_18',
+    gatewayReference: 'pi_oxxo_test_18',
+    paymentMethod: 'OXXO_PAY',
+    currency: 'USD',
+    total: 25.0,
+    items: [
+      {
+        _paymentMetadata: true,
+        method: 'OXXO_PAY',
+        paymentIntentId: 'pi_oxxo_test_18',
+        expectedAmountCents: 45625, // 456.25 MXN
+        expectedCurrency: 'mxn',
+        fxRate: 18.25,
+        orderTotalUSD: 25.0,
+        createdAt: new Date().toISOString()
+      }
+    ]
+  };
+
+  // 18a. Moneda incorrecta (USD en vez de MXN)
+  const wrongCurrencyEvent = {
+    id: 'pi_oxxo_test_18',
+    status: 'succeeded',
+    currency: 'usd',
+    amount: 2500,
+    amount_received: 2500
+  };
+  const resCurrency = validateStripePaymentIntentForOrder(oxxoOrder, wrongCurrencyEvent);
+  assert.equal(resCurrency.valid, false);
+  assert.match(resCurrency.error || '', /Moneda inconsistente para pago OXXO/);
+
+  // 18b. Importe alterado en MXN
+  const wrongAmountEvent = {
+    id: 'pi_oxxo_test_18',
+    status: 'succeeded',
+    currency: 'mxn',
+    amount: 30000,
+    amount_received: 30000
+  };
+  const resAmount = validateStripePaymentIntentForOrder(oxxoOrder, wrongAmountEvent);
+  assert.equal(resAmount.valid, false);
+  assert.match(resAmount.error || '', /El importe cobrado en OXXO no coincide/);
+});
+
+// ============================================================================
+// 19. Tarjeta con importe, moneda o PaymentIntent incorrectos: rechazada
+// ============================================================================
+test('19. Tarjeta con importe, moneda o PaymentIntent incorrectos: rechazada', () => {
+  const cardOrder = {
+    id: 'ord_card_val_19',
+    gatewayReference: 'pi_card_valid_19',
+    paymentMethod: 'STRIPE_CARD',
+    currency: 'USD',
+    total: 20.0,
+    items: [
+      {
+        _paymentMetadata: true,
+        method: 'STRIPE_CARD',
+        paymentIntentId: 'pi_card_valid_19',
+        expectedAmountCents: 2000,
+        expectedCurrency: 'usd',
+        orderTotalUSD: 20.0,
+        createdAt: new Date().toISOString()
+      }
+    ]
+  };
+
+  // 19a. PaymentIntent ajeno a la orden
+  const wrongPiEvent = {
+    id: 'pi_card_DIFF_99',
+    status: 'succeeded',
+    currency: 'usd',
+    amount: 2000,
+    amount_received: 2000
+  };
+  const resPi = validateStripePaymentIntentForOrder(cardOrder, wrongPiEvent);
+  assert.equal(resPi.valid, false);
+  assert.match(resPi.error || '', /no coincide con la orden/);
+
+  // 19b. Importe menor
+  const wrongAmountEvent = {
+    id: 'pi_card_valid_19',
+    status: 'succeeded',
+    currency: 'usd',
+    amount: 1500,
+    amount_received: 1500
+  };
+  const resAmount = validateStripePaymentIntentForOrder(cardOrder, wrongAmountEvent);
+  assert.equal(resAmount.valid, false);
+  assert.match(resAmount.error || '', /Importe cobrado no coincide con la orden/);
+
+  // 19c. Moneda diferente
+  const wrongCurrencyEvent = {
+    id: 'pi_card_valid_19',
+    status: 'succeeded',
+    currency: 'eur',
+    amount: 2000,
+    amount_received: 2000
+  };
+  const resCurrency = validateStripePaymentIntentForOrder(cardOrder, wrongCurrencyEvent);
+  assert.equal(resCurrency.valid, false);
+  assert.match(resCurrency.error || '', /Moneda inconsistente/);
+});
+
+// ============================================================================
+// 20. Hosting, correo y SSL sin integración real: no se marcan como aprovisionados
+// ============================================================================
+test('20. Hosting, correo y SSL sin integración real: no se marcan como aprovisionados', async () => {
   const dummyHostingOrder = {
     id: 'ord_hosting_only_' + Date.now(),
     customerId: null,
@@ -389,14 +889,19 @@ test('9. Servicios complementarios (Hosting / Correo / SSL): no se activan autom
     paymentStatus: 'PAYMENT_CONFIRMED',
     provisionStatus: 'NONE',
     currency: 'USD',
-    subtotal: 5.0,
+    subtotal: 15.0,
     tax: 0,
-    total: 5.0,
+    total: 15.0,
     items: [
       {
-        sku: 'hosting-plan-starter-month',
+        sku: 'hosting-cloud-nvme-plus',
         category: 'HOSTING',
-        name: 'Cloud Starter NVMe (Mensual)'
+        name: 'Cloud Hosting NVMe Plus'
+      },
+      {
+        sku: 'ssl-wildcard-annual',
+        category: 'SSL',
+        name: 'Certificado SSL Wildcard'
       }
     ]
   };
@@ -406,118 +911,12 @@ test('9. Servicios complementarios (Hosting / Correo / SSL): no se activan autom
   try {
     const result = await provisionPaidOrder(created.id);
     assert.equal(result.success, true);
-    assert.equal(result.status, 'NONE');
+    assert.equal(result.status, 'NONE', 'Servicios complementarios deben conservar status NONE');
     assert.match(result.message || '', /Sin dominios para aprovisionar/);
 
     const inDb = await prisma.order.findUnique({ where: { id: created.id } });
     assert.equal(inDb?.provisionStatus, 'NONE');
-  } finally {
-    await prisma.order.delete({ where: { id: created.id } });
-  }
-});
-
-test('10. Datos de registrante: rechazo si faltan datos obligatorios y prohibición de datos ficticios (Regla 7)', async () => {
-  const dummyMissingContactOrder = {
-    id: 'ord_missing_contact_' + Date.now(),
-    customerId: null,
-    status: 'PAID',
-    paymentStatus: 'PAYMENT_CONFIRMED',
-    provisionStatus: 'NONE',
-    currency: 'USD',
-    subtotal: 10.0,
-    tax: 0,
-    total: 10.0,
-    items: [
-      {
-        sku: 'domain-com',
-        category: 'DOMAIN',
-        domain: 'incomplete-registrant.com',
-        registrant: {
-          name: 'Cliente Incompleto',
-          email: 'incompleto@ejemplo.com'
-          // Falta teléfono, dirección física, ciudad y país
-        }
-      }
-    ]
-  };
-
-  const created = await prisma.order.create({ data: dummyMissingContactOrder as any });
-
-  try {
-    const result = await provisionPaidOrder(created.id);
-    assert.equal(result.success, false);
-    assert.equal(result.status, 'FAILED');
-    assert.match(result.error || '', /Faltan datos obligatorios de contacto del registrante/);
-    assert.match(result.error || '', /No se permite el uso de información ficticia/);
-
-    const inDb = await prisma.order.findUnique({ where: { id: created.id } });
-    assert.equal(inDb?.provisionStatus, 'FAILED');
-    assert.match(inDb?.failureReason || '', /Faltan datos obligatorios/);
-  } finally {
-    await prisma.order.delete({ where: { id: created.id } });
-  }
-});
-
-test('11. Transferencia de dominio: inicio con proveedor pasa a PROVISIONING y TRANSFER_INITIATED, NUNCA marca PROVISIONED prematuramente (Regla 9)', async () => {
-  const dummyTransferOrder = {
-    id: 'ord_transfer_prov_' + Date.now(),
-    customerId: null,
-    status: 'PAID',
-    paymentStatus: 'PAYMENT_CONFIRMED',
-    provisionStatus: 'NONE',
-    currency: 'USD',
-    subtotal: 12.99,
-    tax: 0,
-    total: 12.99,
-    items: [
-      {
-        sku: 'DOMAIN_TRANSFER',
-        category: 'DOMAIN',
-        isTransfer: true,
-        domain: 'transfer-real-test.com',
-        eppCode: 'AuthCode12345!',
-        registrant: {
-          name: 'Registrante Transfer',
-          email: 'admin@transfer-real-test.com',
-          phone: '5512345678',
-          address: 'Paseo de la Reforma 222',
-          city: 'Ciudad de Mexico',
-          country: 'MX',
-          state: 'CDMX',
-          postalCode: '06600'
-        }
-      }
-    ]
-  };
-
-  const created = await prisma.order.create({ data: dummyTransferOrder as any });
-
-  try {
-    const result = await provisionPaidOrder(created.id, {
-      bridgeFetch: async () => {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            action: 'transfer',
-            domain: 'transfer-real-test.com',
-            orderId: 'RC_TRANS_ORD_554433',
-            status: 'TRANSFER_INITIATED'
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-    });
-
-    assert.equal(result.success, true);
-    // REGLA 9: No marcar la orden como PROVISIONED cuando el proveedor solo aceptó la solicitud de transferencia
-    assert.equal(result.status, 'PROVISIONING', 'El estado de la orden en transferencia debe ser PROVISIONING, no PROVISIONED');
-    assert.equal(result.results?.[0]?.status, 'TRANSFER_INITIATED');
-    assert.equal(result.results?.[0]?.providerOrderId, 'RC_TRANS_ORD_554433');
-    assert.match(result.message || '', /En espera de confirmación y liberación por el registry/);
-
-    const inDb = await prisma.order.findUnique({ where: { id: created.id } });
-    assert.equal(inDb?.provisionStatus, 'PROVISIONING', 'En base de datos debe ser PROVISIONING');
-    assert.equal(inDb?.failureReason, null);
+    assert.match(inDb?.failureReason || '', /requiere flujo específico o manual/);
   } finally {
     await prisma.order.delete({ where: { id: created.id } });
   }

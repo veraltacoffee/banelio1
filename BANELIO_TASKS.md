@@ -48,30 +48,46 @@
 
 ---
 
-### TASK: SECURITY-PAYMENTS-PROVISIONING-HARDENING
-- **TASK ID:** SECURITY-PAYMENTS-PROVISIONING-HARDENING
+### TASK: FINAL-SECURITY-PAYMENTS-PROVISIONING-IMPLEMENTATION
+- **TASK ID:** FINAL-SECURITY-PAYMENTS-PROVISIONING-IMPLEMENTATION
 - **STATUS:** COMPLETED
 - **PRIORITY:** HIGHEST
-- **OWNER:** Security & Backend Architecture
-- **OBJECTIVE:** Corregir bloqueantes de seguridad en el puente PHP, validación de pagos y aprovisionamiento de dominios. Eliminar datos ficticios de contacto (Regla 7), garantizar semántica veraz de estados evitando marcar PROVISIONED en transferencias que solo han sido iniciadas (Regla 9), desplegar las 10 migraciones Prisma en la base local SQLite y validar suite de 11 tests automatizados.
+- **OWNER:** Security, Core Backend & Provisioning Architecture
+- **OBJECTIVE:** Resolver y verificar de forma exhaustiva los 5 bloqueantes críticos del sistema Banelio:
+  1. Bloqueante A: Autenticación HMAC-SHA256 servidor a servidor en endpoints protegidos del puente PHP (`PHP_BRIDGE_SECRET`, ventana de 300s, `timingSafeEqual`/`hash_equals`).
+  2. Bloqueante B: Eliminación radical de todos los datos ficticios y fallbacks (prefijos telefónicos default como '1' o '52', números '6691000000', 'N/A' y '00000').
+  3. Bloqueante C: Deduplicación persistente en base de datos para webhooks Stripe con el modelo `StripeWebhookEvent`, restricción única sobre `eventId` y manejo atómico de entregas simultáneas.
+  4. Bloqueante D: Aprovisionamiento server-authoritative idempotente y recuperable con el modelo `ProvisioningOperation`, gestión de estado `UNCERTAIN` ante pérdida de red, reconciliación controlada, aislamiento multi-dominio y blindaje de órdenes sin `customerId`.
+  5. Bloqueante E: Validación estricta autoritativa de pagos (OXXO MXN, Stripe Card USD, PayPal server-side) y servicios complementarios sin activación automática simulada.
 - **ALLOWED FILES:**
+  - `prisma/schema.prisma`
+  - `prisma/migrations/*`
+  - `.env.example`
+  - `server/php/reseller/config.php`
   - `server/php/domains/provision.php`
   - `server/php/domains/customer.php`
   - `server/php/domains/contacts.php`
+  - `server/php/domains/my-domains.php`
+  - `server/php/reseller/test-connection.php`
+  - `server/phpBridgeAuth.ts`
+  - `server/payments.ts`
   - `server/provisioning.ts`
+  - `server/orders.ts`
+  - `server.ts`
   - `server/payments-provisioning.test.ts`
   - `BANELIO_WORK_STATE.md`
   - `BANELIO_TASKS.md`
   - `BANELIO_HANDOFF.md`
-- **FORBIDDEN FILES:** `src/*` componentes visuales de UI
-- **DEPENDENCIES:** Prisma SQLite `dev.db`, ResellerClub PHP Bridge
+- **DEPENDENCIES:** Prisma SQLite `dev.db`, ResellerClub PHP Bridge, Stripe Webhooks
 - **VALIDATION:**
-  - `npm test` ejecutando 11 tests con 100% PASS.
+  - `npm test` ejecutando los 20 tests obligatorios con 100% PASS (20/20 aprobados).
   - `tsc --noEmit` limpio (0 errores).
   - `compile_applet` exitoso.
-  - Validación de que ningún dato de contacto ficticio (`Av. Central 100`, `Mazatlán`, etc.) es inyectado.
-  - Validación de que órdenes de transferencia se registran como `PROVISIONING` y `TRANSFER_INITIATED`, nunca prematuramente como `PROVISIONED`.
-- **HANDOFF:** Sistema blindado y documentado verazmente.
+  - `npm run build` exitoso (Vite + esbuild).
+  - Migración Prisma `20261009004012_add_stripe_events_and_provisioning_operations` creada y aplicada.
+  - Verificación de ausencia total de datos ficticios en flujos de registrante.
+  - Verificación de no exposición de secretos en frontend o logs.
+- **HANDOFF:** Sistema blindado, idempotente y completamente documentado.
 
 ---
 

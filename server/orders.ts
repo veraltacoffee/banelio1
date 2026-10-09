@@ -515,6 +515,37 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
 }
 
 /**
+ * Control estricto de autorización sobre órdenes.
+ * - Cliente autenticado solo accede a sus propias órdenes.
+ * - Administradores pueden acceder a cualquier orden.
+ * - Órdenes sin customerId (guest) NUNCA eluden el control: requieren rol ADMIN.
+ */
+export function authorizeOrderAccess(
+  customer: { id: string; role?: string } | null | undefined,
+  order: { customerId: string | null }
+): { authorized: boolean; status: number; error?: string } {
+  if (!customer) {
+    return { authorized: false, status: 401, error: 'Autenticación requerida para acceder a la orden.' };
+  }
+
+  if (order.customerId) {
+    if (order.customerId !== customer.id && customer.role !== 'ADMIN') {
+      return { authorized: false, status: 403, error: 'Acceso no autorizado a esta orden.' };
+    }
+  } else {
+    if (customer.role !== 'ADMIN') {
+      return {
+        authorized: false,
+        status: 403,
+        error: 'Acceso no autorizado: órdenes sin cliente asignado requieren autorización administrativa.'
+      };
+    }
+  }
+
+  return { authorized: true, status: 200 };
+}
+
+/**
  * GET /api/orders/:id - devuelve SOLO datos no sensibles.
  * Nunca expone EPP, tokens, ni credenciales de proveedor.
  */

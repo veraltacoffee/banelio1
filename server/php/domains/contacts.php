@@ -10,6 +10,7 @@ require_once __DIR__ . '/../reseller/config.php';
 require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
+verify_banelio_bridge_auth();
 
 $client = new ResellerClubClient();
 
@@ -127,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         send_json_response(['success' => false, 'error' => 'El teléfono de contacto es obligatorio.'], 400);
     }
     if (empty($telCc)) {
-        $telCc = '1';
+        send_json_response(['success' => false, 'error' => 'El código de país del teléfono (phone_cc) es obligatorio.'], 400);
     }
 
     try {
@@ -140,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'state' => $state,
             'country' => $country,
             'zipcode' => $zipcode,
-            'tel-no-cc' => !empty($telCc) ? $telCc : '52',
+            'tel-no-cc' => $telCc,
             'tel-no' => $telNo,
             'customer-id' => $customerId,
             'type' => $type

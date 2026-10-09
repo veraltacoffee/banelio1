@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { prisma } from './db';
 
 /**
  * BANELIO - Payment gateway helpers (FASE GRANDE: Stripe + PayPal + OXXO + webhooks).
@@ -166,25 +167,156 @@ export function getOrderPaymentMetadata(order: any): PaymentMetadata | null {
   return found ? (found as PaymentMetadata) : null;
 }
 
-const processedStripeEvents = new Set<string>();
+const processedStripeEventsCache = new Set<string>();
 const MAX_PROCESSED_EVENTS = 5000;
 
-export function isStripeEventProcessed(eventId: string): boolean {
-  if (!eventId || typeof eventId !== 'string') return false;
-  return processedStripeEvents.has(eventId);
-}
-
-export function markStripeEventProcessed(eventId: string): void {
-  if (!eventId || typeof eventId !== 'string') return;
-  if (processedStripeEvents.size >= MAX_PROCESSED_EVENTS) {
-    const first = processedStripeEvents.values().next().value;
-    if (first) processedStripeEvents.delete(first);
+/**
+ * Reclama atómicamente un evento de webhook en la base de datos (restricción única en eventId).
+ * Protege contra entregas concurrentes y evita re-procesar eventos ya completados.
+ */
+export async function claimStripeWebhookEvent(
+  eventId: string,
+  eventType: string = 'unknown'
+): Promise<{ claimed: boolean; status: 'NEW' | 'PROCESSED' | 'PROCESSING' | 'FAILED'; error?: string }> {
+  if (!eventId || typeof eventId !== 'string') {
+    return { claimed: false, status: 'FAILED', error: 'Identificador de evento inválido.' };
   }
-  processedStripeEvents.add(eventId);
+
+  try {
+    // Inserción atómica en base de datos con estado inicial PROCESSING
+    await prisma.stripeWebhookEvent.create({
+      data: {
+        eventId,
+        eventType,
+        status: 'PROCESSING'
+      }
+    });
+    return { claimed: true, status: 'NEW' };
+  } catch (err: any) {
+    // Unique constraint violation (P2002): el evento ya existe en base de datos
+    if (err?.code === 'P2002' || String(err?.message).includes('Unique constraint failed')) {
+      const existing = await prisma.stripeWebhookEvent.findUnique({
+        where: { eventId }
+      });
+
+      if (!existing) {
+        return { claimed: false, status: 'FAILED', error: 'Error al consultar estado del evento concurrente.' };
+      }
+
+      if (existing.status === 'PROCESSED') {
+        processedStripeEventsCache.add(eventId);
+        return { claimed: false, status: 'PROCESSED' };
+      }
+
+      if (existing.status === 'PROCESSING') {
+        const ageMs = Date.now() - new Date(existing.receivedAt).getTime();
+        // Si fue recibido hace menos de 60 segundos, otra instancia lo está procesando activamente
+        if (ageMs < 60000) {
+          return { claimed: false, status: 'PROCESSING' };
+        }
+        // Recuperación por timeout o proceso abortado anteriormente
+        await prisma.stripeWebhookEvent.update({
+          where: { eventId },
+          data: { attempts: { increment: 1 }, receivedAt: new Date() }
+        });
+        return { claimed: true, status: 'NEW' };
+      }
+
+      if (existing.status === 'FAILED') {
+        // Recuperación segura: reintentar evento previamente fallido
+        await prisma.stripeWebhookEvent.update({
+          where: { eventId },
+          data: { status: 'PROCESSING', attempts: { increment: 1 } }
+        });
+        return { claimed: true, status: 'NEW' };
+      }
+    }
+
+    return { claimed: false, status: 'FAILED', error: err?.message || 'Error al persistir evento.' };
+  }
 }
 
-export function clearProcessedStripeEvents(): void {
-  processedStripeEvents.clear();
+/**
+ * Marca persistentemente el evento como PROCESSED en la base de datos tras completar el cobro.
+ */
+export async function markStripeWebhookEventProcessed(eventId: string): Promise<void> {
+  if (!eventId || typeof eventId !== 'string') return;
+  processedStripeEventsCache.add(eventId);
+  try {
+    await prisma.stripeWebhookEvent.upsert({
+      where: { eventId },
+      update: {
+        status: 'PROCESSED',
+        processedAt: new Date(),
+        errorMessage: null
+      },
+      create: {
+        eventId,
+        eventType: 'payment_intent.succeeded',
+        status: 'PROCESSED',
+        processedAt: new Date()
+      }
+    });
+  } catch (err: any) {
+    console.error('BANELIO: error al persistir estado PROCESSED de webhook:', err?.message);
+  }
+}
+
+/**
+ * Registra un fallo en el procesamiento de un evento sin marcarlo falsamente como PROCESSED.
+ */
+export async function markStripeWebhookEventFailed(eventId: string, errorMessage: string): Promise<void> {
+  if (!eventId || typeof eventId !== 'string') return;
+  try {
+    await prisma.stripeWebhookEvent.upsert({
+      where: { eventId },
+      update: {
+        status: 'FAILED',
+        errorMessage: String(errorMessage).slice(0, 500)
+      },
+      create: {
+        eventId,
+        eventType: 'unknown',
+        status: 'FAILED',
+        errorMessage: String(errorMessage).slice(0, 500)
+      }
+    });
+  } catch (err: any) {
+    console.error('BANELIO: error al registrar fallo de evento webhook:', err?.message);
+  }
+}
+
+export async function isStripeEventProcessed(eventId: string): Promise<boolean> {
+  if (!eventId || typeof eventId !== 'string') return false;
+  if (processedStripeEventsCache.has(eventId)) return true;
+
+  try {
+    const record = await prisma.stripeWebhookEvent.findUnique({
+      where: { eventId }
+    });
+    if (record?.status === 'PROCESSED') {
+      processedStripeEventsCache.add(eventId);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+export async function markStripeEventProcessed(eventId: string): Promise<void> {
+  if (!eventId || typeof eventId !== 'string') return;
+  if (processedStripeEventsCache.size >= MAX_PROCESSED_EVENTS) {
+    const first = processedStripeEventsCache.values().next().value;
+    if (first) processedStripeEventsCache.delete(first);
+  }
+  processedStripeEventsCache.add(eventId);
+  await markStripeWebhookEventProcessed(eventId);
+}
+
+export async function clearProcessedStripeEvents(): Promise<void> {
+  processedStripeEventsCache.clear();
+  try {
+    await prisma.stripeWebhookEvent.deleteMany({});
+  } catch {}
 }
 
 /**

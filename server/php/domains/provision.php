@@ -18,6 +18,7 @@ require_once __DIR__ . '/../reseller/config.php';
 require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
+verify_banelio_bridge_auth();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     send_json_response([
@@ -114,17 +115,42 @@ try {
     $regCountry = !empty($registrant['country']) ? strtoupper(trim($registrant['country'])) : (isset($postData['country']) ? strtoupper(trim($postData['country'])) : '');
     $regZip = !empty($registrant['postalCode']) ? trim($registrant['postalCode']) : (!empty($registrant['zipcode']) ? trim($registrant['zipcode']) : (isset($postData['zipcode']) ? trim($postData['zipcode']) : ''));
     $regPhone = !empty($registrant['phone']) ? preg_replace('/\D/', '', $registrant['phone']) : (isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : '');
-    $regPhoneCc = !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : (isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : '1');
+    $regPhoneCc = !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : (isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : '');
+
+    // Validación estricta de registrante: prohibición de datos incompletos o ficticios
+    if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+        send_json_response([
+            'success' => false,
+            'error' => 'El correo electrónico del registrante es obligatorio y debe ser válido.'
+        ], 400);
+    }
+    if (empty($customerName) || strlen($customerName) < 3) {
+        send_json_response([
+            'success' => false,
+            'error' => 'El nombre completo del registrante es obligatorio para operar en ResellerClub.'
+        ], 400);
+    }
+    if (empty($regAddress) || empty($regCity) || empty($regState) || empty($regCountry) || empty($regZip)) {
+        send_json_response([
+            'success' => false,
+            'error' => 'Faltan datos obligatorios de dirección del registrante (dirección, ciudad, estado, código postal o país). No se permite el uso de información ficticia.'
+        ], 400);
+    }
+    if (empty($regPhone)) {
+        send_json_response([
+            'success' => false,
+            'error' => 'El número telefónico del registrante es obligatorio. No se permite el uso de información ficticia.'
+        ], 400);
+    }
+    if (empty($regPhoneCc)) {
+        send_json_response([
+            'success' => false,
+            'error' => 'El código de país del teléfono (phone_cc) es obligatorio. No se permite el uso de información ficticia ni prefijos predeterminados.'
+        ], 400);
+    }
 
     // 1. Resolver o registrar el cliente en ResellerClub si no se pasó customer_id
     if (empty($customerId)) {
-        if (empty($customerEmail)) {
-            send_json_response([
-                'success' => false,
-                'error' => 'customer_id o email de contacto es obligatorio para identificar al cliente en ResellerClub.'
-            ], 400);
-        }
-
         // Buscar si ya existe por email/username
         try {
             $existingCustomer = $client->get('customers/details.json', ['username' => $customerEmail]);
@@ -136,19 +162,6 @@ try {
         }
 
         if (empty($customerId)) {
-            if (empty($customerName) || strlen($customerName) < 3) {
-                send_json_response([
-                    'success' => false,
-                    'error' => 'El nombre completo del registrante es obligatorio para crear la cuenta en ResellerClub.'
-                ], 400);
-            }
-            if (empty($regAddress) || empty($regCity) || empty($regState) || empty($regCountry) || empty($regZip) || empty($regPhone)) {
-                send_json_response([
-                    'success' => false,
-                    'error' => 'Faltan datos obligatorios del registrante (dirección, ciudad, estado, código postal o teléfono) para registrar al cliente en el proveedor. No se permite el uso de información ficticia.'
-                ], 400);
-            }
-
             $passwd = 'Bnl!' . bin2hex(random_bytes(6)) . '9A';
             $signupData = [
                 'username' => $customerEmail,
@@ -197,22 +210,15 @@ try {
         } catch (Exception $e) {}
 
         if (empty($contactId)) {
-            if (empty($customerName) || empty($customerEmail) || empty($regAddress) || empty($regCity) || empty($regCountry) || empty($regPhone)) {
-                send_json_response([
-                    'success' => false,
-                    'error' => 'Faltan datos de contacto válidos del registrante para crear el registro WHOIS en ResellerClub. No se permite el uso de información ficticia.'
-                ], 400);
-            }
-
             $contactParams = [
                 'name' => $customerName,
                 'company' => !empty($companyName) ? $companyName : $customerName,
                 'email' => $customerEmail,
                 'address-line-1' => $regAddress,
                 'city' => $regCity,
-                'state' => !empty($regState) ? $regState : 'N/A',
+                'state' => $regState,
                 'country' => $regCountry,
-                'zipcode' => !empty($regZip) ? $regZip : '00000',
+                'zipcode' => $regZip,
                 'tel-no-cc' => $regPhoneCc,
                 'tel-no' => $regPhone,
                 'customer-id' => $customerId,

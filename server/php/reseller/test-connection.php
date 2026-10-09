@@ -10,6 +10,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/client.php';
 
 apply_banelio_cors();
+verify_banelio_bridge_auth();
 
 try {
     $client = new ResellerClubClient();
