@@ -39,6 +39,7 @@ ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
 4. Mitigación contra despliegues involuntarios en vivo: ajuste de entorno por defecto a `'sandbox'` en `server/php/reseller/config.php` si se omite la variable.
 5. Actualización y coherencia de documentos de contexto: `docs/AI-CONTEXT.md`, `BANELIO_WORK_STATE.md` y `BANELIO_HANDOFF.md`.
 6. Preservación íntegra de la base de datos (11 migraciones Prisma en SQLite), autenticación HMAC-SHA256 y la suite completa de pruebas.
+7. Corrección del indicador de conexión `registryConnected` en `/api/customer/domains`: extracción a `server/customerDomains.ts` para que nunca reporte conexión exitosa si la consulta remota falla o responde error, preservando los datos locales como fallback sin falsos positivos.
 
 ## GUÍA DE DESPLIEGUE EN IONOS Y CONFIGURACIÓN DEL PUENTE PHP
 1. **Archivos a desplegar en IONOS (bajo la raíz web /api/):**
@@ -61,6 +62,9 @@ ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
    - `test-connection.php` realiza únicamente un `GET` a `resellers/details.json`. Es 100% de solo lectura y no realiza cargos ni compras.
 
 ## ARCHIVOS MODIFICADOS EN LA TAREA
+- `server/customerDomains.ts`
+- `server.ts`
+- `server/payments-provisioning.test.ts`
 - `.gitignore`
 - `server/php/reseller/config.php`
 - `src/components/layout/Navbar.tsx`
@@ -74,7 +78,7 @@ ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
 `NONE`
 
 ## VALIDACIONES TÉCNICAS
-- `npm test` (24/24 tests PASS, 100% de éxito).
+- `npm test` (27/27 tests PASS, 100% de éxito).
 - `compile_applet`: PASS.
 - `lint_applet` (`tsc --noEmit`): PASS (0 errores).
 - `npm run build`: PASS (Vite + esbuild exitoso).

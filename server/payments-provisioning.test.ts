@@ -15,6 +15,7 @@ import { provisionPaidOrder, retryProvisionOrder } from './provisioning';
 import { authorizeOrderAccess, createOrder, toPublicOrder, OrderValidationError } from './orders';
 import { seedCatalog } from './catalog';
 import { buildBridgeAuthHeaders, verifyBridgeAuth } from './phpBridgeAuth';
+import { resolveCustomerDomains } from './customerDomains';
 import { prisma } from './db';
 
 // ============================================================================
@@ -1221,5 +1222,98 @@ test('24. Creación y ciclo de vida de Entitlements de dominios en órdenes de c
   } finally {
     await prisma.customer.delete({ where: { id: customer.id } });
   }
+});
+
+// ============================================================================
+// 25. /api/customer/domains: Consulta remota exitosa marca registryConnected: true
+// ============================================================================
+test('25. /api/customer/domains: Consulta remota exitosa marca registryConnected: true', async () => {
+  const customer = { id: 'cust_test_1', email: 'cliente@banelio.com' };
+  const localEntitlements = [
+    { id: 'ent_local_1', name: 'midominio-local.com', serviceType: 'DOMAIN', status: 'GRANTED' }
+  ];
+  const mockRemoteDomains = [
+    { id: '1001', domain: 'banelio-live.com', status: 'Active', creationDate: '2026-01-01', expiryDate: '2027-01-01' }
+  ];
+
+  const mockFetch: typeof fetch = async () => {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        count: mockRemoteDomains.length,
+        domains: mockRemoteDomains
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+
+  const result = await resolveCustomerDomains(customer, localEntitlements, mockFetch);
+
+  assert.equal(result.success, true);
+  assert.equal(result.registryConnected, true, 'Debe marcar registryConnected: true cuando la consulta remota es exitosa');
+  assert.equal(result.source, 'IONOS_RESELLERCLUB_REMOTE');
+  assert.equal(result.backendDependent, false);
+  assert.equal(result.count, 1);
+  assert.deepEqual(result.domains, mockRemoteDomains);
+});
+
+// ============================================================================
+// 26. /api/customer/domains: Fallo en consulta remota marca registryConnected: false y usa datos locales
+// ============================================================================
+test('26. /api/customer/domains: Fallo en consulta remota marca registryConnected: false y usa datos locales', async () => {
+  const customer = { id: 'cust_test_2', email: 'cliente2@banelio.com' };
+  const localEntitlements = [
+    { id: 'ent_local_2', name: 'dominio-guardado.com', serviceType: 'DOMAIN', status: 'PROVISIONED' }
+  ];
+
+  // Simular fallo de red / timeout en la consulta remota
+  const mockFailingFetch: typeof fetch = async () => {
+    throw new Error('Connection refused by remote host / timeout 3000ms');
+  };
+
+  const result = await resolveCustomerDomains(customer, localEntitlements, mockFailingFetch);
+
+  assert.equal(result.success, true);
+  assert.equal(result.registryConnected, false, 'NUNCA debe reportar conexión exitosa si la consulta remota falló');
+  assert.equal(result.source, 'LOCAL_ENTITLEMENTS');
+  assert.equal(result.backendDependent, true);
+  assert.equal(result.count, 1);
+  assert.deepEqual(result.domains, localEntitlements, 'Debe devolver los datos locales como alternativa');
+});
+
+// ============================================================================
+// 27. /api/customer/domains: Respuesta remota con error HTTP o success: false no marca conexión exitosa
+// ============================================================================
+test('27. /api/customer/domains: Respuesta remota con error HTTP o success: false no marca conexión exitosa', async () => {
+  const customer = { id: 'cust_test_3', email: 'cliente3@banelio.com' };
+  const localEntitlements = [
+    { id: 'ent_local_3', name: 'dominio-local-3.com', serviceType: 'DOMAIN', status: 'GRANTED' }
+  ];
+
+  // 27a. Respuesta HTTP 500 del backend remoto
+  const mock500Fetch: typeof fetch = async () => {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Internal Server Error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+
+  const result500 = await resolveCustomerDomains(customer, localEntitlements, mock500Fetch);
+  assert.equal(result500.registryConnected, false, 'No debe marcar conexión exitosa ante HTTP 500');
+  assert.equal(result500.source, 'LOCAL_ENTITLEMENTS');
+  assert.deepEqual(result500.domains, localEntitlements);
+
+  // 27b. Respuesta HTTP 200 pero success: false
+  const mockFalseSuccessFetch: typeof fetch = async () => {
+    return new Response(
+      JSON.stringify({ success: false, domains: null, error: 'No autorizado / credenciales no configuradas' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+
+  const resultFalseSuccess = await resolveCustomerDomains(customer, localEntitlements, mockFalseSuccessFetch);
+  assert.equal(resultFalseSuccess.registryConnected, false, 'No debe marcar conexión exitosa si success es false');
+  assert.equal(resultFalseSuccess.source, 'LOCAL_ENTITLEMENTS');
+  assert.deepEqual(resultFalseSuccess.domains, localEntitlements);
 });
 

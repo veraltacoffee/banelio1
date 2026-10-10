@@ -61,6 +61,7 @@ import {
 } from './server/payments';
 import { provisionPaidOrder, retryProvisionOrder } from './server/provisioning';
 import { buildBridgeAuthHeaders } from './server/phpBridgeAuth';
+import { resolveCustomerDomains } from './server/customerDomains';
 
 // Lazy client helper for Banelio Cloud Registry API
 function getRegistryConfig() {
@@ -1395,36 +1396,8 @@ async function startServer() {
         orderBy: { grantedAt: 'desc' }
       });
 
-      // Intentar consulta al endpoint en IONOS PHP (si está desplegado my-domains.php)
-      let remoteDomains: any[] = [];
-      let remoteQueried = false;
-      try {
-        const targetUrl = `https://banelio.com/api/domains/my-domains.php?email=${encodeURIComponent(customer.email)}&customer_id=${encodeURIComponent(customer.id)}`;
-        const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
-        const remoteRes = await fetch(targetUrl, {
-          headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
-          signal: AbortSignal.timeout(3000)
-        });
-        if (remoteRes.ok) {
-          const remoteData: any = await remoteRes.json();
-          if (remoteData.success && Array.isArray(remoteData.domains)) {
-            remoteDomains = remoteData.domains;
-            remoteQueried = true;
-          }
-        }
-      } catch {}
-
-      return res.json({
-        success: true,
-        count: remoteQueried ? remoteDomains.length : domainEntitlements.length,
-        domains: remoteQueried ? remoteDomains : domainEntitlements,
-        source: remoteQueried ? 'IONOS_RESELLERCLUB_REMOTE' : 'LOCAL_ENTITLEMENTS',
-        registryConnected: true,
-        backendDependent: !remoteQueried,
-        message: remoteQueried
-          ? 'Dominios sincronizados en vivo desde el Registry de ResellerClub.'
-          : 'Mostrando dominios registrados en el sistema Banelio. La sincronización remota en vivo requiere desplegar el script my-domains.php en el backend IONOS.'
-      });
+      const result = await resolveCustomerDomains(customer, domainEntitlements);
+      return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message });
     }

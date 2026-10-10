@@ -25,7 +25,7 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
 - **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 24 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS (24/24), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
+- **Pruebas y Validación:** 27 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS (27/27), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
@@ -40,6 +40,7 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
   - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
+- Corrección del indicador de conexión `registryConnected` en `/api/customer/domains`: nunca reporta conexión exitosa si la consulta remota falla o no está disponible, usando datos locales como fallback con `registryConnected: false`.
 - Consolidación del alcance comercial definitivo centrado exclusivamente en dominios: búsqueda, registro, transferencia (EPP/Auth) y renovación.
 - Retiro del escaparate y desactivación de productos fuera de alcance (hosting, correo, SSL independiente, afiliados y paneles de socios en Navbar y Dashboard).
 - Exclusión en `.gitignore` de `config.local.php`, `server/php/**/config.local.php` y `*.local.php` para protección estricta de secretos.
