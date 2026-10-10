@@ -34,8 +34,8 @@ if (!is_array($postData)) {
     $postData = $_POST;
 }
 
-$action = isset($postData['action']) ? strtolower(trim($postData['action'])) : 'register';
-$domainRaw = isset($postData['domain']) ? trim($postData['domain']) : '';
+$action = strtolower(trim($postData['action'] ?? 'register'));
+$domainRaw = trim($postData['domain'] ?? '');
 $years = isset($postData['years']) ? (int)$postData['years'] : 1;
 if ($years < 1 || $years > 10) {
     $years = 1;
@@ -65,9 +65,9 @@ $sld = $parts[0];
 $tld = implode('.', array_slice($parts, 1));
 
 // Datos del registrante/cliente
-$customerId = isset($postData['customer_id']) ? trim($postData['customer_id']) : '';
-$contactId = isset($postData['contact_id']) ? trim($postData['contact_id']) : '';
-$authCode = isset($postData['auth_code']) ? trim($postData['auth_code']) : (isset($postData['epp_code']) ? trim($postData['epp_code']) : '');
+$customerId = trim($postData['customer_id'] ?? '');
+$contactId = trim($postData['contact_id'] ?? '');
+$authCode = trim($postData['auth_code'] ?? $postData['epp_code'] ?? '');
 
 // Nameservers opcionales (default ResellerClub / Banelio DNS)
 $ns = isset($postData['ns']) && is_array($postData['ns']) && count($postData['ns']) >= 2
@@ -105,17 +105,17 @@ try {
         ? $postData['registrant']
         : [];
 
-    $customerEmail = isset($registrant['email']) ? trim(strtolower($registrant['email'])) : (isset($postData['email']) ? trim(strtolower($postData['email'])) : '');
-    $customerName = isset($registrant['name']) ? trim($registrant['name']) : (isset($postData['name']) ? trim($postData['name']) : '');
-    $companyName = !empty($registrant['company']) ? trim($registrant['company']) : (!empty($registrant['org']) ? trim($registrant['org']) : $customerName);
+    $customerEmail = trim(strtolower($registrant['email'] ?? $postData['email'] ?? ''));
+    $customerName = trim($registrant['name'] ?? $postData['name'] ?? '');
+    $companyName = trim($registrant['company'] ?? $registrant['org'] ?? $customerName);
 
-    $regAddress = !empty($registrant['address']) ? trim($registrant['address']) : (isset($postData['address']) ? trim($postData['address']) : '');
-    $regCity = !empty($registrant['city']) ? trim($registrant['city']) : (isset($postData['city']) ? trim($postData['city']) : '');
-    $regState = !empty($registrant['state']) ? trim($registrant['state']) : (isset($postData['state']) ? trim($postData['state']) : '');
-    $regCountry = !empty($registrant['country']) ? strtoupper(trim($registrant['country'])) : (isset($postData['country']) ? strtoupper(trim($postData['country'])) : '');
-    $regZip = !empty($registrant['postalCode']) ? trim($registrant['postalCode']) : (!empty($registrant['zipcode']) ? trim($registrant['zipcode']) : (isset($postData['zipcode']) ? trim($postData['zipcode']) : ''));
-    $regPhone = !empty($registrant['phone']) ? preg_replace('/\D/', '', $registrant['phone']) : (isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : '');
-    $regPhoneCc = !empty($registrant['phone_cc']) ? preg_replace('/\D/', '', $registrant['phone_cc']) : (isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : '');
+    $regAddress = trim($registrant['address'] ?? $postData['address'] ?? '');
+    $regCity = trim($registrant['city'] ?? $postData['city'] ?? '');
+    $regState = trim($registrant['state'] ?? $postData['state'] ?? '');
+    $regCountry = strtoupper(trim($registrant['country'] ?? $postData['country'] ?? ''));
+    $regZip = trim($registrant['postalCode'] ?? $registrant['zipcode'] ?? $postData['zipcode'] ?? '');
+    $regPhone = preg_replace('/\D/', '', $registrant['phone'] ?? $postData['phone'] ?? '');
+    $regPhoneCc = preg_replace('/\D/', '', $registrant['phone_cc'] ?? $postData['phone_cc'] ?? '');
 
     // Validación estricta de registrante: prohibición de datos incompletos o ficticios
     if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {

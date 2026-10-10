@@ -25,8 +25,8 @@ if (!$client->isConfigured()) {
 // 1. GET: Consultar datos del cliente
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $customerId = isset($_GET['customer_id']) ? trim($_GET['customer_id']) : (isset($_GET['customer-id']) ? trim($_GET['customer-id']) : '');
-    $email = isset($_GET['email']) ? trim(strtolower($_GET['email'])) : (isset($_GET['username']) ? trim(strtolower($_GET['username'])) : '');
+    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
+    $email = trim(strtolower($_GET['email'] ?? $_GET['username'] ?? ''));
 
     if (empty($customerId) && empty($email)) {
         send_json_response([
@@ -87,17 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $email = isset($postData['email']) ? trim(strtolower($postData['email'])) : (isset($postData['username']) ? trim(strtolower($postData['username'])) : '');
-    $name = isset($postData['name']) ? trim($postData['name']) : '';
-    $company = isset($postData['company']) ? trim($postData['company']) : $name;
-    $address = isset($postData['address']) ? trim($postData['address']) : (isset($postData['address1']) ? trim($postData['address1']) : '');
-    $city = isset($postData['city']) ? trim($postData['city']) : '';
-    $state = isset($postData['state']) ? trim($postData['state']) : '';
-    $country = isset($postData['country']) ? strtoupper(trim($postData['country'])) : '';
-    $zipcode = isset($postData['zipcode']) ? trim($postData['zipcode']) : (isset($postData['zip']) ? trim($postData['zip']) : '');
-    $telCc = isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : (isset($postData['tel-no-cc']) ? preg_replace('/\D/', '', $postData['tel-no-cc']) : '');
-    $telNo = isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : (isset($postData['tel-no']) ? preg_replace('/\D/', '', $postData['tel-no']) : '');
-    $lang = isset($postData['lang']) ? trim($postData['lang']) : 'es';
+    $email = trim(strtolower($postData['email'] ?? $postData['username'] ?? ''));
+    $name = trim($postData['name'] ?? '');
+    $company = trim($postData['company'] ?? $name);
+    $address = trim($postData['address'] ?? $postData['address1'] ?? '');
+    $city = trim($postData['city'] ?? '');
+    $state = trim($postData['state'] ?? '');
+    $country = strtoupper(trim($postData['country'] ?? ''));
+    $zipcode = trim($postData['zipcode'] ?? $postData['zip'] ?? '');
+    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? $postData['tel-no-cc'] ?? '');
+    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? $postData['tel-no'] ?? '');
+    $lang = trim($postData['lang'] ?? 'es');
 
     // Validación estricta de datos reales obligatorios (sin valores ficticios)
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {

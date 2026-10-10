@@ -159,20 +159,14 @@ function get_bridge_secret() {
     $secret = defined('PHP_BRIDGE_SECRET') ? PHP_BRIDGE_SECRET : (
         defined('RESELLER_BRIDGE_SECRET') ? RESELLER_BRIDGE_SECRET : (
             getenv('PHP_BRIDGE_SECRET') ?: (
-                getenv('RESELLER_BRIDGE_SECRET') ?: (
-                    isset($_ENV['PHP_BRIDGE_SECRET']) ? $_ENV['PHP_BRIDGE_SECRET'] : (
-                        isset($_ENV['RESELLER_BRIDGE_SECRET']) ? $_ENV['RESELLER_BRIDGE_SECRET'] : (
-                            isset($GLOBALS['bridgeSecret']) ? $GLOBALS['bridgeSecret'] : ''
-                        )
-                    )
-                )
+                getenv('RESELLER_BRIDGE_SECRET') ?: ''
             )
         )
     );
     return trim((string)$secret);
 }
 
-// 2c. Verificación estricta de autenticación HMAC-SHA256 (Server-to-Server)
+// 2e. Verificación estricta de autenticación HMAC-SHA256 (Server-to-Server)
 function verify_banelio_bridge_auth() {
     if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         return true;
@@ -214,23 +208,17 @@ function verify_banelio_bridge_auth() {
     $rawInput = file_get_contents('php://input');
     $rawBody = $rawInput === false ? '' : $rawInput;
 
-    // Normalizaciones de ruta posibles para compatibilidad entre proxy y servidor directo
-    $normalizedPaths = [
-        $uriPath,
-        '/' . ltrim($uriPath, '/'),
-        preg_replace('#^/api/#', '/', '/' . ltrim($uriPath, '/')),
-        '/api/' . ltrim(preg_replace('#^/api/#', '', $uriPath), '/'),
-        isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : ''
-    ];
+    // Verificación directa contra la ruta canónica solicitada
+    $canonical = "{$method}|{$uriPath}|{$timestamp}|{$rawBody}";
+    $expectedSig = hash_hmac('sha256', $canonical, $secret);
 
-    $matched = false;
-    foreach (array_unique(array_filter($normalizedPaths)) as $pathOption) {
-        $canonical = "{$method}|{$pathOption}|{$timestamp}|{$rawBody}";
-        $expectedSig = hash_hmac('sha256', $canonical, $secret);
-        if (hash_equals($expectedSig, $receivedSig)) {
-            $matched = true;
-            break;
-        }
+    $matched = hash_equals($expectedSig, $receivedSig);
+
+    // Fallback estricto únicamente si el servidor web omite el prefijo /api en REQUEST_URI
+    if (!$matched && strpos($uriPath, '/api/') !== 0) {
+        $apiPath = '/api/' . ltrim($uriPath, '/');
+        $canonicalFallback = "{$method}|{$apiPath}|{$timestamp}|{$rawBody}";
+        $matched = hash_equals(hash_hmac('sha256', $canonicalFallback, $secret), $receivedSig);
     }
 
     if (!$matched) {
@@ -247,25 +235,11 @@ function verify_banelio_bridge_auth() {
 function get_resellerclub_config() {
     load_banelio_local_config();
 
-    // Extraer de constantes o variables de entorno
+    // Extraer de constantes o variables de entorno oficiales del repositorio
     $resellerId = defined('RESELLERCLUB_RESELLER_ID') ? RESELLERCLUB_RESELLER_ID : (
-        defined('RESELLERCLUB_AUTH_USER_ID') ? RESELLERCLUB_AUTH_USER_ID : (
-            defined('RESELLER_ID') ? RESELLER_ID : (
-                getenv('RESELLERCLUB_RESELLER_ID') ?: (
-                    getenv('RESELLERCLUB_AUTH_USER_ID') ?: (
-                        getenv('RESELLER_ID') ?: (
-                            getenv('RESELLERCLUB_REST_USER_ID') ?: (
-                                isset($_ENV['RESELLERCLUB_RESELLER_ID']) ? $_ENV['RESELLERCLUB_RESELLER_ID'] : (
-                                    isset($_ENV['RESELLERCLUB_AUTH_USER_ID']) ? $_ENV['RESELLERCLUB_AUTH_USER_ID'] : (
-                                        isset($GLOBALS['resellerId']) ? $GLOBALS['resellerId'] : (
-                                            isset($GLOBALS['authUserId']) ? $GLOBALS['authUserId'] : ''
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
+        defined('RESELLER_ID') ? RESELLER_ID : (
+            getenv('RESELLERCLUB_RESELLER_ID') ?: (
+                getenv('RESELLER_ID') ?: ''
             )
         )
     );
@@ -273,33 +247,17 @@ function get_resellerclub_config() {
     $apiKey = defined('RESELLERCLUB_API_KEY') ? RESELLERCLUB_API_KEY : (
         defined('API_KEY') ? API_KEY : (
             getenv('RESELLERCLUB_API_KEY') ?: (
-                getenv('API_KEY') ?: (
-                    isset($_ENV['RESELLERCLUB_API_KEY']) ? $_ENV['RESELLERCLUB_API_KEY'] : (
-                        isset($GLOBALS['apiKey']) ? $GLOBALS['apiKey'] : ''
-                    )
-                )
+                getenv('API_KEY') ?: ''
             )
         )
     );
 
     $environment = defined('RESELLERCLUB_ENVIRONMENT') ? RESELLERCLUB_ENVIRONMENT : (
-        getenv('RESELLERCLUB_ENVIRONMENT') ?: (
-            isset($_ENV['RESELLERCLUB_ENVIRONMENT']) ? $_ENV['RESELLERCLUB_ENVIRONMENT'] : 'sandbox'
-        )
+        getenv('RESELLERCLUB_ENVIRONMENT') ?: 'sandbox'
     );
 
-    $isLive = strtolower(trim($environment)) === 'live' || strtolower(trim($environment)) === 'production';
+    $isLive = strtolower(trim((string)$environment)) === 'live';
     $baseUrl = $isLive ? 'https://httpapi.com/api/' : 'https://test.httpapi.com/api/';
-
-    // Permitir sobreescritura explícita de BASE_URL si se configuró
-    $customBase = defined('RESELLERCLUB_BASE_URL') ? RESELLERCLUB_BASE_URL : (
-        getenv('RESELLERCLUB_BASE_URL') ?: (
-            isset($GLOBALS['baseUrl']) ? $GLOBALS['baseUrl'] : ''
-        )
-    );
-    if (!empty($customBase)) {
-        $baseUrl = rtrim($customBase, '/') . '/';
-    }
 
     return [
         'resellerId' => trim((string)$resellerId),

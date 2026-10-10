@@ -42,10 +42,6 @@ class ResellerClubClient {
         return $this->environment;
     }
 
-    public function getBaseUrl() {
-        return $this->baseUrl;
-    }
-
     public function getResellerIdMasked() {
         if (empty($this->resellerId)) return 'NO CONFIGURADO';
         $len = strlen($this->resellerId);
@@ -118,9 +114,6 @@ class ResellerClubClient {
         curl_close($ch);
 
         if ($curlErrno !== 0) {
-            if (function_exists('error_log')) {
-                error_log("[BANELIO_CURL_ERROR] Endpoint: {$endpointClean}, Code: {$curlErrno}");
-            }
             throw new Exception("No fue posible establecer conexión con el proveedor mayorista.", 502);
         }
 

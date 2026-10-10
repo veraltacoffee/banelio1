@@ -11,8 +11,8 @@ require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
 
-$domainRaw = isset($_GET['domain']) ? trim($_GET['domain']) : (isset($_POST['domain']) ? trim($_POST['domain']) : '');
-$authCode = isset($_GET['auth_code']) ? trim($_GET['auth_code']) : (isset($_POST['auth_code']) ? trim($_POST['auth_code']) : '');
+$domainRaw = trim($_GET['domain'] ?? $_POST['domain'] ?? '');
+$authCode = trim($_GET['auth_code'] ?? $_POST['auth_code'] ?? '');
 
 if (empty($domainRaw)) {
     send_json_response([

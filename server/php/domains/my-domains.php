@@ -14,8 +14,8 @@ apply_banelio_cors();
 verify_banelio_bridge_auth();
 
 // Parámetros de identidad enviados por el backend Node de Banelio
-$customerId = isset($_GET['customer_id']) ? trim($_GET['customer_id']) : (isset($_GET['customer-id']) ? trim($_GET['customer-id']) : '');
-$email = isset($_GET['email']) ? trim(strtolower($_GET['email'])) : '';
+$customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
+$email = trim(strtolower($_GET['email'] ?? ''));
 
 if (empty($customerId) && empty($email)) {
     send_json_response([

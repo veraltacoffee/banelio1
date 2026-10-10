@@ -25,8 +25,8 @@ if (!$client->isConfigured()) {
 // 1. GET: Consultar contactos de un cliente
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $customerId = isset($_GET['customer_id']) ? trim($_GET['customer_id']) : (isset($_GET['customer-id']) ? trim($_GET['customer-id']) : '');
-    $contactId = isset($_GET['contact_id']) ? trim($_GET['contact_id']) : (isset($_GET['contact-id']) ? trim($_GET['contact-id']) : '');
+    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
+    $contactId = trim($_GET['contact_id'] ?? $_GET['contact-id'] ?? '');
 
     // Consulta específica de un contacto
     if (!empty($contactId)) {
@@ -100,18 +100,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $customerId = isset($postData['customer_id']) ? trim($postData['customer_id']) : (isset($postData['customer-id']) ? trim($postData['customer-id']) : '');
-    $name = isset($postData['name']) ? trim($postData['name']) : '';
-    $company = isset($postData['company']) ? trim($postData['company']) : $name;
-    $email = isset($postData['email']) ? trim(strtolower($postData['email'])) : '';
-    $address = isset($postData['address1']) ? trim($postData['address1']) : (isset($postData['address']) ? trim($postData['address']) : '');
-    $city = isset($postData['city']) ? trim($postData['city']) : '';
-    $state = isset($postData['state']) ? trim($postData['state']) : '';
-    $country = isset($postData['country']) ? strtoupper(trim($postData['country'])) : '';
-    $zipcode = isset($postData['zipcode']) ? trim($postData['zipcode']) : (isset($postData['zip']) ? trim($postData['zip']) : '');
-    $telCc = isset($postData['phone_cc']) ? preg_replace('/\D/', '', $postData['phone_cc']) : (isset($postData['tel-no-cc']) ? preg_replace('/\D/', '', $postData['tel-no-cc']) : '');
-    $telNo = isset($postData['phone']) ? preg_replace('/\D/', '', $postData['phone']) : (isset($postData['tel-no']) ? preg_replace('/\D/', '', $postData['tel-no']) : '');
-    $type = isset($postData['type']) ? trim($postData['type']) : 'Contact';
+    $customerId = trim($postData['customer_id'] ?? $postData['customer-id'] ?? '');
+    $name = trim($postData['name'] ?? '');
+    $company = trim($postData['company'] ?? $name);
+    $email = trim(strtolower($postData['email'] ?? ''));
+    $address = trim($postData['address1'] ?? $postData['address'] ?? '');
+    $city = trim($postData['city'] ?? '');
+    $state = trim($postData['state'] ?? '');
+    $country = strtoupper(trim($postData['country'] ?? ''));
+    $zipcode = trim($postData['zipcode'] ?? $postData['zip'] ?? '');
+    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? $postData['tel-no-cc'] ?? '');
+    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? $postData['tel-no'] ?? '');
+    $type = trim($postData['type'] ?? 'Contact');
 
     if (empty($customerId)) {
         send_json_response(['success' => false, 'error' => 'El customer_id es obligatorio para registrar un contacto.'], 400);
