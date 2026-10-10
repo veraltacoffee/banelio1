@@ -1400,8 +1400,9 @@ async function startServer() {
       let remoteQueried = false;
       try {
         const targetUrl = `https://banelio.com/api/domains/my-domains.php?email=${encodeURIComponent(customer.email)}&customer_id=${encodeURIComponent(customer.id)}`;
+        const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
         const remoteRes = await fetch(targetUrl, {
-          headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
+          headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
           signal: AbortSignal.timeout(3000)
         });
         if (remoteRes.ok) {

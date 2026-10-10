@@ -1120,3 +1120,106 @@ test('23. Creación server-authoritative de orden: precios e impuestos calculado
   }
 });
 
+// ============================================================================
+// 24. Creación y ciclo de vida de Entitlements de dominios en órdenes de clientes
+// ============================================================================
+test('24. Creación y ciclo de vida de Entitlements de dominios en órdenes de clientes', async () => {
+  const testCustomerEmail = `entitlement_test_${Date.now()}@banelio.com`;
+  const customer = await prisma.customer.create({
+    data: {
+      email: testCustomerEmail,
+      name: 'Cliente Entitlement Test',
+      role: 'CUSTOMER',
+      status: 'ACTIVE'
+    }
+  });
+
+  const domainName = `entitlement-test-${Date.now()}.com`;
+
+  try {
+    const result = await createOrder({
+      authenticatedCustomerId: customer.id,
+      countryCode: 'MX',
+      items: [
+        {
+          sku: 'domain-com',
+          domain: domainName,
+          quantity: 1,
+          periodYearsOrMonths: 1,
+          periodUnit: 'year'
+        }
+      ],
+      customer: {
+        registrant: {
+          name: 'Cliente Entitlement Test',
+          email: testCustomerEmail,
+          phone: '5512345678',
+          phone_cc: '52',
+          address: 'Av Insurgentes Sur 1602',
+          city: 'CDMX',
+          state: 'CDMX',
+          country: 'MX',
+          postalCode: '03940'
+        }
+      }
+    });
+
+    const orderId = result.order.id;
+
+    // Verificar que el entitlement de dominio fue creado en estado GRANTED
+    const entitlement = await prisma.entitlement.findFirst({
+      where: {
+        orderId,
+        serviceType: 'DOMAIN',
+        sku: 'domain-com'
+      }
+    });
+
+    assert.ok(entitlement, 'El Entitlement de dominio debe existir');
+    assert.equal(entitlement?.status, 'GRANTED');
+    assert.equal((entitlement?.config as any)?.domain, domainName);
+
+    // Simular pago confirmado y aprovisionamiento exitoso
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'PAID',
+        paymentStatus: 'PAYMENT_CONFIRMED'
+      }
+    });
+
+    const provResult = await provisionPaidOrder(orderId, {
+      bridgeFetch: async () => {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'register',
+            domain: domainName,
+            orderId: 'RC_ENT_12345',
+            status: 'PROVISIONED'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    });
+
+    assert.equal(provResult.success, true);
+    assert.equal(provResult.status, 'PROVISIONED');
+
+    // Verificar que el entitlement se actualizó a PROVISIONED con providerOrderId
+    const updatedEntitlement = await prisma.entitlement.findUnique({
+      where: { id: entitlement!.id }
+    });
+
+    assert.equal(updatedEntitlement?.status, 'PROVISIONED');
+    assert.equal((updatedEntitlement?.config as any)?.providerOrderId, 'RC_ENT_12345');
+    assert.equal((updatedEntitlement?.config as any)?.provider, 'resellerclub');
+
+    await prisma.entitlement.deleteMany({ where: { orderId } });
+    await prisma.provisioningOperation.deleteMany({ where: { orderId } });
+    await prisma.order.delete({ where: { id: orderId } });
+  } finally {
+    await prisma.customer.delete({ where: { id: customer.id } });
+  }
+});
+

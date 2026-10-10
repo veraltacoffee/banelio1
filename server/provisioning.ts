@@ -452,6 +452,28 @@ export async function provisionPaidOrder(
                 }
               }
             });
+          } else {
+            await prisma.entitlement.create({
+              data: {
+                orderId: order.id,
+                customerId: order.customerId,
+                serviceType: 'DOMAIN',
+                sku: item.sku,
+                name: `Dominio: ${domainName}`,
+                status: isItemProvisioned ? 'PROVISIONED' : 'ACTIVATED',
+                grantedAt: new Date(),
+                activatedAt: new Date(),
+                provisionedAt: isItemProvisioned ? new Date() : null,
+                config: {
+                  domain: domainName,
+                  provider: 'resellerclub',
+                  providerOrderId,
+                  action,
+                  transferStatus: isTransferAction ? 'TRANSFER_INITIATED' : undefined,
+                  updatedAt: new Date().toISOString()
+                }
+              }
+            });
           }
         } catch (entErr: any) {
           console.error('BANELIO: error al actualizar entitlement de dominio:', entErr.message);

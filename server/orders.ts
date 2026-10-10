@@ -89,6 +89,8 @@ export interface OrderCreateInput {
       org?: string;
       email?: string;
       phone?: string;
+      phone_cc?: string;
+      phoneCc?: string;
       address?: string;
       city?: string;
       state?: string;
@@ -209,7 +211,13 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
       active?: boolean;
     };
 
-    let domainName: string | undefined;
+    const rawExtracted = typeof raw.domain === 'string' && raw.domain.trim()
+      ? raw.domain.trim().toLowerCase()
+      : (input.customer?.registrant?.org && input.customer.registrant.org.includes('.')
+          ? (input.customer.registrant.org.match(/[a-z0-9][a-z0-9.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() || input.customer.registrant.org.trim().toLowerCase())
+          : undefined);
+
+    let domainName: string | undefined = rawExtracted ? rawExtracted.replace(/[^a-z0-9.-]/gi, '') : undefined;
 
     if (isDomainTransfer) {
       const epp = typeof raw.eppCode === 'string' ? raw.eppCode.trim() : '';
@@ -219,14 +227,6 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
           'El código Auth/EPP es obligatorio y debe tener entre 6 y 32 caracteres para transferir el dominio.'
         );
       }
-
-      const rawExtracted = typeof raw.domain === 'string' && raw.domain.trim()
-        ? raw.domain.trim().toLowerCase()
-        : (input.customer?.registrant?.org && input.customer.registrant.org.includes('.')
-            ? (input.customer.registrant.org.match(/[a-z0-9][a-z0-9.-]+\.[a-z]{2,}/i)?.[0]?.toLowerCase() || input.customer.registrant.org.trim().toLowerCase())
-            : undefined);
-
-      domainName = rawExtracted ? rawExtracted.replace(/[^a-z0-9.-]/gi, '') : undefined;
 
       const tld = domainName && domainName.includes('.')
         ? domainName.split('.').slice(1).join('.')
@@ -455,6 +455,9 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
         org: typeof registrantInput.org === 'string' ? registrantInput.org.trim() : undefined,
         email: typeof registrantInput.email === 'string' ? registrantInput.email.trim().toLowerCase() : '',
         phone: typeof registrantInput.phone === 'string' ? registrantInput.phone.trim() : '',
+        phone_cc: typeof (registrantInput as any).phone_cc === 'string'
+          ? (registrantInput as any).phone_cc.trim()
+          : (typeof (registrantInput as any).phoneCc === 'string' ? (registrantInput as any).phoneCc.trim() : ''),
         address: typeof registrantInput.address === 'string' ? registrantInput.address.trim() : '',
         city: typeof registrantInput.city === 'string' ? registrantInput.city.trim() : '',
         state: typeof registrantInput.state === 'string' ? registrantInput.state.trim() : '',

@@ -25,7 +25,7 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
 - **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 23 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS (23/23), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
+- **Pruebas y Validación:** 24 tests automatizados en `server/payments-provisioning.test.ts` con 100% PASS (24/24), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
@@ -33,14 +33,17 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 
 ## 5. Tareas del sistema
 - **ÚLTIMA TAREA COMPLETADA:** `MASTER-VALIDATION-DOMAINS-DELIVERY` (Status: `COMPLETED`).
-- **TAREAS PENDIENTES:** Pruebas de integración de extremo a extremo con credenciales reales de ResellerClub en IONOS.
+- **TAREA PENDIENTE:** Despliegue manual de scripts en IONOS bajo `/api/` y configuración de credenciales del puente.
+  - **Archivos a copiar:** `server/php/reseller/{config.php, client.php, test-connection.php}` hacia `/api/reseller/` y `server/php/domains/{check.php, transfer.php, customer.php, contacts.php, provision.php, my-domains.php}` hacia `/api/domains/`.
+  - **Variables en IONOS:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`, `RESELLERCLUB_ENVIRONMENT` (configuradas vía servidor web o `config.local.php`).
+  - **Variables en Node.js:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`.
+  - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
-- Migración `20261009004012_add_stripe_events_and_provisioning_operations` corregida como no destructiva, restaurando y preservando los modelos comerciales históricos en Prisma sin pérdida de datos.
-- Configuración de costos mayoristas de transferencia (`providerTransferCostUSD`) en `pricingEngine.ts` y activación del endpoint `/api/transfers/pricing`.
-- Resolución de SKUs en creación de pedidos (`server/orders.ts`) para soportar transferencias de dominio (`DOMAIN_TRANSFER` -> TLD) con protección de márgenes.
-- Ampliación de la suite de pruebas con 3 nuevos escenarios (21: reintento de aprovisionamiento, 22: validación y sanitización de transferencias/EPP, 23: creación autoritativa de pedidos e impuestos).
-- Suite automatizada ampliada y validada: 23 de 23 tests aprobados al 100%.
+- Normalización y creación inmediata de `Entitlement` en estado `GRANTED` para pedidos con líneas de categoría `DOMAIN` (`server/pricing.ts`).
+- Enlace automático y actualización autoritativa a `PROVISIONED` con `providerOrderId` y configuración de proveedor en `server/provisioning.ts`.
+- Incorporación de firma HMAC-SHA256 (`buildBridgeAuthHeaders`) en la sincronización remota de dominios de cliente contra `my-domains.php` en `server.ts`.
+- Ampliación de la suite de pruebas a 24 escenarios automatizados con 100% PASS (24/24).
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.
@@ -52,7 +55,7 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 `NONE`
 
 ## 9. Próximo paso
-Esperar la definición y autorización explícita del usuario para la siguiente tarea de desarrollo.
+Ejecutar la copia manual de los 9 archivos PHP a IONOS, configurar las 3 variables clave en IONOS y Node.js, y verificar la conectividad mediante `/api/reseller/test-connection.php`.
 
 ## 10. Reglas de seguridad
 - Trabajar únicamente en la tarea explícitamente autorizada.

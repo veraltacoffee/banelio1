@@ -12,11 +12,12 @@ Finalización, validación y entrega completa de los flujos comerciales de domin
 2. Transferencias de Dominios: Costos mayoristas de transferencia (`providerTransferCostUSD`) activados en el motor de precios, habilitando cotizaciones y precios reales en `/api/transfers/pricing`. Validación estricta de códigos Auth/EPP (6-32 caracteres) y sanitización en respuestas públicas sin exponer claves en texto plano.
 3. Pagos y Pedidos: Validación autoritativa de órdenes con cálculo server-side de impuestos y totales, resolución inteligente de SKUs por TLD en transferencias (`DOMAIN_TRANSFER`), deduplicación persistente de webhooks (`StripeWebhookEvent`) y control de acceso estricto a órdenes.
 4. Aprovisionamiento e Idempotencia: Aprovisionamiento seguro con registro por operación (`ProvisioningOperation`), prevención de reenvíos a ciegas (`UNCERTAIN`), reintentos controlados (`retryProvisionOrder`) y aislamiento multi-dominio.
-5. Autenticación Puente PHP: Firma canónica HMAC-SHA256 entre Node.js y el puente PHP IONOS sin valores ficticios ni credenciales hardcodeadas.
+5. Autenticación Puente PHP: Firma canónica HMAC-SHA256 entre Node.js y el puente PHP IONOS sin valores ficticios ni credenciales hardcodeadas (incluyendo sincronización en `my-domains.php`).
+6. Ciclo de Vida de Dominios y Entitlements: Creación y persistencia inmediata de `Entitlement` en estado `GRANTED` para ítems de categoría `DOMAIN`, y transición automática a `PROVISIONED` con enlace a `providerOrderId` tras el aprovisionamiento verificado.
 
 ## ESTADO GENERAL
 ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
-- Suite de pruebas automatizadas: 23 tests en `server/payments-provisioning.test.ts` con 100% PASS (23/23).
+- Suite de pruebas automatizadas: 24 tests en `server/payments-provisioning.test.ts` con 100% PASS (24/24).
 - Base de datos: 11 migraciones Prisma aplicadas en SQLite (`prisma/dev.db`) con cero advertencias de pérdida de datos.
 - Typescript & Lint: `tsc --noEmit` limpio con 0 errores.
 - Build: compilación de producción Vite + esbuild exitosa.
@@ -43,11 +44,50 @@ ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
 9. Actualización y firma de proxies a IONOS en `server.ts`.
 10. Creación de la suite completa de 20 escenarios de prueba en `server/payments-provisioning.test.ts`.
 
+## GUÍA DE DESPLIEGUE EN IONOS Y CONFIGURACIÓN DEL PUENTE PHP
+1. **Archivos a desplegar en IONOS y rutas exactas bajo `/api/`:**
+   - **Librería base y configuración (requeridos como dependencias internas):**
+     - Destino: `/api/reseller/config.php` (Origen: `server/php/reseller/config.php`)
+     - Destino: `/api/reseller/client.php` (Origen: `server/php/reseller/client.php`)
+     - Destino opcional: `/api/reseller/config.local.php` (crear en servidor si se definen constantes PHP en vez de variables de entorno de Apache/FastCGI)
+   - **Endpoints de diagnóstico y catálogo:**
+     - Destino: `/api/reseller/test-connection.php` (Origen: `server/php/reseller/test-connection.php`)
+     - Destino: `/api/domains/check.php` (Origen: `server/php/domains/check.php`)
+     - Destino: `/api/domains/transfer.php` (Origen: `server/php/domains/transfer.php`)
+   - **Endpoints protegidos con HMAC-SHA256 (operaciones server-to-server):**
+     - Destino: `/api/domains/customer.php` (Origen: `server/php/domains/customer.php`)
+     - Destino: `/api/domains/contacts.php` (Origen: `server/php/domains/contacts.php`)
+     - Destino: `/api/domains/provision.php` (Origen: `server/php/domains/provision.php`)
+     - Destino: `/api/domains/my-domains.php` (Origen: `server/php/domains/my-domains.php`)
+   *Nota de dependencia:* Los scripts de `/api/domains/*.php` dependen estrictamente de `require_once __DIR__ . '/../reseller/config.php'` y `client.php`. No deben omitirse los archivos de `reseller/`.
+
+2. **Variables de entorno exactas según el código:**
+   - **Entorno PHP (IONOS):**
+     - Identificador de revendedor: `RESELLERCLUB_RESELLER_ID` (alternativas: `RESELLERCLUB_AUTH_USER_ID`, `RESELLER_ID`)
+     - Clave API: `RESELLERCLUB_API_KEY` (alternativa: `API_KEY`)
+     - Secreto compartido HMAC: `PHP_BRIDGE_SECRET` (alternativa: `RESELLER_BRIDGE_SECRET`)
+     - Entorno: `RESELLERCLUB_ENVIRONMENT` (`live` o `test`)
+   - **Entorno Node.js (Servidor Banelio):**
+     - Identificador de revendedor: `RESELLERCLUB_RESELLER_ID` (o `RESELLER_ID`)
+     - Clave API: `RESELLERCLUB_API_KEY` (o `API_KEY`)
+     - Secreto compartido HMAC: `PHP_BRIDGE_SECRET` (o `RESELLER_BRIDGE_SECRET`)
+
+3. **Autenticación HMAC-SHA256:**
+   - Generación (Node.js): `buildBridgeAuthHeaders(method, urlOrPath, rawBody, timestampSec)` en `server/phpBridgeAuth.ts`.
+   - Headers: `X-Banelio-Timestamp` y `X-Banelio-Signature`.
+   - Cadena canónica: `${METHOD}|${PATH}|${TIMESTAMP}|${BODY}`.
+   - Validación (PHP): `verify_banelio_bridge_auth()` en `server/php/reseller/config.php`. Tolerancia máxima de 300 segundos, normalización de rutas (`/api/...` y relativo), y comparación con `hash_equals()`.
+
+4. **Inocuidad y alcance de test-connection.php:**
+   - Ejecuta únicamente un `GET` a `resellers/details.json` en la API de ResellerClub.
+   - Es una operación de solo lectura para obtener razón social, estatus y moneda base de la cuenta revendedora.
+   - NO crea órdenes, NO registra ni transfiere dominios, NO renueva ni realiza cargos económicos de ningún tipo.
+
 ## TAREA ACTIVA
 NINGUNA.
 
 ## TAREA PENDIENTE
-- Pruebas de integración de extremo a extremo con credenciales reales de ResellerClub en servidor IONOS de producción (`https://banelio.com/api/`).
+- Configuración manual en IONOS de los scripts y credenciales para verificación final en producción.
 
 ## ARCHIVOS MODIFICADOS EN LA TAREA
 - `prisma/schema.prisma`
@@ -73,7 +113,7 @@ NINGUNA.
 `NONE`
 
 ## VALIDACIONES TÉCNICAS
-- `npm test` (23/23 tests PASS, 100% de éxito).
+- `npm test` (24/24 tests PASS, 100% de éxito).
 - `compile_applet`: PASS.
 - `lint_applet` (`tsc --noEmit`): PASS (0 errores).
 - `npm run build`: PASS (Vite + esbuild exitoso).

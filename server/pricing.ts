@@ -169,6 +169,35 @@ export async function createEntitlementsForOrder(
           createdCount++;
         }
       }
+    } else {
+      const lineItem = item as {
+        sku: string;
+        name?: string;
+        category?: string;
+        domain?: string;
+        isTransfer?: boolean;
+      };
+      const isDomain = lineItem.category === 'DOMAIN' || sku.startsWith('domain-') || sku === 'domain_transfer';
+      if (isDomain) {
+        const domainName = lineItem.domain || '';
+        await db.entitlement.create({
+          data: {
+            orderId,
+            customerId,
+            serviceType: 'DOMAIN',
+            sku: item.sku,
+            name: lineItem.name || (domainName ? `Dominio: ${domainName}` : `Dominio ${item.sku}`),
+            status: 'GRANTED',
+            grantedAt: new Date(),
+            config: {
+              ...(domainName ? { domain: domainName } : {}),
+              isTransfer: Boolean(lineItem.isTransfer),
+              createdAt: new Date().toISOString()
+            }
+          }
+        });
+        createdCount++;
+      }
     }
   }
 
