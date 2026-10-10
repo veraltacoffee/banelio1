@@ -60,9 +60,19 @@ export function verifyBridgeAuth(
     return { valid: false, error: 'Acceso denegado: firma de autenticación requerida.' };
   }
 
-  const timestamp = Number(timestampHeader);
+  const cleanTimestamp = timestampHeader.trim();
+  if (!/^\d+$/.test(cleanTimestamp)) {
+    return { valid: false, error: 'Acceso denegado: marca de tiempo inválida o expirada.' };
+  }
+
+  const timestamp = Number(cleanTimestamp);
   if (!Number.isFinite(timestamp) || Math.abs(nowSec - timestamp) > 300) {
     return { valid: false, error: 'Acceso denegado: marca de tiempo inválida o expirada.' };
+  }
+
+  const cleanSig = signatureHeader.trim();
+  if (!/^[a-f0-9]{64}$/i.test(cleanSig)) {
+    return { valid: false, error: 'Acceso denegado: firma de autenticación inválida.' };
   }
 
   let normalizedPath = path;
@@ -74,7 +84,7 @@ export function verifyBridgeAuth(
   const canonicalString = `${method.toUpperCase()}|${normalizedPath}|${timestamp}|${rawBody}`;
   const expectedSig = crypto.createHmac('sha256', secret).update(canonicalString).digest('hex');
 
-  const sigBuffer = Buffer.from(signatureHeader, 'hex');
+  const sigBuffer = Buffer.from(cleanSig, 'hex');
   const expectedBuffer = Buffer.from(expectedSig, 'hex');
 
   if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {

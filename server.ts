@@ -63,22 +63,6 @@ import { provisionPaidOrder, retryProvisionOrder, getBridgeBaseUrl } from './ser
 import { buildBridgeAuthHeaders } from './server/phpBridgeAuth';
 import { resolveCustomerDomains } from './server/customerDomains';
 
-// Lazy client helper for Banelio Cloud Registry API
-function getRegistryConfig() {
-  const registryId = process.env.REGISTRY_PARTNER_ID || process.env.BANELIO_REGISTRY_ID;
-  const apiKey = process.env.REGISTRY_API_KEY || process.env.BANELIO_API_KEY;
-  const env = process.env.REGISTRY_ENVIRONMENT || 'production';
-  const baseUrl = process.env.REGISTRY_API_BASE_URL || 'https://banelio.com/api/';
-
-  return {
-    registryId,
-    apiKey,
-    env,
-    baseUrl,
-    isConfigured: Boolean(registryId && apiKey)
-  };
-}
-
 async function startServer() {
   const app = express();
 
@@ -216,19 +200,23 @@ async function startServer() {
   app.post('/api/auth/password-reset/confirm', authPasswordResetLimiter, async (req, res) => resetPasswordAuth(req, res));
 
   app.get('/api/domains/check.php', async (req, res) => {
-    const domain = (req.query.domain as string || '').trim().toLowerCase();
+    const domain = (req.query.domain as string || req.query['domain-name'] as string || req.query.domain_name as string || '').trim().toLowerCase();
     if (!domain) {
-      return res.status(400).json({ success: false, error: 'Domain parameter is required' });
+      return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
     }
 
     try {
-      const targetUrl = `${getBridgeBaseUrl()}domains/check.php?domain=${encodeURIComponent(domain)}`;
+      const params = new URLSearchParams({ domain });
+      if (req.query.tlds) params.set('tlds', String(req.query.tlds));
+      else if (req.query.tld) params.set('tld', String(req.query.tld));
+
+      const targetUrl = `${getBridgeBaseUrl()}domains/check.php?${params.toString()}`;
       const backendResponse = await fetch(targetUrl, {
         headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
         signal: AbortSignal.timeout(6000)
       });
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
         return res.status(backendResponse.status).json(data);
       }
     } catch {
@@ -245,7 +233,15 @@ async function startServer() {
 
   // API Route 0.1: Direct proxy to Banelio's official PHP transfer check endpoint (GET /api/domains/transfer.php?domain={domain})
   app.get('/api/domains/transfer.php', async (req, res) => {
-    const domain = (req.query.domain as string || '').trim().toLowerCase();
+    // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
+    if (req.query.auth_code || req.query.epp_code || req.query.authCode || req.query.eppCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+      });
+    }
+
+    const domain = (req.query.domain as string || req.query['domain-name'] as string || req.query.domain_name as string || '').trim().toLowerCase();
     if (!domain) {
       return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
     }
@@ -257,11 +253,12 @@ async function startServer() {
         headers: {
           Accept: 'application/json',
           'User-Agent': 'Banelio-App-Client/1.0'
-        }
+        },
+        signal: AbortSignal.timeout(6000)
       });
 
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
         return res.status(backendResponse.status).json(data);
       }
     } catch {
@@ -276,7 +273,62 @@ async function startServer() {
     });
   });
 
-  // API Route 0.5: Customer lookup and contacts proxy
+  // POST /api/domains/transfer.php - Verificación protegida de transferibilidad y código Auth/EPP
+  app.post('/api/domains/transfer.php', async (req, res) => {
+    const domain = String(req.body?.domain || req.body?.['domain-name'] || req.body?.domain_name || '').trim().toLowerCase();
+    const authCode = String(req.body?.auth_code || req.body?.['auth-code'] || req.body?.authCode || req.body?.epp_code || req.body?.eppCode || '').trim();
+
+    if (!domain) {
+      return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
+    }
+
+    if (authCode && (authCode.length < 6 || authCode.length > 32)) {
+      return res.status(400).json({
+        success: false,
+        domain,
+        eligible: false,
+        authCodeProvided: true,
+        authCodeValid: false,
+        authCodeError: 'El código Auth/EPP debe tener entre 6 y 32 caracteres.',
+        error: 'El código Auth/EPP debe tener entre 6 y 32 caracteres.'
+      });
+    }
+
+    try {
+      const targetUrl = `${getBridgeBaseUrl()}domains/transfer.php`;
+      const bodyPayload = {
+        domain,
+        auth_code: authCode || undefined
+      };
+      const rawBody = JSON.stringify(bodyPayload);
+      const authHeaders = buildBridgeAuthHeaders('POST', targetUrl, rawBody);
+      const backendResponse = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'User-Agent': 'Banelio-App-Client/1.0',
+          ...authHeaders
+        },
+        body: rawBody,
+        signal: AbortSignal.timeout(6000)
+      });
+
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
+        return res.status(backendResponse.status).json(data);
+      }
+    } catch {}
+
+    return res.status(502).json({
+      success: false,
+      domain,
+      status: 'unknown',
+      error: 'Registry temporalmente no disponible para verificar transferencia.'
+    });
+  });
+
+  // API Route 0.5: Customer lookup and creation proxy
   app.get('/api/domains/customer.php', async (req, res) => {
     try {
       const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
@@ -284,10 +336,11 @@ async function startServer() {
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const backendResponse = await fetch(targetUrl, {
         method: 'GET',
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders }
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
+        signal: AbortSignal.timeout(6000)
       });
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
         return res.status(backendResponse.status).json(data);
       }
     } catch {}
@@ -300,6 +353,46 @@ async function startServer() {
     });
   });
 
+  app.post('/api/domains/customer.php', async (req, res) => {
+    const email = String(req.body?.email || req.body?.username || '').trim().toLowerCase();
+    const name = String(req.body?.name || req.body?.fullName || '').trim();
+
+    if (!email || !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'El correo electrónico y el nombre completo son obligatorios.'
+      });
+    }
+
+    try {
+      const targetUrl = `${getBridgeBaseUrl()}domains/customer.php`;
+      const rawBody = JSON.stringify(req.body || {});
+      const authHeaders = buildBridgeAuthHeaders('POST', targetUrl, rawBody);
+      const backendResponse = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'User-Agent': 'Banelio-App-Client/1.0',
+          ...authHeaders
+        },
+        body: rawBody,
+        signal: AbortSignal.timeout(8000)
+      });
+
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
+        return res.status(backendResponse.status).json(data);
+      }
+    } catch {}
+
+    return res.status(502).json({
+      success: false,
+      error: 'No fue posible conectar con el servicio de clientes en este momento.'
+    });
+  });
+
+  // API Route 0.6: Contacts lookup and creation proxy
   app.get('/api/domains/contacts.php', async (req, res) => {
     try {
       const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
@@ -307,10 +400,11 @@ async function startServer() {
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const backendResponse = await fetch(targetUrl, {
         method: 'GET',
-        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders }
+        headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
+        signal: AbortSignal.timeout(6000)
       });
-      if (backendResponse.ok) {
-        const data = await backendResponse.json();
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
         return res.status(backendResponse.status).json(data);
       }
     } catch {}
@@ -323,10 +417,51 @@ async function startServer() {
     });
   });
 
+  app.post('/api/domains/contacts.php', async (req, res) => {
+    const customerId = String(req.body?.customer_id || req.body?.['customer-id'] || req.body?.customerId || '').trim();
+    const name = String(req.body?.name || req.body?.fullName || '').trim();
+    const email = String(req.body?.email || req.body?.username || '').trim();
+
+    if (!customerId || !name || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'El customer_id, nombre y correo son obligatorios para crear un contacto WHOIS.'
+      });
+    }
+
+    try {
+      const targetUrl = `${getBridgeBaseUrl()}domains/contacts.php`;
+      const rawBody = JSON.stringify(req.body || {});
+      const authHeaders = buildBridgeAuthHeaders('POST', targetUrl, rawBody);
+      const backendResponse = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'User-Agent': 'Banelio-App-Client/1.0',
+          ...authHeaders
+        },
+        body: rawBody,
+        signal: AbortSignal.timeout(8000)
+      });
+
+      const data = await backendResponse.json().catch(() => null);
+      if (data) {
+        return res.status(backendResponse.status).json(data);
+      }
+    } catch {}
+
+    return res.status(502).json({
+      success: false,
+      error: 'No fue posible registrar el contacto en este momento.'
+    });
+  });
+
   // API Route 1: Health check & Banelio Registry connection status test
-  app.get('/api/registry/status', async (req, res) => {
-    const config = getRegistryConfig();
-    const hasEnvCredentials = Boolean(process.env.RESELLERCLUB_RESELLER_ID || process.env.RESELLER_ID) && Boolean(process.env.RESELLERCLUB_API_KEY || process.env.API_KEY);
+  app.get('/api/registry/status', async (_req, res) => {
+    const hasBridgeSecret = Boolean(process.env.PHP_BRIDGE_SECRET || process.env.RESELLER_BRIDGE_SECRET);
+    const hasLocalCredentials = Boolean(process.env.RESELLERCLUB_RESELLER_ID || process.env.RESELLER_ID) && Boolean(process.env.RESELLERCLUB_API_KEY || process.env.API_KEY);
+    const bridgeBaseUrl = getBridgeBaseUrl();
 
     // Verificación en vivo contra el backend IONOS PHP y ResellerClub
     let ionosBackendStatus = 'DISCONNECTED';
@@ -335,7 +470,7 @@ async function startServer() {
     let resellerDetails: any = null;
 
     try {
-      const targetUrl = `${getBridgeBaseUrl()}reseller/test-connection.php`;
+      const targetUrl = `${bridgeBaseUrl}reseller/test-connection.php`;
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const resp = await fetch(targetUrl, {
         headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
@@ -360,31 +495,36 @@ async function startServer() {
     } catch {
       // Fallback a test de disponibilidad de dominio si test-connection demora
       try {
-        const checkResp = await fetch(`${getBridgeBaseUrl()}domains/check.php?domain=banelio.com`, {
+        const checkResp = await fetch(`${bridgeBaseUrl}domains/check.php?domain=banelio.com`, {
           headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
           signal: AbortSignal.timeout(3000)
         });
         if (checkResp.ok) {
-          ionosBackendStatus = 'CONNECTED';
-          resellerClubConnected = true;
-          ionosMessage = 'Bridge de dominios IONOS / ResellerClub respondiendo con éxito.';
+          const checkData: any = await checkResp.json();
+          if (checkData && checkData.success) {
+            ionosBackendStatus = 'CONNECTED';
+            resellerClubConnected = true;
+            ionosMessage = 'Bridge de dominios IONOS / ResellerClub respondiendo con éxito.';
+          }
         }
       } catch {}
     }
 
-    const isConnected = resellerClubConnected || hasEnvCredentials || config.isConfigured;
+    const isConnected = resellerClubConnected;
+    const isConfigured = hasBridgeSecret || hasLocalCredentials || resellerClubConnected;
+    const env = process.env.RESELLERCLUB_ENVIRONMENT || 'sandbox';
 
     return res.json({
-      configured: isConnected,
-      status: isConnected ? 'CONNECTED' : 'NOT_CONFIGURED',
+      configured: isConfigured,
+      status: isConnected ? 'CONNECTED' : (isConfigured ? 'CONFIGURED_NOT_VERIFIED' : 'NOT_CONFIGURED'),
       ionosBackendStatus,
       resellerClubConnected,
-      message: ionosMessage || (isConnected ? 'Conexión activa con el Registry.' : 'Faltan credenciales locales de ResellerClub.'),
-      environment: config.env,
-      baseUrl: 'https://banelio.com/api/',
+      message: ionosMessage || (isConnected ? 'Conexión activa con el Registry.' : (isConfigured ? 'Configuración presente pero sin conexión en vivo confirmada con el proveedor.' : 'Faltan credenciales del puente o de ResellerClub.')),
+      environment: env,
+      baseUrl: bridgeBaseUrl,
       provider: {
-        configured: isConnected,
-        environment: config.env,
+        configured: isConfigured,
+        environment: env,
         liveIonosConnected: ionosBackendStatus === 'CONNECTED',
         resellerDetails
       }
@@ -394,7 +534,7 @@ async function startServer() {
   // API Route: Verificación de infraestructura real en backend IONOS / ResellerClub
   app.get('/api/reseller/test-connection', async (_req, res) => {
     try {
-      const targetUrl = 'https://banelio.com/api/reseller/test-connection.php';
+      const targetUrl = `${getBridgeBaseUrl()}reseller/test-connection.php`;
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const resp = await fetch(targetUrl, {
         headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
@@ -418,7 +558,7 @@ async function startServer() {
         });
       }
 
-      return res.status(502).json({
+      return res.status(resp.status >= 400 && resp.status < 600 ? resp.status : 502).json({
         success: false,
         error: `El backend IONOS respondió con código ${resp.status}`
       });

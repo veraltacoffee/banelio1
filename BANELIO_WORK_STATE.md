@@ -7,21 +7,19 @@
 `main` en el repositorio GitHub `veraltacoffee/banelio1`.
 
 ## ESTADO DE SINCRONIZACIÓN
-Finalización, validación y entrega completa de los flujos comerciales de dominios, pagos, transferencias y aprovisionamiento:
-1. Base de datos y Migraciones: Migración `20261009004012_add_stripe_events_and_provisioning_operations` corregida y blindada como estrictamente no destructiva, preservando los modelos comerciales históricos (`PricingProfile`, `ProviderCostRecord`, etc.) en `prisma/schema.prisma` y `prisma/dev.db`. Todas las 11 migraciones están aplicadas y `prisma migrate status` confirma el esquema al día.
-2. Transferencias de Dominios: Costos mayoristas de transferencia (`providerTransferCostUSD`) activados en el motor de precios, habilitando cotizaciones y precios reales en `/api/transfers/pricing`. Validación estricta de códigos Auth/EPP (6-32 caracteres) y sanitización en respuestas públicas sin exponer claves en texto plano.
-3. Pagos y Pedidos: Validación autoritativa de órdenes con cálculo server-side de impuestos y totales, resolución inteligente de SKUs por TLD en transferencias (`DOMAIN_TRANSFER`), deduplicación persistente de webhooks (`StripeWebhookEvent`) y control de acceso estricto a órdenes.
-4. Aprovisionamiento e Idempotencia: Aprovisionamiento seguro con registro por operación (`ProvisioningOperation`), prevención de reenvíos a ciegas (`UNCERTAIN`), reintentos controlados (`retryProvisionOrder`) y aislamiento multi-dominio.
-5. Autenticación Puente PHP: Firma canónica HMAC-SHA256 entre Node.js y el puente PHP IONOS sin valores ficticios ni credenciales hardcodeadas (incluyendo sincronización en `my-domains.php`).
-6. Ciclo de Vida de Dominios y Entitlements: Creación y persistencia inmediata de `Entitlement` en estado `GRANTED` para ítems de categoría `DOMAIN`, y transición automática a `PROVISIONED` con enlace a `providerOrderId` tras el aprovisionamiento verificado.
+Consolidación final del Paso 1 (Integración mínima, segura y funcional con ResellerClub):
+1. Proxies y Rutas API en Node.js (`server.ts`): Implementados proxies protegidos POST para `/api/domains/customer.php`, `/api/domains/contacts.php` y `/api/domains/transfer.php` con firma HMAC-SHA256 idéntica al cuerpo enviado. Conservados GET existentes, soporte para reenvío de extensiones (`tlds`/`tld`) en `/api/domains/check.php`, y unificación de URL base dinámica (`getBridgeBaseUrl()`) sin URLs hardcodeadas.
+2. Autenticación HMAC-SHA256 y Falla Segura (`server/phpBridgeAuth.ts` & `server/php/reseller/config.php`): Validación estricta y sincronizada de marcas de tiempo numéricas (`^\d+$`), firmas hexadecimales de 64 caracteres (`^[a-f0-9]{64}$`), ventana de 300 segundos, rechazo seguro de secretos vacíos y protección contra timing attacks (`timingSafeEqual` y `hash_equals`).
+3. Diagnóstico y Salud del Sistema (`server.ts` & `server/health.ts`): `/api/registry/status` y `/api/reseller/test-connection` honestos, distinguiendo `CONNECTED` (solo tras confirmación remota exitosa) de `CONFIGURED_NOT_VERIFIED` y `NOT_CONFIGURED`. Retirado código muerto (`getRegistryConfig`) y variables obsoletas en `.env.example`.
+4. Suite de Pruebas Automatizadas: 43 tests en total (27 pagos/aprovisionamiento + 8 seguridad PHP + 8 integración ResellerClub bridge) con 100% PASS (43/43).
 
 ## ESTADO GENERAL
-ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
-- Suite de pruebas automatizadas: 35 tests (27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP) con 100% PASS (35/35).
-- Base de datos: 11 migraciones Prisma aplicadas en SQLite (`prisma/dev.db`) con cero advertencias de pérdida de datos.
-- Typescript & Lint: `tsc --noEmit` limpio con 0 errores.
-- Build: compilación de producción Vite + esbuild exitosa.
-- Cero fugas de secretos: variables de entorno documentadas en `.env.example`, sin credenciales en frontend ni logs.
+PASO 1 CONSOLIDADO — PREPARADO PARA PRUEBAS DEL PASO 2.
+- Suite de pruebas automatizadas: 43 tests con 100% PASS (43/43).
+- TypeScript & Lint: `tsc --noEmit` limpio con 0 errores.
+- Compilación y Build: `compile_applet` PASS y `npm run build` (Vite + esbuild) exitoso.
+- Verificación PHP: Comprobada estructura de archivos PHP y políticas de seguridad; entorno local sin binario PHP CLI (verificación PHP CLI declarada pendiente para Paso 2 en IONOS).
+- Cero fugas de secretos: Códigos EPP protegidos fuera de URLs, logs y respuestas públicas; credenciales de ResellerClub aisladas en servidor.
 
 ## ARQUITECTURA RESUMIDA
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide React, Vite SPA integrado en `server.ts`.

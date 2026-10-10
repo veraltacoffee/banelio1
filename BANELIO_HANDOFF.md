@@ -25,32 +25,30 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
 - **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 35 tests automatizados con 100% PASS (35/35: 27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
+- **Pruebas y Validación:** 43 tests automatizados con 100% PASS (43/43: 27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP + 8 de integración puente ResellerClub), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
-- El proyecto se encuentra completamente validado, blindado y estabilizado a la espera de credenciales de producción para pruebas end-to-end con ResellerClub.
+- El Paso 1 ha concluido con éxito. El sistema se encuentra técnicamente consolidado y preparado para las pruebas del Paso 2.
 
 ## 5. Tareas del sistema
-- **ÚLTIMA TAREA COMPLETADA:** `PHP-BRIDGE-SECURITY-HARDENING` (Status: `COMPLETED`).
-- **TAREA PENDIENTE:** Despliegue de scripts y `.htaccess` en IONOS bajo `/api/` y configuración de credenciales del puente.
-  - **Archivos a copiar:** 
+- **ÚLTIMA TAREA COMPLETADA:** `RESELLERCLUB-CONSOLIDATION-PHASE1` (Status: `COMPLETED`).
+- **TAREA PENDIENTE (PASO 2):** `RESELLERCLUB-CONTROLLED-TESTING-PHASE2` (Requiere credenciales activas en entorno IONOS y autorización expresa).
+  - **Archivos a desplegar en IONOS bajo `/api/`:**
     - `/api/.htaccess` (Protección perimetral)
     - `/api/reseller/.htaccess`, `config.php`, `client.php`, `test-connection.php`, `config.local.php`
     - `/api/domains/{check.php, transfer.php, customer.php, contacts.php, provision.php, my-domains.php}`
   - **Variables en IONOS:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`, `RESELLERCLUB_ENVIRONMENT` (configuradas vía `SetEnv` en Apache o `config.local.php`).
-  - **Variables en Node.js:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`.
+  - **Variables en Node.js:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`, `RESELLERCLUB_BRIDGE_URL`.
   - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
-- Blindaje contra ejecución HTTP directa de librerías internas (`config.php`, `client.php`) retornando 403.
-- Erradicación de fugas de datos sensibles, trazas de cURL (`$curlError`) y respuestas crudas (`raw`) del proveedor en endpoints PHP.
-- Sanitización centralizada de excepciones (`sanitize_exception_message`, `translate_resellerclub_error`) en todos los endpoints PHP.
-- Corrección de falsos positivos en `my-domains.php`: validación estricta de credenciales (HTTP 503) y propagación de errores reales de infraestructura sin simular 0 dominios.
-- Creación de reglas Apache `.htaccess` (`server/php/.htaccess`, `server/php/reseller/.htaccess`) compatibles con Apache 2.4 y 2.2 para hosting compartido IONOS.
-- Creación de plantilla documentada `server/php/reseller/config.local.php.example`.
-- Creación de suite `server/php-bridge-security.test.ts` con 8 pruebas especializadas (35/35 tests PASS).
-- Sincronización y actualización de `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md` y `BANELIO_HANDOFF.md`.
+- Implementados proxies POST protegidos para `/api/domains/customer.php`, `/api/domains/contacts.php` y `/api/domains/transfer.php` con firma HMAC idéntica al cuerpo JSON transmitido.
+- Blindada validación de códigos Auth/EPP rechazando su presencia en parámetros GET o URLs con HTTP 400.
+- Sincronizada validación estricta de marcas de tiempo numéricas y firmas hexadecimales de 64 caracteres en `server/phpBridgeAuth.ts` y `server/php/reseller/config.php`.
+- Unificada resolución de URLs base con `getBridgeBaseUrl()` y eliminadas URLs hardcodeadas y código muerto (`getRegistryConfig`).
+- Limpiadas variables obsoletas en `.env.example`.
+- Creada suite de pruebas automatizadas `server/resellerclub-bridge.test.ts` cubriendo los 8 criterios del Paso 1, alcanzando 43/43 tests exitosos.
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.

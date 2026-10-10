@@ -45,16 +45,16 @@ export async function getHealth(prisma: PrismaClientType, startedAt: number) {
 
   const integrations: HealthIntegrationState[] = [
     {
-      key: 'registry',
-      label: 'Banelio Registry (Bridge)',
-      status: Boolean(process.env.REGISTRY_PARTNER_ID && process.env.REGISTRY_API_KEY) || Boolean(process.env.BANELIO_API_KEY)
+      key: 'bridge',
+      label: 'Puente PHP IONOS (Seguridad HMAC)',
+      status: Boolean(process.env.PHP_BRIDGE_SECRET || process.env.RESELLER_BRIDGE_SECRET)
         ? 'configured'
         : 'not_configured',
-      details: 'REGISTRY_PARTNER_ID / REGISTRY_API_KEY'
+      details: 'PHP_BRIDGE_SECRET / RESELLERCLUB_BRIDGE_URL'
     },
     {
       key: 'resellerclub',
-      label: 'ResellerClub (PHP Bridge en IONOS)',
+      label: 'ResellerClub (Credenciales del Proveedor)',
       status: isResellerConfigured ? 'configured' : 'not_configured',
       details: isResellerConfigured
         ? 'Configurado vía PHP Bridge en IONOS'

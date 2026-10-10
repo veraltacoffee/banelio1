@@ -166,15 +166,56 @@
 
 ---
 
+### TASK: RESELLERCLUB-CONSOLIDATION-PHASE1
+- **TASK ID:** RESELLERCLUB-CONSOLIDATION-PHASE1
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Core Architecture & Integrations Engineer
+- **OBJECTIVE:** Consolidación final del Paso 1: integración mínima, segura y funcional con ResellerClub:
+  1. Unificar arquitectura de rutas: Frontend → servidor Node/API de Banelio → puente PHP en IONOS → ResellerClub.
+  2. Implementar proxies POST para clientes (`/api/domains/customer.php`), contactos (`/api/domains/contacts.php`) y transferencias (`/api/domains/transfer.php`) con firma HMAC-SHA256 idéntica al cuerpo enviado.
+  3. Validar estricto rechazo de códigos EPP en peticiones GET y URLs.
+  4. Sincronizar validación HMAC en Node y PHP con formato estricto de timestamp numérico y firma hexadecimal de 64 caracteres.
+  5. Unificar `getBridgeBaseUrl()` eliminando endpoints hardcodeados y retirar código muerto (`getRegistryConfig`).
+  6. Suite automatizada completa de 43 pruebas (100% PASS).
+- **ALLOWED FILES:**
+  - `server.ts`
+  - `server/phpBridgeAuth.ts`
+  - `server/health.ts`
+  - `.env.example`
+  - `server/resellerclub-bridge.test.ts`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+- **VALIDATION:**
+  - `npm test`: 43/43 tests PASS (100% aprobados).
+  - `npm run lint` (`tsc --noEmit`): limpio (0 errores).
+  - `npm run build`: exitoso (Vite + esbuild).
+  - `compile_applet`: exitoso.
+- **HANDOFF:** Paso 1 consolidado técnicamente y preparado para pruebas del paso 2.
+
+---
+
 ## IN PROGRESS
 
-*(Ninguna tarea en ejecución. El sistema se encuentra estabilizado en Google AI Studio a la espera de autorización explícita para la siguiente tarea).*
+*(Ninguna tarea en ejecución. El sistema se encuentra consolidado a la espera de autorización expresa para las pruebas del paso 2).*
 
 ---
 
 ## PENDING
 
-*(Sin tareas pendientes registradas. Toda nueva tarea requerirá autorización explícita del usuario para iniciar).*
+### TASK: RESELLERCLUB-CONTROLLED-TESTING-PHASE2
+- **TASK ID:** RESELLERCLUB-CONTROLLED-TESTING-PHASE2
+- **STATUS:** PENDING
+- **PRIORITY:** HIGH
+- **OWNER:** Integrations & QA Engineer
+- **OBJECTIVE:** Ejecutar las pruebas controladas del Paso 2 una vez que el usuario configure las credenciales de prueba en IONOS / ResellerClub:
+  1. Conexión auténtica con ResellerClub vía `/api/reseller/test-connection`.
+  2. Disponibilidad y precios reales de dominios.
+  3. Consultas y resolución de clientes/contactos de prueba.
+  4. Validación de flujo de transferencias con dominio de prueba.
+  5. Listado de dominios reales del cliente en IONOS/ResellerClub.
+- **DEPENDENCIES:** Credenciales activas en entorno IONOS y autorización explícita del usuario.
 
 ---
 
