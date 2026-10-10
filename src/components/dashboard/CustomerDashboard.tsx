@@ -291,12 +291,6 @@ export default function CustomerDashboard() {
       badge: domainServices.length > 0 ? domainServices.length : undefined
     },
     {
-      id: 'SERVICES',
-      label: language === 'en' ? 'My Services' : 'Mis Servicios',
-      icon: <Server size={16} />,
-      badge: entitlements.length > 0 ? entitlements.length : undefined
-    },
-    {
       id: 'ORDERS',
       label: language === 'en' ? 'My Orders' : 'Mis Pedidos',
       icon: <ShoppingBag size={16} />,

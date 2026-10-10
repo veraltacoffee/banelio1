@@ -33,80 +33,41 @@ ESTABLE, BLINDADO, SEGURO Y VERIFICADO AL 100%.
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
 
 ## TRABAJO COMPLETADO EN ESTA TAREA
-1. Creación de módulo de autenticación server-to-server `server/phpBridgeAuth.ts` con generación y verificación de firma canónica HMAC-SHA256.
-2. Actualización de `server/php/reseller/config.php` con función `verify_banelio_bridge_auth()` y protección en `provision.php`, `customer.php`, `contacts.php`, `my-domains.php` y `test-connection.php`.
-3. Eliminación total de valores por defecto y fallbacks ficticios en `server/php/domains/customer.php`, `server/php/domains/contacts.php`, `server/php/domains/provision.php` y `server/provisioning.ts`.
-4. Extensión del esquema Prisma (`prisma/schema.prisma`) con los modelos `StripeWebhookEvent` y `ProvisioningOperation` y sus enums correspondientes.
-5. Creación y aplicación de la migración `20261009004012_add_stripe_events_and_provisioning_operations` sin borrar datos de la base.
-6. Actualización de `server/payments.ts` con `claimStripeWebhookEvent`, `markStripeWebhookEventProcessed`, `markStripeWebhookEventFailed` e `isStripeEventProcessed`.
-7. Actualización de `server/provisioning.ts` con ciclo de vida idempotente persistente, registro de estado `UNCERTAIN` ante cortes de red y soporte multi-dominio independiente.
-8. Blindaje de autorización en `server/orders.ts` (`authorizeOrderAccess`) y `server.ts` impidiendo que órdenes sin `customerId` eludan controles de acceso.
-9. Actualización y firma de proxies a IONOS en `server.ts`.
-10. Creación de la suite completa de 20 escenarios de prueba en `server/payments-provisioning.test.ts`.
+1. Consolidación del alcance definitivo centrado exclusivamente en dominios: búsqueda, disponibilidad, registro, transferencia (EPP/Auth) y renovación.
+2. Retiro del escaparate y desactivación de funciones comerciales fuera de alcance (hosting, correo, SSL independiente, afiliados y paneles de socios).
+3. Blindaje de secretos locales: incorporación de `config.local.php`, `server/php/**/config.local.php` y `*.local.php` en `.gitignore`.
+4. Mitigación contra despliegues involuntarios en vivo: ajuste de entorno por defecto a `'sandbox'` en `server/php/reseller/config.php` si se omite la variable.
+5. Actualización y coherencia de documentos de contexto: `docs/AI-CONTEXT.md`, `BANELIO_WORK_STATE.md` y `BANELIO_HANDOFF.md`.
+6. Preservación íntegra de la base de datos (11 migraciones Prisma en SQLite), autenticación HMAC-SHA256 y la suite completa de pruebas.
 
 ## GUÍA DE DESPLIEGUE EN IONOS Y CONFIGURACIÓN DEL PUENTE PHP
-1. **Archivos a desplegar en IONOS y rutas exactas bajo `/api/`:**
-   - **Librería base y configuración (requeridos como dependencias internas):**
-     - Destino: `/api/reseller/config.php` (Origen: `server/php/reseller/config.php`)
-     - Destino: `/api/reseller/client.php` (Origen: `server/php/reseller/client.php`)
-     - Destino opcional: `/api/reseller/config.local.php` (crear en servidor si se definen constantes PHP en vez de variables de entorno de Apache/FastCGI)
-   - **Endpoints de diagnóstico y catálogo:**
-     - Destino: `/api/reseller/test-connection.php` (Origen: `server/php/reseller/test-connection.php`)
-     - Destino: `/api/domains/check.php` (Origen: `server/php/domains/check.php`)
-     - Destino: `/api/domains/transfer.php` (Origen: `server/php/domains/transfer.php`)
-   - **Endpoints protegidos con HMAC-SHA256 (operaciones server-to-server):**
-     - Destino: `/api/domains/customer.php` (Origen: `server/php/domains/customer.php`)
-     - Destino: `/api/domains/contacts.php` (Origen: `server/php/domains/contacts.php`)
-     - Destino: `/api/domains/provision.php` (Origen: `server/php/domains/provision.php`)
-     - Destino: `/api/domains/my-domains.php` (Origen: `server/php/domains/my-domains.php`)
-   *Nota de dependencia:* Los scripts de `/api/domains/*.php` dependen estrictamente de `require_once __DIR__ . '/../reseller/config.php'` y `client.php`. No deben omitirse los archivos de `reseller/`.
-
-2. **Variables de entorno exactas según el código:**
-   - **Entorno PHP (IONOS):**
-     - Identificador de revendedor: `RESELLERCLUB_RESELLER_ID` (alternativas: `RESELLERCLUB_AUTH_USER_ID`, `RESELLER_ID`)
-     - Clave API: `RESELLERCLUB_API_KEY` (alternativa: `API_KEY`)
-     - Secreto compartido HMAC: `PHP_BRIDGE_SECRET` (alternativa: `RESELLER_BRIDGE_SECRET`)
-     - Entorno: `RESELLERCLUB_ENVIRONMENT` (`live` o `test`)
-   - **Entorno Node.js (Servidor Banelio):**
-     - Identificador de revendedor: `RESELLERCLUB_RESELLER_ID` (o `RESELLER_ID`)
-     - Clave API: `RESELLERCLUB_API_KEY` (o `API_KEY`)
-     - Secreto compartido HMAC: `PHP_BRIDGE_SECRET` (o `RESELLER_BRIDGE_SECRET`)
-
+1. **Archivos a desplegar en IONOS (bajo la raíz web /api/):**
+   - `/api/reseller/config.php` (Biblioteca base)
+   - `/api/reseller/client.php` (Cliente HTTP cURL)
+   - `/api/reseller/test-connection.php` (Diagnóstico seguro de solo lectura)
+   - `/api/reseller/config.local.php` (Opcional, si se definen constantes PHP locales en el servidor)
+   - `/api/domains/check.php` (Búsqueda de disponibilidad en tiempo real)
+   - `/api/domains/transfer.php` (Comprobación y validación Auth/EPP)
+   - `/api/domains/customer.php` (Consulta y alta de clientes con HMAC)
+   - `/api/domains/contacts.php` (Consulta y alta de contactos WHOIS con HMAC)
+   - `/api/domains/provision.php` (Aprovisionamiento y transferencias con HMAC)
+   - `/api/domains/my-domains.php` (Listado seguro de dominios del cliente con HMAC)
+2. **Variables de entorno requeridas:**
+   - **En PHP (IONOS):** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`, `RESELLERCLUB_ENVIRONMENT` (por defecto `sandbox`, cambiar a `live` cuando se pase a producción real).
+   - **En Node.js:** `RESELLERCLUB_RESELLER_ID`, `RESELLERCLUB_API_KEY`, `PHP_BRIDGE_SECRET`.
 3. **Autenticación HMAC-SHA256:**
-   - Generación (Node.js): `buildBridgeAuthHeaders(method, urlOrPath, rawBody, timestampSec)` en `server/phpBridgeAuth.ts`.
-   - Headers: `X-Banelio-Timestamp` y `X-Banelio-Signature`.
-   - Cadena canónica: `${METHOD}|${PATH}|${TIMESTAMP}|${BODY}`.
-   - Validación (PHP): `verify_banelio_bridge_auth()` en `server/php/reseller/config.php`. Tolerancia máxima de 300 segundos, normalización de rutas (`/api/...` y relativo), y comparación con `hash_equals()`.
-
-4. **Inocuidad y alcance de test-connection.php:**
-   - Ejecuta únicamente un `GET` a `resellers/details.json` en la API de ResellerClub.
-   - Es una operación de solo lectura para obtener razón social, estatus y moneda base de la cuenta revendedora.
-   - NO crea órdenes, NO registra ni transfiere dominios, NO renueva ni realiza cargos económicos de ningún tipo.
-
-## TAREA ACTIVA
-NINGUNA.
-
-## TAREA PENDIENTE
-- Configuración manual en IONOS de los scripts y credenciales para verificación final en producción.
+   - Headers: `X-Banelio-Timestamp` y `X-Banelio-Signature`. Cadena: `METHOD|PATH|TIMESTAMP|BODY`.
+4. **Verificación de conexión segura:**
+   - `test-connection.php` realiza únicamente un `GET` a `resellers/details.json`. Es 100% de solo lectura y no realiza cargos ni compras.
 
 ## ARCHIVOS MODIFICADOS EN LA TAREA
-- `prisma/schema.prisma`
-- `prisma/migrations/20261009004012_add_stripe_events_and_provisioning_operations/migration.sql`
-- `.env.example`
+- `.gitignore`
 - `server/php/reseller/config.php`
-- `server/php/domains/provision.php`
-- `server/php/domains/customer.php`
-- `server/php/domains/contacts.php`
-- `server/php/domains/my-domains.php`
-- `server/php/reseller/test-connection.php`
-- `server/phpBridgeAuth.ts`
-- `server/payments.ts`
-- `server/provisioning.ts`
-- `server/orders.ts`
-- `server.ts`
-- `server/payments-provisioning.test.ts`
+- `src/components/layout/Navbar.tsx`
+- `src/components/dashboard/CustomerDashboard.tsx`
+- `src/components/public/CartModal.tsx`
+- `docs/AI-CONTEXT.md`
 - `BANELIO_WORK_STATE.md`
-- `BANELIO_TASKS.md`
 - `BANELIO_HANDOFF.md`
 
 ## BLOQUEADORES

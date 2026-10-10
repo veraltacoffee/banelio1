@@ -40,10 +40,11 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
   - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
-- Normalización y creación inmediata de `Entitlement` en estado `GRANTED` para pedidos con líneas de categoría `DOMAIN` (`server/pricing.ts`).
-- Enlace automático y actualización autoritativa a `PROVISIONED` con `providerOrderId` y configuración de proveedor en `server/provisioning.ts`.
-- Incorporación de firma HMAC-SHA256 (`buildBridgeAuthHeaders`) en la sincronización remota de dominios de cliente contra `my-domains.php` en `server.ts`.
-- Ampliación de la suite de pruebas a 24 escenarios automatizados con 100% PASS (24/24).
+- Consolidación del alcance comercial definitivo centrado exclusivamente en dominios: búsqueda, registro, transferencia (EPP/Auth) y renovación.
+- Retiro del escaparate y desactivación de productos fuera de alcance (hosting, correo, SSL independiente, afiliados y paneles de socios en Navbar y Dashboard).
+- Exclusión en `.gitignore` de `config.local.php`, `server/php/**/config.local.php` y `*.local.php` para protección estricta de secretos.
+- Fallback de entorno seguro a `'sandbox'` en `server/php/reseller/config.php` si se omite la variable en el servidor.
+- Sincronización y actualización de `docs/AI-CONTEXT.md`, `BANELIO_WORK_STATE.md` y `BANELIO_HANDOFF.md`.
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.

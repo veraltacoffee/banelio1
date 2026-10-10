@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Globe, Server, Mail, Shield, ShoppingBag, Menu, X, ArrowRight, BookOpen, Check } from 'lucide-react';
+import { Globe, ShoppingBag, Menu, X, ArrowRight, Check } from 'lucide-react';
 import { CURRENCIES } from '../../utils/pricing';
 
 interface NavbarProps {
@@ -222,7 +222,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   <ArrowRight size={14} />
                 </button>
               </div>
-            ) : role === 'CUSTOMER' ? (
+            ) : (
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black text-[#070707] bg-[#B8F23A] px-3.5 py-2 rounded-xl shadow-xs max-w-[140px] truncate" title={customerUser?.name || 'Mi Panel'}>
                   {customerUser?.name ? customerUser.name.split(' ')[0] : (language === 'en' ? 'MY PANEL' : 'MI PANEL')}
@@ -231,23 +231,11 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   id="navbar-customer-logout-btn"
                   onClick={() => {
                     logoutCustomer();
+                    setRole('PUBLIC');
                   }}
                   className="text-xs font-bold text-[#555A52] hover:text-[#070707] bg-[#F7F8F0] border border-[#8A8F98] px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
                 >
                   {language === 'en' ? 'Exit Panel' : 'Salir'}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#070707] bg-[#B8F23A] border border-[#B8F23A] px-3 py-1.5 rounded-xl">
-                  {t('nav_affiliate_portal')}
-                </span>
-                <button
-                  id="navbar-reseller-logout-btn"
-                  onClick={() => setRole('PUBLIC')}
-                  className="text-xs font-bold text-[#555A52] hover:text-[#070707] bg-[#F7F8F0] border border-[#8A8F98] px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
-                >
-                  {language === 'en' ? 'Exit Portal' : 'Salir'}
                 </button>
               </div>
             )}

@@ -141,7 +141,7 @@ export default function CartModal() {
                   {language === 'en' ? 'Shopping Cart' : 'Carrito de Compras'}
                 </h2>
                 <p className="text-[11px] text-[#555A52]">
-                  {language === 'en' ? 'Review your domains & hosting services' : 'Configura tus dominios y servicios'}
+                  {language === 'en' ? 'Review your domains & registration details' : 'Configura tus dominios y registro'}
                 </p>
               </div>
               <span className="ml-2 bg-[#B8F23A] text-[#070707] text-xs font-black px-2.5 py-0.5 rounded-full border border-[#B8F23A]">

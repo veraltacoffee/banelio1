@@ -179,7 +179,7 @@ function get_resellerclub_config() {
 
     $environment = defined('RESELLERCLUB_ENVIRONMENT') ? RESELLERCLUB_ENVIRONMENT : (
         getenv('RESELLERCLUB_ENVIRONMENT') ?: (
-            isset($_ENV['RESELLERCLUB_ENVIRONMENT']) ? $_ENV['RESELLERCLUB_ENVIRONMENT'] : 'live'
+            isset($_ENV['RESELLERCLUB_ENVIRONMENT']) ? $_ENV['RESELLERCLUB_ENVIRONMENT'] : 'sandbox'
         )
     );
 

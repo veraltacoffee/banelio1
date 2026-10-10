@@ -14,3 +14,7 @@ prisma/dev.db-*
 opencode.json
 opencode.json.*
 *.before-*
+# BANELIO: secretos y archivos locales de hosting/puente PHP
+config.local.php
+server/php/**/config.local.php
+*.local.php

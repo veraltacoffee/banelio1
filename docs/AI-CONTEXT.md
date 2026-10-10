@@ -13,19 +13,17 @@
   - **External Providers:** ResellerClub HTTP API, Stripe, PayPal REST SDK v2, IANA RDAP
 
 ## Business objective
-Banelio es una plataforma comercial digital para la venta y administración de dominios (registro y transferencia), hosting cloud NVMe de alta velocidad, correo corporativo, certificados SSL y soluciones paquetizadas, junto con un portal de afiliados/partners con cálculo server-authoritative de precios, márgenes brutos y facturación en múltiples monedas.
+Banelio es una plataforma comercial digital centrada exclusivamente en la búsqueda, disponibilidad, registro, transferencia (con código EPP/Auth) y renovación de dominios, administración de zonas DNS y contactos WHOIS, junto con cuentas de clientes, pasarelas de pago autoritativas (Stripe, PayPal, OXXO Pay) y aprovisionamiento server-to-server mediante el puente PHP en IONOS y la API de ResellerClub. Se retiran del escaparate productos fuera de alcance (hosting, correo, SSL independiente, afiliados y paneles de socios).
 
 ## Current architecture
 ```
 Banelio Frontend (React 19 SPA)
          ↓  (JSON HTTP / HttpOnly Cookie Auth)
 Backend / API Banelio (Node.js Express / Prisma ORM)
-         ↓  (Server-to-Server Proxy / HTTPS)
+         ↓  (HMAC-SHA256 Server-to-Server Proxy / HTTPS)
 ResellerClub PHP Bridge (IONOS Apache: https://banelio.com/api/)
-         ↓  (Direct HTTP API calls with Reseller credentials)
+         ↓  (cURL HTTP API calls con credenciales seguras)
 ResellerClub API (OrderBox Registry / DNS / Contacts / Orders)
-         ↓
-Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 ```
 
 ## ResellerClub
@@ -134,20 +132,27 @@ Control y Servicios de ResellerClub (cPanel, Webmail, Registry ICANN)
 - WHOIS/RDAP bootstrap (`/api/domains/whois` y `WhoisModal.tsx`): servicio ICANN oficial para inspección pública de dominios ocupados (no compite con ResellerClub ya que ResellerClub solo comercializa disponibilidad).
 
 ## Pending
-- `RESELLERCLUB-PROVISIONING-WORKER`: automatizar el aprovisionamiento de dominios y servicios en ResellerClub una vez que la orden ha sido confirmada como `PAID` en Banelio.
+- `IONOS-DEPLOYMENT-VERIFICATION`: Despliegue manual de los 9 scripts PHP en el hosting IONOS bajo `/api/` y prueba de conectividad con credenciales reales.
 
 ## Decisions
 1. **Server-Authoritative:** Ningún precio, impuesto, total ni SKU es calculado o confiado desde el cliente. El backend valida cada ítem contra el catálogo en Prisma.
 2. **Separación de Costos y Precios:** Los costos mayoristas de ResellerClub (`providerCostUSD`, etc.) nunca se exponen al cliente público; solo se muestran precios minoristas calculados (`retailPriceUSD`).
 3. **Autenticación sin JWT en localStorage:** La identidad del usuario se mantiene mediante cookies HttpOnly seguras con tokens de sesión aleatorios indexados por hash SHA-256 en la base de datos.
-4. **Bridge Oficial en IONOS:** El backend Node.js se comunica con la API de ResellerClub mediante scripts PHP protegidos alojados en `https://banelio.com/api/` para mantener credenciales y whitelists de IP seguras.
+4. **Bridge Oficial en IONOS:** El backend Node.js se comunica con la API de ResellerClub mediante scripts PHP protegidos alojados en `https://banelio.com/api/` con firma canónica HMAC-SHA256 (`X-Banelio-Signature`).
+5. **Alcance Centrado en Dominios:** La plataforma se enfoca en el ciclo completo de dominios (búsqueda, registro, transferencia, renovación, DNS, WHOIS y facturación), retirando del escaparate hosting, correo y afiliados.
 
 ## Change history
 - **2026-10-09:**
-  - Corrección y blindaje de la migración `20261009004012_add_stripe_events_and_provisioning_operations` como estrictamente no destructiva, restaurando y preservando los modelos comerciales históricos en Prisma.
-  - Activación de costos mayoristas de transferencia (`providerTransferCostUSD`) en `pricingEngine.ts`, permitiendo precios reales y autoritativos en `/api/transfers/pricing` para dominios transferibles.
-  - Normalización en creación de pedidos (`server/orders.ts`) para resolver el costo de proveedor por TLD cuando se solicita una transferencia (`DOMAIN_TRANSFER`).
-  - Ampliación y validación de la suite de pruebas automatizadas a 23/23 tests pasando (`npm test`), verificación de tipos limpia (`tsc --noEmit`) y compilación exitosa (`npm run build`).
+  - Consolidación del alcance definitivo centrado exclusivamente en dominios; desactivación de menús y escaparates de hosting, correo, SSL independiente y afiliados.
+  - Exclusión de `config.local.php` y `*.local.php` en `.gitignore` para blindar secretos locales en IONOS.
+  - Ajuste del entorno por defecto en `server/php/reseller/config.php` a `'sandbox'` para evitar ejecuciones accidentales en producción por omisión de variable.
+  - Implementación del worker de aprovisionamiento de dominios (`server/provisioning.ts`) con tabla `ProvisioningOperation`, estados `UNCERTAIN` ante contingencias de red y reintentos idempotentes.
+  - Deduplicación persistente de webhooks Stripe mediante tabla `StripeWebhookEvent`.
+  - Autenticación server-to-server con HMAC-SHA256 entre Node.js y el puente PHP de IONOS (`server/phpBridgeAuth.ts` y `server/php/reseller/config.php`).
+  - Suite de pruebas ampliada a 24/24 tests pasando (`npm test`), verificación de tipos limpia (`tsc --noEmit`) y compilación exitosa (`npm run build`).
+
+## Next task
+`IONOS-DEPLOYMENT-VERIFICATION`: Copia de los 9 scripts PHP a IONOS, configuración de credenciales del puente y verificación de conectividad mediante `test-connection.php`.
 
 - **2026-10-08:**
   - Depuración y consolidación profunda del repositorio en la rama `cleanup/banelio-resellerclub`.
