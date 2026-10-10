@@ -56,6 +56,17 @@ class ResellerClubClient {
         return $this->request('POST', $endpoint, $params);
     }
 
+    private function buildHttpQuery(array $params) {
+        // ResellerClub API requiere parámetros repetidos (ns=ns1&ns=ns2 y tlds=com&tlds=net)
+        // en lugar de la notación de corchetes indexados por defecto en PHP (ns[0]=ns1&ns[1]=ns2).
+        return preg_replace('/%5B(?:\d+)?%5D=/', '=', http_build_query($params));
+    }
+
+    private function extractErrorMessage($decoded) {
+        if (!is_array($decoded)) return '';
+        return (string)($decoded['message'] ?? $decoded['error'] ?? $decoded['faultstring'] ?? $decoded['description'] ?? '');
+    }
+
     public function request($method, $endpoint, array $params = []) {
         if (!$this->isConfigured()) {
             throw new Exception('Credenciales de ResellerClub no configuradas en el servidor.', 503);
@@ -79,14 +90,14 @@ class ResellerClubClient {
         $method = strtoupper($method);
 
         if ($method === 'GET') {
-            $queryString = http_build_query($allParams);
+            $queryString = $this->buildHttpQuery($allParams);
             $fullUrl = $url . (strpos($url, '?') === false ? '?' : '&') . $queryString;
             curl_setopt($ch, CURLOPT_URL, $fullUrl);
             curl_setopt($ch, CURLOPT_HTTPGET, true);
         } elseif ($method === 'POST') {
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($allParams));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $this->buildHttpQuery($allParams));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
         } else {
             throw new Exception("Método HTTP no soportado: {$method}", 405);
@@ -110,12 +121,13 @@ class ResellerClubClient {
             return trim($response);
         }
 
-        if (is_array($decoded) && isset($decoded['status']) && strtoupper($decoded['status']) === 'ERROR') {
-            throw new Exception(translate_resellerclub_error($decoded['message'] ?? ''), 400);
+        if (is_array($decoded) && isset($decoded['status']) && strtoupper((string)$decoded['status']) === 'ERROR') {
+            $msg = $this->extractErrorMessage($decoded);
+            throw new Exception(translate_resellerclub_error($msg), 400);
         }
 
         if ($httpCode >= 400) {
-            $rawMsg = is_array($decoded) && isset($decoded['message']) ? (string)$decoded['message'] : '';
+            $rawMsg = $this->extractErrorMessage($decoded);
             $msg = !empty($rawMsg) ? translate_resellerclub_error($rawMsg) : 'Error en la comunicación con el proveedor mayorista.';
             throw new Exception($msg, $httpCode >= 500 ? 502 : $httpCode);
         }

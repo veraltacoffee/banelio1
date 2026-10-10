@@ -1,4 +1,5 @@
 import { buildBridgeAuthHeaders } from './phpBridgeAuth';
+import { getBridgeBaseUrl } from './provisioning';
 
 export interface CustomerDomainsResult {
   success: boolean;
@@ -26,7 +27,8 @@ export async function resolveCustomerDomains(
 
   try {
     const fetchFn = customFetch || fetch;
-    const targetUrl = targetUrlOverride || `https://banelio.com/api/domains/my-domains.php?email=${encodeURIComponent(customer.email)}&customer_id=${encodeURIComponent(customer.id)}`;
+    const baseUrl = getBridgeBaseUrl();
+    const targetUrl = targetUrlOverride || `${baseUrl}domains/my-domains.php?email=${encodeURIComponent(customer.email)}&customer_id=${encodeURIComponent(customer.id)}`;
     const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
 
     const remoteRes = await fetchFn(targetUrl, {

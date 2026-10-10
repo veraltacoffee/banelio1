@@ -11,12 +11,33 @@ require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' || isset($_SERVER['HTTP_X_BANELIO_SIGNATURE'])) {
-    verify_banelio_bridge_auth();
-}
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+$domainRaw = '';
+$authCode = '';
 
-$domainRaw = trim($_GET['domain'] ?? $_POST['domain'] ?? '');
-$authCode = trim($_GET['auth_code'] ?? $_POST['auth_code'] ?? '');
+if ($method === 'GET') {
+    // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
+    if (isset($_GET['auth_code']) || isset($_GET['epp_code']) || isset($_GET['authCode'])) {
+        send_json_response([
+            'success' => false,
+            'error' => 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+        ], 400);
+    }
+    $domainRaw = trim($_GET['domain'] ?? $_GET['domain-name'] ?? $_GET['domain_name'] ?? '');
+} elseif ($method === 'POST') {
+    // Operación protegida por firma HMAC-SHA256
+    verify_banelio_bridge_auth();
+
+    $postData = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($postData)) {
+        $postData = $_POST;
+    }
+
+    $domainRaw = trim($postData['domain'] ?? $postData['domain-name'] ?? $postData['domain_name'] ?? '');
+    $authCode = trim($postData['auth_code'] ?? $postData['auth-code'] ?? $postData['authCode'] ?? $postData['epp_code'] ?? $postData['eppCode'] ?? '');
+} else {
+    send_json_response(['success' => false, 'error' => 'Método HTTP no soportado.'], 405);
+}
 
 if (empty($domainRaw)) {
     send_json_response(['success' => false, 'error' => 'Debes proporcionar un dominio para consultar transferencia.'], 400);

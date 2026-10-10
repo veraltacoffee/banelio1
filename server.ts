@@ -59,7 +59,7 @@ import {
   markStripeWebhookEventProcessed,
   markStripeWebhookEventFailed
 } from './server/payments';
-import { provisionPaidOrder, retryProvisionOrder } from './server/provisioning';
+import { provisionPaidOrder, retryProvisionOrder, getBridgeBaseUrl } from './server/provisioning';
 import { buildBridgeAuthHeaders } from './server/phpBridgeAuth';
 import { resolveCustomerDomains } from './server/customerDomains';
 
@@ -222,7 +222,7 @@ async function startServer() {
     }
 
     try {
-      const targetUrl = `https://banelio.com/api/domains/check.php?domain=${encodeURIComponent(domain)}`;
+      const targetUrl = `${getBridgeBaseUrl()}domains/check.php?domain=${encodeURIComponent(domain)}`;
       const backendResponse = await fetch(targetUrl, {
         headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
         signal: AbortSignal.timeout(6000)
@@ -251,7 +251,7 @@ async function startServer() {
     }
 
     try {
-      const targetUrl = `https://banelio.com/api/domains/transfer.php?domain=${encodeURIComponent(domain)}`;
+      const targetUrl = `${getBridgeBaseUrl()}domains/transfer.php?domain=${encodeURIComponent(domain)}`;
       const backendResponse = await fetch(targetUrl, {
         method: 'GET',
         headers: {
@@ -279,7 +279,8 @@ async function startServer() {
   // API Route 0.5: Customer lookup and contacts proxy
   app.get('/api/domains/customer.php', async (req, res) => {
     try {
-      const targetUrl = 'https://banelio.com/api/domains/customer.php';
+      const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+      const targetUrl = `${getBridgeBaseUrl()}domains/customer.php${queryString ? `?${queryString}` : ''}`;
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const backendResponse = await fetch(targetUrl, {
         method: 'GET',
@@ -301,7 +302,8 @@ async function startServer() {
 
   app.get('/api/domains/contacts.php', async (req, res) => {
     try {
-      const targetUrl = 'https://banelio.com/api/domains/contacts.php';
+      const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+      const targetUrl = `${getBridgeBaseUrl()}domains/contacts.php${queryString ? `?${queryString}` : ''}`;
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const backendResponse = await fetch(targetUrl, {
         method: 'GET',
@@ -333,7 +335,7 @@ async function startServer() {
     let resellerDetails: any = null;
 
     try {
-      const targetUrl = 'https://banelio.com/api/reseller/test-connection.php';
+      const targetUrl = `${getBridgeBaseUrl()}reseller/test-connection.php`;
       const authHeaders = buildBridgeAuthHeaders('GET', targetUrl, '');
       const resp = await fetch(targetUrl, {
         headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0', ...authHeaders },
@@ -358,7 +360,7 @@ async function startServer() {
     } catch {
       // Fallback a test de disponibilidad de dominio si test-connection demora
       try {
-        const checkResp = await fetch('https://banelio.com/api/domains/check.php?domain=banelio.com', {
+        const checkResp = await fetch(`${getBridgeBaseUrl()}domains/check.php?domain=banelio.com`, {
           headers: { Accept: 'application/json', 'User-Agent': 'Banelio-App-Client/1.0' },
           signal: AbortSignal.timeout(3000)
         });

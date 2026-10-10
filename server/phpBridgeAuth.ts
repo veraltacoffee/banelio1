@@ -65,7 +65,13 @@ export function verifyBridgeAuth(
     return { valid: false, error: 'Acceso denegado: marca de tiempo inválida o expirada.' };
   }
 
-  const canonicalString = `${method.toUpperCase()}|${path}|${timestamp}|${rawBody}`;
+  let normalizedPath = path;
+  try {
+    const parsed = new URL(path, 'http://localhost');
+    normalizedPath = parsed.pathname;
+  } catch {}
+
+  const canonicalString = `${method.toUpperCase()}|${normalizedPath}|${timestamp}|${rawBody}`;
   const expectedSig = crypto.createHmac('sha256', secret).update(canonicalString).digest('hex');
 
   const sigBuffer = Buffer.from(signatureHeader, 'hex');

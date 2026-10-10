@@ -23,8 +23,8 @@ if (!$client->isConfigured()) {
 
 // 1. GET: Consultar datos del cliente
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $customerId = trim($_GET['customer_id'] ?? '');
-    $email = trim(strtolower($_GET['email'] ?? ''));
+    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? $_GET['customerId'] ?? '');
+    $email = trim(strtolower($_GET['email'] ?? $_GET['username'] ?? ''));
 
     if (empty($customerId) && empty($email)) {
         send_json_response(['success' => false, 'error' => 'Debes proporcionar customer-id o email.'], 400);
@@ -42,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
             'customer' => [
                 'customerId' => (string)$data['customerid'],
+                'customer_id' => (string)$data['customerid'],
                 'username' => $data['user_name'] ?? '',
                 'name' => $data['name'] ?? '',
                 'company' => $data['company'] ?? '',
@@ -67,16 +68,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $email = trim(strtolower($postData['email'] ?? ''));
-    $name = trim($postData['name'] ?? '');
-    $company = trim($postData['company'] ?? $name);
-    $address = trim($postData['address'] ?? '');
+    $email = trim(strtolower($postData['email'] ?? $postData['username'] ?? ''));
+    $name = trim($postData['name'] ?? $postData['fullName'] ?? '');
+    $company = trim($postData['company'] ?? $postData['org'] ?? $postData['organization'] ?? $name);
+    $address = trim($postData['address'] ?? $postData['address-line-1'] ?? $postData['address_line_1'] ?? $postData['address1'] ?? '');
     $city = trim($postData['city'] ?? '');
-    $state = trim($postData['state'] ?? '');
-    $country = strtoupper(trim($postData['country'] ?? ''));
-    $zipcode = trim($postData['zipcode'] ?? '');
-    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? '');
-    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? '');
+    $state = trim($postData['state'] ?? $postData['province'] ?? '');
+    $country = strtoupper(trim($postData['country'] ?? $postData['countryCode'] ?? ''));
+    $zipcode = trim($postData['zipcode'] ?? $postData['postalCode'] ?? $postData['postal_code'] ?? $postData['zip'] ?? '');
+    $telCc = preg_replace('/\D/', '', (string)($postData['phone_cc'] ?? $postData['phoneCc'] ?? $postData['tel-no-cc'] ?? $postData['tel_no_cc'] ?? ''));
+    $telNo = preg_replace('/\D/', '', (string)($postData['phone'] ?? $postData['telephone'] ?? $postData['tel-no'] ?? $postData['tel_no'] ?? ''));
+
+    // Resolver prefijo internacional si viene concatenado en el teléfono
+    $rawPhone = (string)($postData['phone'] ?? $postData['telephone'] ?? '');
+    if (empty($telCc) && strpos($rawPhone, '+') === 0) {
+        if (preg_match('/^\+(\d{1,4})\s*(\d+)$/', $rawPhone, $m)) {
+            $telCc = $m[1];
+            $telNo = preg_replace('/\D/', '', $m[2]);
+        }
+    }
 
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         send_json_response(['success' => false, 'error' => 'El correo electrónico es obligatorio y debe ser válido.'], 400);
@@ -99,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 send_json_response([
                     'success' => true,
                     'customerId' => (string)$existing['customerid'],
+                    'customer_id' => (string)$existing['customerid'],
                     'alreadyExisted' => true,
                     'message' => 'El cliente ya se encuentra registrado en el proveedor.'
                 ], 200);
@@ -107,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // No existe, continuar con signup
         }
 
-        $passwd = 'Bnl!' . bin2hex(random_bytes(6)) . '9A';
+        $passwd = !empty($postData['passwd']) ? (string)$postData['passwd'] : ('Bnl!' . bin2hex(random_bytes(6)) . '9A');
         $newCustomerId = $client->post('customers/signup.json', [
             'username' => $email,
             'passwd' => $passwd,
@@ -120,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'zipcode' => $zipcode,
             'tel-no-cc' => $telCc,
             'tel-no' => $telNo,
-            'lang-pref' => trim($postData['lang'] ?? 'es')
+            'lang-pref' => trim($postData['lang'] ?? $postData['lang-pref'] ?? 'es')
         ]);
 
         if (empty($newCustomerId) || !is_numeric($newCustomerId)) {
@@ -130,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         send_json_response([
             'success' => true,
             'customerId' => (string)$newCustomerId,
+            'customer_id' => (string)$newCustomerId,
             'alreadyExisted' => false,
             'message' => 'Cliente registrado exitosamente en ResellerClub.'
         ], 201);

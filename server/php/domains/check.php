@@ -12,7 +12,7 @@ require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
 
-$domainRaw = isset($_GET['domain']) ? trim($_GET['domain']) : '';
+$domainRaw = trim($_GET['domain'] ?? $_GET['domain-name'] ?? $_GET['domain_name'] ?? '');
 if (empty($domainRaw)) {
     send_json_response([
         'success' => false,
@@ -31,7 +31,7 @@ $tldsToQuery = [];
 if (count($parts) > 1) {
     $tldsToQuery[] = implode('.', array_slice($parts, 1));
 } else {
-    $customTlds = isset($_GET['tlds']) ? $_GET['tlds'] : '';
+    $customTlds = $_GET['tlds'] ?? $_GET['tld'] ?? '';
     if (!empty($customTlds)) {
         $tldsToQuery = is_array($customTlds) ? $customTlds : explode(',', $customTlds);
     } else {
@@ -114,6 +114,6 @@ try {
     send_json_response([
         'success' => false,
         'domain' => $domainClean,
-        'error' => $e->getMessage()
+        'error' => sanitize_exception_message($e, 'No fue posible consultar la disponibilidad del dominio.')
     ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
 }

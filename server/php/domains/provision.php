@@ -22,9 +22,9 @@ if (!is_array($postData)) {
     $postData = $_POST;
 }
 
-$action = strtolower(trim($postData['action'] ?? 'register'));
-$domainRaw = trim($postData['domain'] ?? '');
-$years = (int)($postData['years'] ?? 1);
+$action = strtolower(trim($postData['action'] ?? $postData['operation'] ?? 'register'));
+$domainRaw = trim($postData['domain'] ?? $postData['domain-name'] ?? $postData['domain_name'] ?? '');
+$years = (int)($postData['years'] ?? $postData['period'] ?? 1);
 if ($years < 1 || $years > 10) $years = 1;
 
 if (empty($domainRaw)) {
@@ -43,9 +43,9 @@ if (count($parts) < 2) {
 $sld = $parts[0];
 $tld = implode('.', array_slice($parts, 1));
 
-$customerId = trim($postData['customer_id'] ?? '');
-$contactId = trim($postData['contact_id'] ?? '');
-$authCode = trim($postData['auth_code'] ?? $postData['epp_code'] ?? '');
+$customerId = trim($postData['customer_id'] ?? $postData['customer-id'] ?? $postData['customerId'] ?? '');
+$contactId = trim($postData['contact_id'] ?? $postData['contact-id'] ?? $postData['contactId'] ?? '');
+$authCode = trim($postData['auth_code'] ?? $postData['auth-code'] ?? $postData['authCode'] ?? $postData['epp_code'] ?? $postData['eppCode'] ?? '');
 
 $ns = (isset($postData['ns']) && is_array($postData['ns']) && count($postData['ns']) >= 2)
     ? $postData['ns']
@@ -66,16 +66,25 @@ try {
 
     $reg = (isset($postData['registrant']) && is_array($postData['registrant'])) ? $postData['registrant'] : $postData;
 
-    $customerEmail = trim(strtolower($reg['email'] ?? ''));
-    $customerName = trim($reg['name'] ?? '');
-    $companyName = trim($reg['company'] ?? $reg['org'] ?? $customerName);
-    $regAddress = trim($reg['address'] ?? '');
+    $customerEmail = trim(strtolower($reg['email'] ?? $reg['username'] ?? ''));
+    $customerName = trim($reg['name'] ?? $reg['fullName'] ?? '');
+    $companyName = trim($reg['company'] ?? $reg['org'] ?? $reg['organization'] ?? $customerName);
+    $regAddress = trim($reg['address'] ?? $reg['address-line-1'] ?? $reg['address_line_1'] ?? $reg['address1'] ?? '');
     $regCity = trim($reg['city'] ?? '');
-    $regState = trim($reg['state'] ?? '');
-    $regCountry = strtoupper(trim($reg['country'] ?? ''));
-    $regZip = trim($reg['postalCode'] ?? $reg['zipcode'] ?? '');
-    $regPhone = preg_replace('/\D/', '', $reg['phone'] ?? '');
-    $regPhoneCc = preg_replace('/\D/', '', $reg['phone_cc'] ?? '');
+    $regState = trim($reg['state'] ?? $reg['province'] ?? '');
+    $regCountry = strtoupper(trim($reg['country'] ?? $reg['countryCode'] ?? ''));
+    $regZip = trim($reg['postalCode'] ?? $reg['zipcode'] ?? $reg['postal_code'] ?? $reg['zip'] ?? '');
+    $regPhone = preg_replace('/\D/', '', (string)($reg['phone'] ?? $reg['telephone'] ?? $reg['tel-no'] ?? $reg['tel_no'] ?? ''));
+    $regPhoneCc = preg_replace('/\D/', '', (string)($reg['phone_cc'] ?? $reg['phoneCc'] ?? $reg['tel-no-cc'] ?? $reg['tel_no_cc'] ?? ''));
+
+    // Resolver prefijo internacional si viene concatenado en el teléfono
+    $rawPhone = (string)($reg['phone'] ?? $reg['telephone'] ?? '');
+    if (empty($regPhoneCc) && strpos($rawPhone, '+') === 0) {
+        if (preg_match('/^\+(\d{1,4})\s*(\d+)$/', $rawPhone, $m)) {
+            $regPhoneCc = $m[1];
+            $regPhone = preg_replace('/\D/', '', $m[2]);
+        }
+    }
 
     if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
         send_json_response(['success' => false, 'error' => 'El correo electrónico del registrante es obligatorio y debe ser válido.'], 400);
@@ -204,7 +213,9 @@ try {
             'domain' => $domainClean,
             'orderId' => $orderId,
             'customerId' => $customerId,
+            'customer_id' => $customerId,
             'contactId' => $contactId,
+            'contact_id' => $contactId,
             'years' => $years,
             'status' => $isProvisioned ? 'PROVISIONED' : 'PENDING_REGISTRATION',
             'providerStatus' => $rcStatus,
@@ -245,7 +256,9 @@ try {
             'domain' => $domainClean,
             'orderId' => $orderId,
             'customerId' => $customerId,
+            'customer_id' => $customerId,
             'contactId' => $contactId,
+            'contact_id' => $contactId,
             'status' => 'TRANSFER_INITIATED',
             'message' => "Orden de transferencia para {$domainClean} iniciada exitosamente en ResellerClub (ID: {$orderId})."
         ], 200);

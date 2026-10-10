@@ -23,8 +23,8 @@ if (!$client->isConfigured()) {
 
 // 1. GET: Consultar contactos de un cliente o por ID específico
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $contactId = trim($_GET['contact_id'] ?? '');
-    $customerId = trim($_GET['customer_id'] ?? '');
+    $contactId = trim($_GET['contact_id'] ?? $_GET['contact-id'] ?? $_GET['contactId'] ?? '');
+    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? $_GET['customerId'] ?? '');
 
     if (!empty($contactId)) {
         try {
@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
                 $contacts[] = [
                     'contactId' => (string)($item['entity.entityid'] ?? $key),
+                    'contact_id' => (string)($item['entity.entityid'] ?? $key),
                     'name' => $item['contact.name'] ?? '',
                     'company' => $item['contact.company'] ?? '',
                     'email' => $item['contact.emailaddr'] ?? '',
@@ -88,17 +89,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $customerId = trim($postData['customer_id'] ?? '');
-    $name = trim($postData['name'] ?? '');
-    $company = trim($postData['company'] ?? $name);
-    $email = trim(strtolower($postData['email'] ?? ''));
-    $address = trim($postData['address'] ?? '');
+    $customerId = trim($postData['customer_id'] ?? $postData['customer-id'] ?? $postData['customerId'] ?? '');
+    $name = trim($postData['name'] ?? $postData['fullName'] ?? '');
+    $company = trim($postData['company'] ?? $postData['org'] ?? $postData['organization'] ?? $name);
+    $email = trim(strtolower($postData['email'] ?? $postData['username'] ?? ''));
+    $address = trim($postData['address'] ?? $postData['address-line-1'] ?? $postData['address_line_1'] ?? $postData['address1'] ?? '');
     $city = trim($postData['city'] ?? '');
-    $state = trim($postData['state'] ?? '');
-    $country = strtoupper(trim($postData['country'] ?? ''));
-    $zipcode = trim($postData['zipcode'] ?? '');
-    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? '');
-    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? '');
+    $state = trim($postData['state'] ?? $postData['province'] ?? '');
+    $country = strtoupper(trim($postData['country'] ?? $postData['countryCode'] ?? ''));
+    $zipcode = trim($postData['zipcode'] ?? $postData['postalCode'] ?? $postData['postal_code'] ?? $postData['zip'] ?? '');
+    $telCc = preg_replace('/\D/', '', (string)($postData['phone_cc'] ?? $postData['phoneCc'] ?? $postData['tel-no-cc'] ?? $postData['tel_no_cc'] ?? ''));
+    $telNo = preg_replace('/\D/', '', (string)($postData['phone'] ?? $postData['telephone'] ?? $postData['tel-no'] ?? $postData['tel_no'] ?? ''));
+
+    // Resolver prefijo internacional si viene concatenado en el teléfono
+    $rawPhone = (string)($postData['phone'] ?? $postData['telephone'] ?? '');
+    if (empty($telCc) && strpos($rawPhone, '+') === 0) {
+        if (preg_match('/^\+(\d{1,4})\s*(\d+)$/', $rawPhone, $m)) {
+            $telCc = $m[1];
+            $telNo = preg_replace('/\D/', '', $m[2]);
+        }
+    }
 
     if (empty($customerId)) {
         send_json_response(['success' => false, 'error' => 'El customer_id es obligatorio para registrar un contacto.'], 400);
@@ -139,7 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         send_json_response([
             'success' => true,
             'contactId' => (string)$newContactId,
+            'contact_id' => (string)$newContactId,
             'customerId' => $customerId,
+            'customer_id' => $customerId,
             'message' => 'Contacto WHOIS registrado exitosamente.'
         ], 201);
 

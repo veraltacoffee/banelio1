@@ -12,8 +12,8 @@ require_once __DIR__ . '/../reseller/client.php';
 apply_banelio_cors();
 verify_banelio_bridge_auth();
 
-$customerId = trim($_GET['customer_id'] ?? '');
-$email = trim(strtolower($_GET['email'] ?? ''));
+$customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? $_GET['customerId'] ?? '');
+$email = trim(strtolower($_GET['email'] ?? $_GET['username'] ?? ''));
 
 if (empty($customerId) && empty($email)) {
     send_json_response([
