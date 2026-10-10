@@ -14,6 +14,13 @@ verify_banelio_bridge_auth();
 
 $client = new ResellerClubClient();
 
+if (!$client->isConfigured()) {
+    send_json_response([
+        'success' => false,
+        'error' => 'Credenciales de ResellerClub no configuradas en el servidor.'
+    ], 503);
+}
+
 // ==========================================
 // 1. GET: Consultar contactos de un cliente
 // ==========================================
@@ -27,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $data = $client->get('contacts/details.json', ['contact-id' => $contactId]);
             send_json_response(['success' => true, 'contact' => $data], 200);
         } catch (Exception $e) {
-            send_json_response(['success' => false, 'error' => $e->getMessage()], 404);
+            send_json_response([
+                'success' => false,
+                'error' => sanitize_exception_message($e, 'Contacto WHOIS no encontrado o no disponible.')
+            ], 404);
         }
     }
 
@@ -75,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => false,
             'count' => 0,
             'contacts' => [],
-            'error' => $e->getMessage()
+            'error' => sanitize_exception_message($e, 'No fue posible consultar los contactos WHOIS en el proveedor.')
         ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
     }
 }
@@ -163,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         send_json_response([
             'success' => false,
-            'error' => $e->getMessage()
+            'error' => sanitize_exception_message($e, 'No fue posible registrar el contacto WHOIS en el proveedor.')
         ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
     }
 }

@@ -265,13 +265,12 @@ try {
         }
 
         if (empty($orderId)) {
-            $errorMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
-                ? $resellerResponse['message']
+            $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
+                ? (string)$resellerResponse['message']
                 : 'ResellerClub no devolvió confirmación del registro.';
             send_json_response([
                 'success' => false,
-                'error' => $errorMsg,
-                'raw' => $resellerResponse
+                'error' => translate_resellerclub_error($rawMsg)
             ], 502);
         }
 
@@ -321,13 +320,12 @@ try {
         }
 
         if (empty($orderId)) {
-            $errorMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
-                ? $resellerResponse['message']
+            $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
+                ? (string)$resellerResponse['message']
                 : 'ResellerClub no devolvió confirmación de la transferencia.';
             send_json_response([
                 'success' => false,
-                'error' => $errorMsg,
-                'raw' => $resellerResponse
+                'error' => translate_resellerclub_error($rawMsg)
             ], 502);
         }
 
@@ -354,6 +352,6 @@ try {
         'success' => false,
         'action' => $action,
         'domain' => $domainClean,
-        'error' => $e->getMessage()
+        'error' => sanitize_exception_message($e, 'Fallo durante el aprovisionamiento del dominio en el proveedor.')
     ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
 }

@@ -6,6 +6,14 @@
  * Encapsula llamadas cURL hacia la HTTP API de ResellerClub con autenticación automática.
  */
 
+// Bloqueo estricto de acceso HTTP directo a este archivo de biblioteca
+if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Acceso directo denegado.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 require_once __DIR__ . '/config.php';
 
 class ResellerClubClient {
@@ -107,11 +115,13 @@ class ResellerClubClient {
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErrno = curl_errno($ch);
-        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($curlErrno !== 0) {
-            throw new Exception("Error de red conectando con ResellerClub: {$curlError}", 502);
+            if (function_exists('error_log')) {
+                error_log("[BANELIO_CURL_ERROR] Endpoint: {$endpointClean}, Code: {$curlErrno}");
+            }
+            throw new Exception("No fue posible establecer conexión con el proveedor mayorista.", 502);
         }
 
         $decoded = json_decode($response, true);
@@ -119,7 +129,7 @@ class ResellerClubClient {
         // Si la respuesta no es JSON válido (ej. error 500 HTML de Cloudflare/Proxy)
         if ($decoded === null && !empty($response)) {
             if ($httpCode >= 400) {
-                throw new Exception("El proveedor respondió con error HTTP {$httpCode}.", 502);
+                throw new Exception("El proveedor mayorista respondió con una falla temporal de servicio.", 502);
             }
             // En algunas llamadas simples devuelve un id escalar
             return trim($response);
@@ -128,14 +138,21 @@ class ResellerClubClient {
         // Detección de error semántico oficial de ResellerClub
         if (is_array($decoded)) {
             if (isset($decoded['status']) && strtoupper($decoded['status']) === 'ERROR') {
-                $msg = isset($decoded['message']) ? $decoded['message'] : 'Error en la operación solicitada a ResellerClub.';
+                $rawMsg = isset($decoded['message']) ? (string)$decoded['message'] : '';
+                $msg = function_exists('translate_resellerclub_error')
+                    ? translate_resellerclub_error($rawMsg)
+                    : 'Error en la operación solicitada al proveedor mayorista.';
                 throw new Exception($msg, 400);
             }
         }
 
         if ($httpCode >= 400) {
-            $msg = is_array($decoded) && isset($decoded['message']) ? $decoded['message'] : "Error HTTP {$httpCode} del proveedor.";
-            throw new Exception($msg, $httpCode);
+            $rawMsg = is_array($decoded) && isset($decoded['message']) ? (string)$decoded['message'] : '';
+            $msg = (!empty($rawMsg) && function_exists('translate_resellerclub_error'))
+                ? translate_resellerclub_error($rawMsg)
+                : 'Error en la comunicación con el proveedor mayorista.';
+            $statusCode = ($httpCode >= 500) ? 502 : $httpCode;
+            throw new Exception($msg, $statusCode);
         }
 
         return $decoded;

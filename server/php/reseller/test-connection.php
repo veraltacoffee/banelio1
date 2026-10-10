@@ -54,6 +54,6 @@ try {
 } catch (Exception $e) {
     send_json_response([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => sanitize_exception_message($e, 'No fue posible validar la conexión con ResellerClub.')
     ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
 }

@@ -27,6 +27,13 @@ if (empty($customerId) && empty($email)) {
 try {
     $client = new ResellerClubClient();
 
+    if (!$client->isConfigured()) {
+        send_json_response([
+            'success' => false,
+            'error' => 'Credenciales de ResellerClub no configuradas en el servidor.'
+        ], 503);
+    }
+
     // Si no se proporcionó customer_id numérico pero sí email, resolver su ID en ResellerClub
     if (empty($customerId) && !empty($email)) {
         try {
@@ -38,13 +45,25 @@ try {
                 $customerId = (string)$customerLookup['customerid'];
             }
         } catch (Exception $e) {
-            // Si el cliente no existe en ResellerClub aún, tiene 0 dominios registrados
-            send_json_response([
-                'success' => true,
-                'count' => 0,
-                'domains' => [],
-                'message' => 'No existen dominios registrados en el proveedor para este cliente.'
-            ], 200);
+            $errCode = $e->getCode();
+            // Errores de red, configuración o autenticación no deben simular 0 dominios
+            if ($errCode === 502 || $errCode === 503 || $errCode === 401 || $errCode === 403) {
+                throw $e;
+            }
+            $errMsg = strtolower($e->getMessage());
+            // Solo si el proveedor indica expresamente que el cliente no existe en su registro
+            if (strpos($errMsg, 'invalid customer') !== false ||
+                strpos($errMsg, 'customer does not exist') !== false ||
+                strpos($errMsg, 'no existe') !== false) {
+                send_json_response([
+                    'success' => true,
+                    'count' => 0,
+                    'domains' => [],
+                    'message' => 'No existen dominios registrados en el proveedor para este cliente.'
+                ], 200);
+            }
+            // Otros errores se propagan como fallas legítimas del proveedor
+            throw $e;
         }
     }
 
@@ -97,6 +116,6 @@ try {
 } catch (Exception $e) {
     send_json_response([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => sanitize_exception_message($e, 'No fue posible consultar los dominios en el proveedor.')
     ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
 }

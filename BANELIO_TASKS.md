@@ -123,6 +123,49 @@
 
 ---
 
+### TASK: PHP-BRIDGE-SECURITY-HARDENING
+- **TASK ID:** PHP-BRIDGE-SECURITY-HARDENING
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Security & PHP Bridge Architecture
+- **OBJECTIVE:** Implementar y validar el blindaje definitivo de seguridad en el puente PHP entre IONOS y ResellerClub:
+  1. Bloqueo de acceso HTTP directo a bibliotecas internas (`config.php`, `client.php`) retornando 403.
+  2. Eliminación de fugas de datos sensibles, trazas, rutas internas, variables cURL sin filtrar (`$curlError`) y respuestas crudas del proveedor (`'raw' => $resellerResponse`).
+  3. Sanitización y traducción estricta de excepciones en todos los catch blocks (`sanitize_exception_message`, `translate_resellerclub_error`).
+  4. Corrección de falsos positivos en `my-domains.php`: validación previa de credenciales (HTTP 503 si no están configuradas) y propagación de errores reales (502, 503, 401, 403), distinguiendo fallas de infraestructura de una consulta legítima con cero dominios.
+  5. Protección HTTP vía `.htaccess` para Apache 2.4/2.2 en hosting compartido IONOS contra descarga o acceso a `.env`, `*.local.php`, `config.local.php`, `config.php`, `client.php`, `.json`, logs y repositorios.
+  6. Suite de 35 pruebas automatizadas (27 existentes + 8 nuevas pruebas de seguridad PHP) con 100% de éxito.
+- **ALLOWED FILES:**
+  - `server/php/reseller/config.php`
+  - `server/php/reseller/client.php`
+  - `server/php/reseller/test-connection.php`
+  - `server/php/domains/my-domains.php`
+  - `server/php/domains/customer.php`
+  - `server/php/domains/contacts.php`
+  - `server/php/domains/provision.php`
+  - `server/php/domains/transfer.php`
+  - `server/php/.htaccess`
+  - `server/php/reseller/.htaccess`
+  - `server/php/reseller/config.local.php.example`
+  - `server/php-bridge-security.test.ts`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+- **FORBIDDEN FILES:**
+  - `server.ts`
+  - `server/customerDomains.ts`
+  - `server/payments-provisioning.test.ts`
+  - `server/php/domains/check.php`
+  - `prisma/*`
+- **VALIDATION:**
+  - `npm test`: 35/35 tests PASS (100% aprobados).
+  - `tsc --noEmit` limpio (0 errores).
+  - `compile_applet` exitoso.
+  - `npm run build` exitoso (Vite + esbuild).
+- **HANDOFF:** Puente PHP blindado, compatible con hosting compartido IONOS y verificado exhaustivamente.
+
+---
+
 ## IN PROGRESS
 
 *(Ninguna tarea en ejecución. El sistema se encuentra estabilizado en Google AI Studio a la espera de autorización explícita para la siguiente tarea).*

@@ -14,6 +14,13 @@ verify_banelio_bridge_auth();
 
 $client = new ResellerClubClient();
 
+if (!$client->isConfigured()) {
+    send_json_response([
+        'success' => false,
+        'error' => 'Credenciales de ResellerClub no configuradas en el servidor.'
+    ], 503);
+}
+
 // ==========================================
 // 1. GET: Consultar datos del cliente
 // ==========================================
@@ -64,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } catch (Exception $e) {
         send_json_response([
             'success' => false,
-            'error' => $e->getMessage()
+            'error' => sanitize_exception_message($e, 'No fue posible consultar los datos del cliente.')
         ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
     }
 }
@@ -174,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         send_json_response([
             'success' => false,
-            'error' => $e->getMessage()
+            'error' => sanitize_exception_message($e, 'No fue posible registrar el cliente en el proveedor.')
         ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
     }
 }

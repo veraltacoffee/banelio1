@@ -109,6 +109,6 @@ try {
     send_json_response([
         'success' => false,
         'domain' => $domainClean,
-        'error' => $e->getMessage()
+        'error' => sanitize_exception_message($e, 'No fue posible verificar la transferibilidad del dominio.')
     ], $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
 }
