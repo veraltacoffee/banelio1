@@ -35,13 +35,13 @@ try {
 
     // NUNCA exponer contraseñas, api keys, ni tokens
     $sanitized = [
-        'company' => isset($details['company']) ? $details['company'] : 'Banelio',
-        'resellerstatus' => isset($details['resellerstatus']) ? $details['resellerstatus'] : 'Active',
+        'company' => $details['company'] ?? 'Banelio',
+        'resellerstatus' => $details['resellerstatus'] ?? 'Active',
         'resellerid' => $client->getResellerIdMasked(),
-        'country' => isset($details['country']) ? $details['country'] : 'MX',
-        'sellingcurrencysymbol' => isset($details['sellingcurrencysymbol']) ? $details['sellingcurrencysymbol'] : 'MXN',
+        'country' => $details['country'] ?? 'MX',
+        'sellingcurrencysymbol' => $details['sellingcurrencysymbol'] ?? 'MXN',
         'environment' => $client->getEnvironment(),
-        'supportsautorenew' => isset($details['supportsautorenew']) ? $details['supportsautorenew'] === 'true' : true
+        'supportsautorenew' => ($details['supportsautorenew'] ?? 'true') === 'true'
     ];
 
     send_json_response([

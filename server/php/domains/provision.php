@@ -255,14 +255,9 @@ try {
         $resellerResponse = $client->post('domains/register.json', $regParams);
 
         // ResellerClub retorna { "actiontype": "AddDomain", "entityid": "123456", "status": "Success", ... }
-        $orderId = null;
-        if (is_array($resellerResponse)) {
-            $orderId = isset($resellerResponse['entityid'])
-                ? (string)$resellerResponse['entityid']
-                : (isset($resellerResponse['orderid']) ? (string)$resellerResponse['orderid'] : null);
-        } elseif (is_numeric($resellerResponse)) {
-            $orderId = (string)$resellerResponse;
-        }
+        $orderId = is_array($resellerResponse)
+            ? (string)($resellerResponse['entityid'] ?? $resellerResponse['orderid'] ?? '')
+            : (is_numeric($resellerResponse) ? (string)$resellerResponse : '');
 
         if (empty($orderId)) {
             $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
@@ -310,14 +305,9 @@ try {
 
         $resellerResponse = $client->post('domains/transfer.json', $transParams);
 
-        $orderId = null;
-        if (is_array($resellerResponse)) {
-            $orderId = isset($resellerResponse['entityid'])
-                ? (string)$resellerResponse['entityid']
-                : (isset($resellerResponse['orderid']) ? (string)$resellerResponse['orderid'] : null);
-        } elseif (is_numeric($resellerResponse)) {
-            $orderId = (string)$resellerResponse;
-        }
+        $orderId = is_array($resellerResponse)
+            ? (string)($resellerResponse['entityid'] ?? $resellerResponse['orderid'] ?? '')
+            : (is_numeric($resellerResponse) ? (string)$resellerResponse : '');
 
         if (empty($orderId)) {
             $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])

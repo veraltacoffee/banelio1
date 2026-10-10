@@ -25,8 +25,8 @@ if (!$client->isConfigured()) {
 // 1. GET: Consultar datos del cliente
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
-    $email = trim(strtolower($_GET['email'] ?? $_GET['username'] ?? ''));
+    $customerId = trim($_GET['customer_id'] ?? '');
+    $email = trim(strtolower($_GET['email'] ?? ''));
 
     if (empty($customerId) && empty($email)) {
         send_json_response([
@@ -36,13 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     try {
-        $params = [];
-        if (!empty($customerId)) {
-            $params['customer-id'] = $customerId;
-        } else {
-            $params['username'] = $email;
-        }
-
+        $params = !empty($customerId) ? ['customer-id' => $customerId] : ['username' => $email];
         $data = $client->get('customers/details.json', $params);
 
         if (!is_array($data) || empty($data['customerid'])) {
@@ -54,13 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $sanitized = [
             'customerId' => (string)$data['customerid'],
-            'username' => isset($data['user_name']) ? $data['user_name'] : '',
-            'name' => isset($data['name']) ? $data['name'] : '',
-            'company' => isset($data['company']) ? $data['company'] : '',
-            'city' => isset($data['city']) ? $data['city'] : '',
-            'state' => isset($data['state']) ? $data['state'] : '',
-            'country' => isset($data['country']) ? $data['country'] : '',
-            'status' => isset($data['customer_status']) ? $data['customer_status'] : 'Active'
+            'username' => $data['user_name'] ?? '',
+            'name' => $data['name'] ?? '',
+            'company' => $data['company'] ?? '',
+            'city' => $data['city'] ?? '',
+            'state' => $data['state'] ?? '',
+            'country' => $data['country'] ?? '',
+            'status' => $data['customer_status'] ?? 'Active'
         ];
 
         send_json_response([
@@ -87,16 +81,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $email = trim(strtolower($postData['email'] ?? $postData['username'] ?? ''));
+    $email = trim(strtolower($postData['email'] ?? ''));
     $name = trim($postData['name'] ?? '');
     $company = trim($postData['company'] ?? $name);
-    $address = trim($postData['address'] ?? $postData['address1'] ?? '');
+    $address = trim($postData['address'] ?? '');
     $city = trim($postData['city'] ?? '');
     $state = trim($postData['state'] ?? '');
     $country = strtoupper(trim($postData['country'] ?? ''));
-    $zipcode = trim($postData['zipcode'] ?? $postData['zip'] ?? '');
-    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? $postData['tel-no-cc'] ?? '');
-    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? $postData['tel-no'] ?? '');
+    $zipcode = trim($postData['zipcode'] ?? '');
+    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? '');
+    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? '');
     $lang = trim($postData['lang'] ?? 'es');
 
     // Validación estricta de datos reales obligatorios (sin valores ficticios)

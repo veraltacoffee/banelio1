@@ -45,8 +45,8 @@ try {
         'tlds' => [$tld]
     ]);
 
-    $domainInfo = isset($availData[$domainClean]) ? $availData[$domainClean] : null;
-    $status = isset($domainInfo['status']) ? strtolower($domainInfo['status']) : '';
+    $domainInfo = $availData[$domainClean] ?? null;
+    $status = strtolower($domainInfo['status'] ?? '');
 
     if ($status === 'available') {
         send_json_response([

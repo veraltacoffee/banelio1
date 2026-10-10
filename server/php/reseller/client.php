@@ -129,23 +129,14 @@ class ResellerClubClient {
         }
 
         // Detección de error semántico oficial de ResellerClub
-        if (is_array($decoded)) {
-            if (isset($decoded['status']) && strtoupper($decoded['status']) === 'ERROR') {
-                $rawMsg = isset($decoded['message']) ? (string)$decoded['message'] : '';
-                $msg = function_exists('translate_resellerclub_error')
-                    ? translate_resellerclub_error($rawMsg)
-                    : 'Error en la operación solicitada al proveedor mayorista.';
-                throw new Exception($msg, 400);
-            }
+        if (is_array($decoded) && isset($decoded['status']) && strtoupper($decoded['status']) === 'ERROR') {
+            throw new Exception(translate_resellerclub_error($decoded['message'] ?? ''), 400);
         }
 
         if ($httpCode >= 400) {
             $rawMsg = is_array($decoded) && isset($decoded['message']) ? (string)$decoded['message'] : '';
-            $msg = (!empty($rawMsg) && function_exists('translate_resellerclub_error'))
-                ? translate_resellerclub_error($rawMsg)
-                : 'Error en la comunicación con el proveedor mayorista.';
-            $statusCode = ($httpCode >= 500) ? 502 : $httpCode;
-            throw new Exception($msg, $statusCode);
+            $msg = !empty($rawMsg) ? translate_resellerclub_error($rawMsg) : 'Error en la comunicación con el proveedor mayorista.';
+            throw new Exception($msg, $httpCode >= 500 ? 502 : $httpCode);
         }
 
         return $decoded;

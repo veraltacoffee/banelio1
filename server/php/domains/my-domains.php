@@ -14,7 +14,7 @@ apply_banelio_cors();
 verify_banelio_bridge_auth();
 
 // Parámetros de identidad enviados por el backend Node de Banelio
-$customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
+$customerId = trim($_GET['customer_id'] ?? '');
 $email = trim(strtolower($_GET['email'] ?? ''));
 
 if (empty($customerId) && empty($email)) {
@@ -94,14 +94,14 @@ try {
             $domainName = isset($item['entity.description']) ? $item['entity.description'] : '';
             if (!empty($domainName)) {
                 $domains[] = [
-                    'id' => isset($item['orders.entityid']) ? (string)$item['orders.entityid'] : $key,
+                    'id' => (string)($item['orders.entityid'] ?? $key),
                     'domain' => $domainName,
-                    'status' => isset($item['orders.currentstatus']) ? $item['orders.currentstatus'] : 'Active',
+                    'status' => $item['orders.currentstatus'] ?? 'Active',
                     'creationDate' => isset($item['orders.creationtime']) ? date('c', (int)$item['orders.creationtime']) : null,
                     'expiryDate' => isset($item['orders.endtime']) ? date('c', (int)$item['orders.endtime']) : null,
-                    'privacyProtection' => isset($item['orders.privacy_protection']) ? $item['orders.privacy_protection'] === 'true' : false,
-                    'locked' => isset($item['orders.transfer_lock']) ? $item['orders.transfer_lock'] === 'true' : true,
-                    'autoRenew' => isset($item['orders.auto_renew']) ? $item['orders.auto_renew'] === 'true' : false
+                    'privacyProtection' => ($item['orders.privacy_protection'] ?? '') === 'true',
+                    'locked' => ($item['orders.transfer_lock'] ?? 'true') === 'true',
+                    'autoRenew' => ($item['orders.auto_renew'] ?? '') === 'true'
                 ];
             }
         }

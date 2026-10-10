@@ -155,12 +155,9 @@ function sanitize_exception_message(Exception $e, $defaultMessage = 'Error en el
 // 2d. Resolución de clave compartida HMAC servidor a servidor
 function get_bridge_secret() {
     load_banelio_local_config();
-
     $secret = defined('PHP_BRIDGE_SECRET') ? PHP_BRIDGE_SECRET : (
-        defined('RESELLER_BRIDGE_SECRET') ? RESELLER_BRIDGE_SECRET : (
-            getenv('PHP_BRIDGE_SECRET') ?: (
-                getenv('RESELLER_BRIDGE_SECRET') ?: ''
-            )
+        getenv('PHP_BRIDGE_SECRET') ?: (
+            defined('RESELLER_BRIDGE_SECRET') ? RESELLER_BRIDGE_SECRET : (getenv('RESELLER_BRIDGE_SECRET') ?: '')
         )
     );
     return trim((string)$secret);
@@ -235,35 +232,20 @@ function verify_banelio_bridge_auth() {
 function get_resellerclub_config() {
     load_banelio_local_config();
 
-    // Extraer de constantes o variables de entorno oficiales del repositorio
     $resellerId = defined('RESELLERCLUB_RESELLER_ID') ? RESELLERCLUB_RESELLER_ID : (
-        defined('RESELLER_ID') ? RESELLER_ID : (
-            getenv('RESELLERCLUB_RESELLER_ID') ?: (
-                getenv('RESELLER_ID') ?: ''
-            )
-        )
+        defined('RESELLER_ID') ? RESELLER_ID : (getenv('RESELLERCLUB_RESELLER_ID') ?: (getenv('RESELLER_ID') ?: ''))
     );
-
     $apiKey = defined('RESELLERCLUB_API_KEY') ? RESELLERCLUB_API_KEY : (
-        defined('API_KEY') ? API_KEY : (
-            getenv('RESELLERCLUB_API_KEY') ?: (
-                getenv('API_KEY') ?: ''
-            )
-        )
+        defined('API_KEY') ? API_KEY : (getenv('RESELLERCLUB_API_KEY') ?: (getenv('API_KEY') ?: ''))
     );
-
-    $environment = defined('RESELLERCLUB_ENVIRONMENT') ? RESELLERCLUB_ENVIRONMENT : (
-        getenv('RESELLERCLUB_ENVIRONMENT') ?: 'sandbox'
-    );
-
-    $isLive = strtolower(trim((string)$environment)) === 'live';
-    $baseUrl = $isLive ? 'https://httpapi.com/api/' : 'https://test.httpapi.com/api/';
+    $env = defined('RESELLERCLUB_ENVIRONMENT') ? RESELLERCLUB_ENVIRONMENT : (getenv('RESELLERCLUB_ENVIRONMENT') ?: 'sandbox');
+    $isLive = strtolower(trim((string)$env)) === 'live';
 
     return [
         'resellerId' => trim((string)$resellerId),
         'apiKey' => trim((string)$apiKey),
         'environment' => $isLive ? 'live' : 'sandbox',
-        'baseUrl' => $baseUrl,
+        'baseUrl' => $isLive ? 'https://httpapi.com/api/' : 'https://test.httpapi.com/api/',
         'configured' => !empty($resellerId) && !empty($apiKey)
     ];
 }

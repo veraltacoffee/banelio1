@@ -25,8 +25,8 @@ if (!$client->isConfigured()) {
 // 1. GET: Consultar contactos de un cliente
 // ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $customerId = trim($_GET['customer_id'] ?? $_GET['customer-id'] ?? '');
-    $contactId = trim($_GET['contact_id'] ?? $_GET['contact-id'] ?? '');
+    $customerId = trim($_GET['customer_id'] ?? '');
+    $contactId = trim($_GET['contact_id'] ?? '');
 
     // Consulta específica de un contacto
     if (!empty($contactId)) {
@@ -64,12 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 if (!is_array($item)) continue;
 
                 $contacts[] = [
-                    'contactId' => isset($item['entity.entityid']) ? (string)$item['entity.entityid'] : $key,
-                    'name' => isset($item['contact.name']) ? $item['contact.name'] : '',
-                    'company' => isset($item['contact.company']) ? $item['contact.company'] : '',
-                    'email' => isset($item['contact.emailaddr']) ? $item['contact.emailaddr'] : '',
-                    'type' => isset($item['contact.type']) ? $item['contact.type'] : 'Contact',
-                    'status' => isset($item['entity.currentstatus']) ? $item['entity.currentstatus'] : 'Active'
+                    'contactId' => (string)($item['entity.entityid'] ?? $key),
+                    'name' => $item['contact.name'] ?? '',
+                    'company' => $item['contact.company'] ?? '',
+                    'email' => $item['contact.emailaddr'] ?? '',
+                    'type' => $item['contact.type'] ?? 'Contact',
+                    'status' => $item['entity.currentstatus'] ?? 'Active'
                 ];
             }
         }
@@ -100,17 +100,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $postData = $_POST;
     }
 
-    $customerId = trim($postData['customer_id'] ?? $postData['customer-id'] ?? '');
+    $customerId = trim($postData['customer_id'] ?? '');
     $name = trim($postData['name'] ?? '');
     $company = trim($postData['company'] ?? $name);
     $email = trim(strtolower($postData['email'] ?? ''));
-    $address = trim($postData['address1'] ?? $postData['address'] ?? '');
+    $address = trim($postData['address'] ?? $postData['address1'] ?? '');
     $city = trim($postData['city'] ?? '');
     $state = trim($postData['state'] ?? '');
     $country = strtoupper(trim($postData['country'] ?? ''));
-    $zipcode = trim($postData['zipcode'] ?? $postData['zip'] ?? '');
-    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? $postData['tel-no-cc'] ?? '');
-    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? $postData['tel-no'] ?? '');
+    $zipcode = trim($postData['zipcode'] ?? '');
+    $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? '');
+    $telNo = preg_replace('/\D/', '', $postData['phone'] ?? '');
     $type = trim($postData['type'] ?? 'Contact');
 
     if (empty($customerId)) {
