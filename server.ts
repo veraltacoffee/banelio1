@@ -63,7 +63,164 @@ import { provisionPaidOrder, retryProvisionOrder, getBridgeBaseUrl } from './ser
 import { buildBridgeAuthHeaders } from './server/phpBridgeAuth';
 import { resolveCustomerDomains } from './server/customerDomains';
 
-async function startServer() {
+export const FORBIDDEN_AUTH_QUERY_PARAMS = [
+  'auth_code',
+  'auth-code',
+  'authCode',
+  'epp_code',
+  'epp-code',
+  'eppCode'
+] as const;
+
+export function hasForbiddenAuthQueryParam(query: Record<string, any> | undefined | null): boolean {
+  if (!query || typeof query !== 'object') return false;
+  const forbiddenNormalized = FORBIDDEN_AUTH_QUERY_PARAMS.map(k => k.toLowerCase());
+  return Object.keys(query).some(k => forbiddenNormalized.includes(k.toLowerCase()));
+}
+
+export function extractAuthCode(body: any): string {
+  if (!body || typeof body !== 'object') return '';
+  const rawAuth = body.auth_code ??
+    body['auth-code'] ??
+    body.authCode ??
+    body.epp_code ??
+    body['epp-code'] ??
+    body.eppCode;
+  return (rawAuth !== undefined && rawAuth !== null) ? String(rawAuth) : '';
+}
+
+export function validateAuthCode(authCode: string): { valid: boolean; error?: string } {
+  if (!authCode) {
+    return { valid: true };
+  }
+  if (authCode.length < 6 || authCode.length > 32) {
+    return {
+      valid: false,
+      error: 'El código Auth/EPP debe tener entre 6 y 32 caracteres.'
+    };
+  }
+  if (!/^[\x20-\x7E]+$/.test(authCode)) {
+    return {
+      valid: false,
+      error: 'El código Auth/EPP contiene caracteres no permitidos.'
+    };
+  }
+  return { valid: true };
+}
+
+export async function handleTransferGet(
+  req: { query: Record<string, any> },
+  res: { status: (code: number) => { json: (data: any) => any } },
+  options: { fetchFn?: typeof fetch; bridgeBaseUrl?: string } = {}
+) {
+  // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
+  if (hasForbiddenAuthQueryParam(req.query)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+    });
+  }
+
+  const domain = (req.query.domain as string || req.query['domain-name'] as string || req.query.domain_name as string || '').trim().toLowerCase();
+  if (!domain) {
+    return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
+  }
+
+  const fetchFn = options.fetchFn || fetch;
+  const baseUrl = options.bridgeBaseUrl || getBridgeBaseUrl();
+
+  try {
+    const targetUrl = `${baseUrl}domains/transfer.php?domain=${encodeURIComponent(domain)}`;
+    const backendResponse = await fetchFn(targetUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Banelio-App-Client/1.0'
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    const data = await backendResponse.json().catch(() => null);
+    if (data) {
+      return res.status(backendResponse.status).json(data);
+    }
+  } catch {
+    // Fallback
+  }
+
+  return res.status(502).json({
+    success: false,
+    domain,
+    status: 'unknown',
+    error: 'Registry temporalmente no disponible para verificar transferencia.'
+  });
+}
+
+export async function handleTransferPost(
+  req: { body: Record<string, any> },
+  res: { status: (code: number) => { json: (data: any) => any } },
+  options: { fetchFn?: typeof fetch; bridgeBaseUrl?: string } = {}
+) {
+  const domain = String(req.body?.domain || req.body?.['domain-name'] || req.body?.domain_name || '').trim().toLowerCase();
+  const authCode = extractAuthCode(req.body);
+
+  if (!domain) {
+    return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
+  }
+
+  if (authCode) {
+    const validation = validateAuthCode(authCode);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        domain,
+        eligible: false,
+        authCodeProvided: true,
+        authCodeValid: false,
+        authCodeError: validation.error,
+        error: validation.error
+      });
+    }
+  }
+
+  const fetchFn = options.fetchFn || fetch;
+  const baseUrl = options.bridgeBaseUrl || getBridgeBaseUrl();
+
+  try {
+    const targetUrl = `${baseUrl}domains/transfer.php`;
+    const bodyPayload = {
+      domain,
+      auth_code: authCode || undefined
+    };
+    const rawBody = JSON.stringify(bodyPayload);
+    const authHeaders = buildBridgeAuthHeaders('POST', targetUrl, rawBody);
+    const backendResponse = await fetchFn(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'User-Agent': 'Banelio-App-Client/1.0',
+        ...authHeaders
+      },
+      body: rawBody,
+      signal: AbortSignal.timeout(6000)
+    });
+
+    const data = await backendResponse.json().catch(() => null);
+    if (data) {
+      return res.status(backendResponse.status).json(data);
+    }
+  } catch {}
+
+  return res.status(502).json({
+    success: false,
+    domain,
+    status: 'unknown',
+    error: 'Registry temporalmente no disponible para verificar transferencia.'
+  });
+}
+
+export async function startServer() {
   const app = express();
 
   const authLoginLimiter = rateLimit({
@@ -200,6 +357,14 @@ async function startServer() {
   app.post('/api/auth/password-reset/confirm', authPasswordResetLimiter, async (req, res) => resetPasswordAuth(req, res));
 
   app.get('/api/domains/check.php', async (req, res) => {
+    // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
+    if (hasForbiddenAuthQueryParam(req.query)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+      });
+    }
+
     const domain = (req.query.domain as string || req.query['domain-name'] as string || req.query.domain_name as string || '').trim().toLowerCase();
     if (!domain) {
       return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
@@ -233,99 +398,12 @@ async function startServer() {
 
   // API Route 0.1: Direct proxy to Banelio's official PHP transfer check endpoint (GET /api/domains/transfer.php?domain={domain})
   app.get('/api/domains/transfer.php', async (req, res) => {
-    // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
-    if (req.query.auth_code || req.query.epp_code || req.query.authCode || req.query.eppCode) {
-      return res.status(400).json({
-        success: false,
-        error: 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
-      });
-    }
-
-    const domain = (req.query.domain as string || req.query['domain-name'] as string || req.query.domain_name as string || '').trim().toLowerCase();
-    if (!domain) {
-      return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
-    }
-
-    try {
-      const targetUrl = `${getBridgeBaseUrl()}domains/transfer.php?domain=${encodeURIComponent(domain)}`;
-      const backendResponse = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'Banelio-App-Client/1.0'
-        },
-        signal: AbortSignal.timeout(6000)
-      });
-
-      const data = await backendResponse.json().catch(() => null);
-      if (data) {
-        return res.status(backendResponse.status).json(data);
-      }
-    } catch {
-      // Fallback
-    }
-
-    return res.status(502).json({
-      success: false,
-      domain,
-      status: 'unknown',
-      error: 'Registry temporalmente no disponible para verificar transferencia.'
-    });
+    return handleTransferGet(req, res);
   });
 
   // POST /api/domains/transfer.php - Verificación protegida de transferibilidad y código Auth/EPP
   app.post('/api/domains/transfer.php', async (req, res) => {
-    const domain = String(req.body?.domain || req.body?.['domain-name'] || req.body?.domain_name || '').trim().toLowerCase();
-    const authCode = String(req.body?.auth_code || req.body?.['auth-code'] || req.body?.authCode || req.body?.epp_code || req.body?.eppCode || '').trim();
-
-    if (!domain) {
-      return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
-    }
-
-    if (authCode && (authCode.length < 6 || authCode.length > 32)) {
-      return res.status(400).json({
-        success: false,
-        domain,
-        eligible: false,
-        authCodeProvided: true,
-        authCodeValid: false,
-        authCodeError: 'El código Auth/EPP debe tener entre 6 y 32 caracteres.',
-        error: 'El código Auth/EPP debe tener entre 6 y 32 caracteres.'
-      });
-    }
-
-    try {
-      const targetUrl = `${getBridgeBaseUrl()}domains/transfer.php`;
-      const bodyPayload = {
-        domain,
-        auth_code: authCode || undefined
-      };
-      const rawBody = JSON.stringify(bodyPayload);
-      const authHeaders = buildBridgeAuthHeaders('POST', targetUrl, rawBody);
-      const backendResponse = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'User-Agent': 'Banelio-App-Client/1.0',
-          ...authHeaders
-        },
-        body: rawBody,
-        signal: AbortSignal.timeout(6000)
-      });
-
-      const data = await backendResponse.json().catch(() => null);
-      if (data) {
-        return res.status(backendResponse.status).json(data);
-      }
-    } catch {}
-
-    return res.status(502).json({
-      success: false,
-      domain,
-      status: 'unknown',
-      error: 'Registry temporalmente no disponible para verificar transferencia.'
-    });
+    return handleTransferPost(req, res);
   });
 
   // API Route 0.5: Customer lookup and creation proxy
@@ -1576,4 +1654,10 @@ async function startServer() {
   });
 }
 
-startServer();
+const isMainScript = Boolean(
+  process.argv[1] &&
+  (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.cjs'))
+);
+if (isMainScript) {
+  startServer();
+}

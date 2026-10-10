@@ -17,11 +17,21 @@ $authCode = '';
 
 if ($method === 'GET') {
     // REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
-    if (isset($_GET['auth_code']) || isset($_GET['epp_code']) || isset($_GET['authCode'])) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
-        ], 400);
+    $forbiddenAuthKeys = [
+        'auth_code',
+        'auth-code',
+        'authcode',
+        'epp_code',
+        'epp-code',
+        'eppcode'
+    ];
+    foreach (array_keys($_GET) as $key) {
+        if (in_array(strtolower((string)$key), $forbiddenAuthKeys, true)) {
+            send_json_response([
+                'success' => false,
+                'error' => 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+            ], 400);
+        }
     }
     $domainRaw = trim($_GET['domain'] ?? $_GET['domain-name'] ?? $_GET['domain_name'] ?? '');
 } elseif ($method === 'POST') {
@@ -34,7 +44,9 @@ if ($method === 'GET') {
     }
 
     $domainRaw = trim($postData['domain'] ?? $postData['domain-name'] ?? $postData['domain_name'] ?? '');
-    $authCode = trim($postData['auth_code'] ?? $postData['auth-code'] ?? $postData['authCode'] ?? $postData['epp_code'] ?? $postData['eppCode'] ?? '');
+    // El código Auth/EPP se conserva exactamente como lo introdujo el usuario, sin trim() ni transformaciones
+    $rawAuth = $postData['auth_code'] ?? $postData['auth-code'] ?? $postData['authCode'] ?? $postData['epp_code'] ?? $postData['epp-code'] ?? $postData['eppCode'] ?? null;
+    $authCode = ($rawAuth !== null && $rawAuth !== false) ? (string)$rawAuth : '';
 } else {
     send_json_response(['success' => false, 'error' => 'Método HTTP no soportado.'], 405);
 }
@@ -92,7 +104,7 @@ try {
     $authCodeValid = false;
     $authCodeError = null;
 
-    if (!empty($authCode)) {
+    if ($authCode !== '') {
         $authLen = strlen($authCode);
         if ($authLen < 6 || $authLen > 32) {
             $authCodeError = 'El código Auth/EPP debe tener entre 6 y 32 caracteres alfanuméricos.';
@@ -109,7 +121,7 @@ try {
         'eligible' => $isEligible,
         'status' => $isEligible ? 'TRANSFER_ELIGIBLE' : 'NOT_ELIGIBLE',
         'requiresAuthCode' => true,
-        'authCodeProvided' => !empty($authCode),
+        'authCodeProvided' => ($authCode !== ''),
         'authCodeValid' => $authCodeValid,
         'authCodeError' => $authCodeError,
         'message' => $isEligible

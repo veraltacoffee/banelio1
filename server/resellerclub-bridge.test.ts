@@ -1,10 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import type { AddressInfo } from 'node:net';
+import express from 'express';
 import { buildBridgeAuthHeaders, verifyBridgeAuth, getBridgeSecret } from './phpBridgeAuth';
 import { getBridgeBaseUrl } from './provisioning';
 import { resolveCustomerDomains } from './customerDomains';
 import { checkDomainAvailability, checkDomainTransferEligibility, sanitizeDomainInput } from '../src/services/domainService';
+import {
+  handleTransferGet,
+  handleTransferPost,
+  extractAuthCode,
+  validateAuthCode,
+  hasForbiddenAuthQueryParam,
+  FORBIDDEN_AUTH_QUERY_PARAMS
+} from '../server';
+
+const PHP_DIR = path.resolve(process.cwd(), 'server/php');
+
+function createTestTransferApp(bridgeFetchMock?: (url: string, init?: RequestInit) => Promise<Response>) {
+  const app = express();
+  app.use(express.json());
+  app.get('/api/domains/check.php', async (req, res) => {
+    if (hasForbiddenAuthQueryParam(req.query)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+      });
+    }
+    const domain = (req.query.domain as string || '').trim().toLowerCase();
+    if (!domain) {
+      return res.status(400).json({ success: false, error: 'El parámetro domain es obligatorio.' });
+    }
+    return res.status(200).json({ success: true, domain, available: true });
+  });
+  app.get('/api/domains/transfer.php', (req, res) => {
+    return handleTransferGet(req, res, { fetchFn: bridgeFetchMock as any });
+  });
+  app.post('/api/domains/transfer.php', (req, res) => {
+    return handleTransferPost(req, res, { fetchFn: bridgeFetchMock as any });
+  });
+  return app;
+}
 
 // ============================================================================
 // CRITERIO 1: Construcción y verificación de firmas HMAC, rutas, marcas de tiempo,
@@ -220,3 +259,329 @@ test('ResellerClub Bridge 8: Prevención de reintentos inseguros para evitar ope
   assert.equal(shouldBlockExecution('UNCERTAIN'), true, 'UNCERTAIN debe exigir reconciliación antes de reintentar');
   assert.equal(shouldBlockExecution('FAILED'), false, 'FAILED permite reintento autorizado tras corregir causa');
 });
+
+// ============================================================================
+// CRITERIO 9: Bloqueo estricto de todos los alias EPP/Auth en peticiones GET
+// ============================================================================
+test('ResellerClub Bridge 9: Bloqueo exhaustivo de cada alias EPP/Auth en peticiones GET (Ruta Real Express)', async () => {
+  const aliases = [
+    'auth_code',
+    'auth-code',
+    'authCode',
+    'epp_code',
+    'epp-code',
+    'eppCode',
+    'AUTH_CODE',
+    'AUTH-CODE',
+    'authcode',
+    'eppcode'
+  ];
+
+  let bridgeInvoked = false;
+  const mockBridgeFetch = async () => {
+    bridgeInvoked = true;
+    return new Response(JSON.stringify({ success: true, eligible: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  const app = createTestTransferApp(mockBridgeFetch);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    for (const alias of aliases) {
+      // 1. Probar en /api/domains/transfer.php
+      const transferUrl = `http://127.0.0.1:${port}/api/domains/transfer.php?domain=midominio.com&${alias}=SecretEPP123!`;
+      const transferResp = await fetch(transferUrl, { method: 'GET' });
+      assert.equal(transferResp.status, 400, `El alias '${alias}' debe responder 400 en GET transfer`);
+      const transferData: any = await transferResp.json();
+      assert.equal(transferData.success, false);
+      assert.match(transferData.error, /exclusivamente mediante una solicitud POST protegida/i);
+      // El valor secreto JAMÁS debe reflejarse en la respuesta
+      assert.doesNotMatch(JSON.stringify(transferData), /SecretEPP123!/);
+
+      // 2. Probar en /api/domains/check.php
+      const checkUrl = `http://127.0.0.1:${port}/api/domains/check.php?domain=midominio.com&${alias}=SecretEPP123!`;
+      const checkResp = await fetch(checkUrl, { method: 'GET' });
+      assert.equal(checkResp.status, 400, `El alias '${alias}' debe responder 400 en GET check`);
+      const checkData: any = await checkResp.json();
+      assert.equal(checkData.success, false);
+      assert.match(checkData.error, /exclusivamente mediante una solicitud POST protegida/i);
+      assert.doesNotMatch(JSON.stringify(checkData), /SecretEPP123!/);
+    }
+
+    // Ninguna petición bloqueada debió llegar al backend externo
+    assert.equal(bridgeInvoked, false, 'Ninguna petición GET con authCode debió invocar el bridge');
+  } finally {
+    server.close();
+  }
+});
+
+// ============================================================================
+// CRITERIO 10: Peticiones GET legítimas de consulta continúan funcionando
+// ============================================================================
+test('ResellerClub Bridge 10: GET legítimo de consulta de dominio continúa funcionando normalmente', async () => {
+  let requestedUrl = '';
+  const mockBridgeFetch = async (url: string) => {
+    requestedUrl = url;
+    return new Response(JSON.stringify({
+      success: true,
+      domain: 'midominio.com',
+      eligible: true,
+      status: 'TRANSFER_ELIGIBLE',
+      message: 'Dominio elegible'
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+
+  const app = createTestTransferApp(mockBridgeFetch);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    const validUrl = `http://127.0.0.1:${port}/api/domains/transfer.php?domain=midominio.com`;
+    const resp = await fetch(validUrl, { method: 'GET' });
+    assert.equal(resp.status, 200);
+    const data: any = await resp.json();
+    assert.equal(data.success, true);
+    assert.equal(data.eligible, true);
+    assert.match(requestedUrl, /domain=midominio\.com/);
+    // Verificar que la URL saliente no contenga ningún código
+    assert.doesNotMatch(requestedUrl, /auth_code|epp_code/i);
+  } finally {
+    server.close();
+  }
+});
+
+// ============================================================================
+// CRITERIO 11: Preservación exacta del código EPP/Auth sin trim() ni transformaciones
+// ============================================================================
+test('ResellerClub Bridge 11: El código EPP/Auth se conserva exactamente sin trim() ni modificaciones en POST', async () => {
+  // Códigos que contienen espacios iniciales, finales o internos intencionados
+  const testCases = [
+    { label: 'con espacios en extremos', code: ' Banel!o#2026 ' }, // 15 caracteres
+    { label: 'con espacio intermedio', code: 'Banel!o 2026$Pass' },
+    { label: 'caracteres especiales ASCII válidos', code: 'A#9@x$!-Z~8.k1' }
+  ];
+
+  const aliases = ['auth_code', 'auth-code', 'authCode', 'epp_code', 'epp-code', 'eppCode'];
+
+  for (const { label, code } of testCases) {
+    for (const alias of aliases) {
+      let forwardedBody: any = null;
+      const mockBridgeFetch = async (_url: string, init?: RequestInit) => {
+        forwardedBody = JSON.parse(init?.body as string);
+        return new Response(JSON.stringify({
+          success: true,
+          domain: 'transferible.com',
+          eligible: true,
+          status: 'TRANSFER_ELIGIBLE',
+          requiresAuthCode: true,
+          authCodeProvided: true,
+          authCodeValid: true
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      };
+
+      const app = createTestTransferApp(mockBridgeFetch);
+      const server = app.listen(0);
+      const port = (server.address() as AddressInfo).port;
+
+      try {
+        const payload: Record<string, string> = { domain: 'transferible.com' };
+        payload[alias] = code;
+
+        const res = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        assert.equal(res.status, 200, `POST con alias '${alias}' (${label}) debe responder 200`);
+        assert.ok(forwardedBody, 'Debe haber reenviado el payload al puente');
+        // REGLA FUNDAMENTAL: auth_code enviado al puente debe ser IDÉNTICO byte a byte, SIN trim()
+        assert.equal(forwardedBody.auth_code, code, `El código para '${alias}' debe ser idéntico al introducido: sin trim()`);
+        assert.equal(forwardedBody.auth_code.length, code.length, `La longitud debe ser exactamente ${code.length}`);
+      } finally {
+        server.close();
+      }
+    }
+  }
+});
+
+// ============================================================================
+// CRITERIO 12: Rechazo controlado de códigos EPP/Auth inválidos sin modificarlos
+// ============================================================================
+test('ResellerClub Bridge 12: Rechazo controlado de códigos EPP inválidos sin alteración ni recorte', async () => {
+  let bridgeInvoked = false;
+  const mockBridgeFetch = async () => {
+    bridgeInvoked = true;
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  };
+
+  const app = createTestTransferApp(mockBridgeFetch);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    // 1. Código menor a 6 caracteres
+    const shortRes = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'midominio.com', auth_code: '12345' })
+    });
+    assert.equal(shortRes.status, 400);
+    const shortData: any = await shortRes.json();
+    assert.equal(shortData.success, false);
+    assert.match(shortData.error, /entre 6 y 32 caracteres/i);
+    assert.doesNotMatch(JSON.stringify(shortData), /12345/, 'No debe reflejar el código en el error');
+
+    // 2. Código mayor a 32 caracteres
+    const longCode = 'a'.repeat(33);
+    const longRes = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'midominio.com', authCode: longCode })
+    });
+    assert.equal(longRes.status, 400);
+    const longData: any = await longRes.json();
+    assert.equal(longData.success, false);
+    assert.match(longData.error, /entre 6 y 32 caracteres/i);
+    assert.doesNotMatch(JSON.stringify(longData), new RegExp(longCode));
+
+    // 3. Código con caracteres no imprimibles o fuera de rango ASCII
+    const badCharRes = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'midominio.com', epp_code: 'ValidLen\x00BadChar' })
+    });
+    assert.equal(badCharRes.status, 400);
+    const badCharData: any = await badCharRes.json();
+    assert.equal(badCharData.success, false);
+    assert.match(badCharData.error, /caracteres no permitidos/i);
+
+    // No debe haberse invocado el bridge para ninguno de los códigos rechazados
+    assert.equal(bridgeInvoked, false);
+  } finally {
+    server.close();
+  }
+});
+
+// ============================================================================
+// CRITERIO 13: El código EPP/Auth no se filtra a logs, respuestas ni URLs
+// ============================================================================
+test('ResellerClub Bridge 13: Ausencia total de filtración de Auth/EPP en logs, respuestas de error y URLs', async () => {
+  const secretCode = 'SuperSecretEPP#2026';
+  const loggedMessages: string[] = [];
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+
+  console.log = (...args: any[]) => { loggedMessages.push(args.join(' ')); };
+  console.warn = (...args: any[]) => { loggedMessages.push(args.join(' ')); };
+  console.error = (...args: any[]) => { loggedMessages.push(args.join(' ')); };
+
+  const app = createTestTransferApp();
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    // Intento GET inseguro
+    const getRes = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php?domain=test.com&auth_code=${secretCode}`);
+    const getBody = await getRes.text();
+
+    // Intento POST con error de validación
+    const postRes = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'test.com', auth_code: '123' })
+    });
+    const postBody = await postRes.text();
+
+    // Verificar respuestas
+    assert.equal(getBody.includes(secretCode), false, 'La respuesta GET no debe contener el secretCode');
+    assert.equal(postBody.includes('123'), false, 'La respuesta POST no debe reflejar el código inválido');
+
+    // Verificar logs
+    const allLogs = loggedMessages.join(' ');
+    assert.equal(allLogs.includes(secretCode), false, 'Los logs no deben contener el código de autorización');
+  } finally {
+    console.log = originalLog;
+    console.warn = originalWarn;
+    console.error = originalError;
+    server.close();
+  }
+});
+
+// ============================================================================
+// CRITERIO 14: Manejo controlado de errores de validación sin fallos inesperados
+// ============================================================================
+test('ResellerClub Bridge 14: Manejo controlado de parámetros faltantes o malformados', async () => {
+  const app = createTestTransferApp();
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+
+  try {
+    // 1. GET sin parámetro domain
+    const getNoDomain = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`);
+    assert.equal(getNoDomain.status, 400);
+    const getNoDomainData: any = await getNoDomain.json();
+    assert.equal(getNoDomainData.success, false);
+    assert.match(getNoDomainData.error, /parámetro domain es obligatorio/i);
+
+    // 2. POST sin parámetro domain
+    const postNoDomain = await fetch(`http://127.0.0.1:${port}/api/domains/transfer.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth_code: 'ValidAuthCode123' })
+    });
+    assert.equal(postNoDomain.status, 400);
+    const postNoDomainData: any = await postNoDomain.json();
+    assert.equal(postNoDomainData.success, false);
+    assert.match(postNoDomainData.error, /parámetro domain es obligatorio/i);
+  } finally {
+    server.close();
+  }
+});
+
+// ============================================================================
+// CRITERIO 15: Verificación estática de código de endpoints PHP de transferencia y búsqueda
+// ============================================================================
+test('ResellerClub Bridge 15: Verificación estática de seguridad en server/php/domains/transfer.php y check.php', () => {
+  const transferPhpPath = path.join(PHP_DIR, 'domains/transfer.php');
+  const checkPhpPath = path.join(PHP_DIR, 'domains/check.php');
+
+  assert.ok(fs.existsSync(transferPhpPath), 'transfer.php debe existir');
+  assert.ok(fs.existsSync(checkPhpPath), 'check.php debe existir');
+
+  const transferPhp = fs.readFileSync(transferPhpPath, 'utf8');
+  const checkPhp = fs.readFileSync(checkPhpPath, 'utf8');
+
+  // 1. Ambos archivos deben contener la lista completa de alias prohibidos en GET
+  for (const alias of ['auth_code', 'auth-code', 'authcode', 'epp_code', 'epp-code', 'eppcode']) {
+    assert.match(transferPhp, new RegExp(`'${alias}'`), `transfer.php debe incluir alias '${alias}' en forbiddenAuthKeys`);
+    assert.match(checkPhp, new RegExp(`'${alias}'`), `check.php debe incluir alias '${alias}' en forbiddenAuthKeys`);
+  }
+
+  // 2. transfer.php NO debe utilizar trim() sobre $postData de auth_code ni sobre $rawAuth
+  assert.doesNotMatch(transferPhp, /trim\s*\(\s*\$postData\s*\[\s*['"]auth_code/, 'transfer.php no debe aplicar trim() al extraer auth_code');
+  assert.doesNotMatch(transferPhp, /trim\s*\(\s*\$rawAuth/, 'transfer.php no debe aplicar trim() sobre $rawAuth');
+
+  // 3. transfer.php debe validar el rango exacto 6 a 32 caracteres y el conjunto ASCII
+  assert.match(transferPhp, /\$authLen\s*<\s*6\s*\|\|\s*\$authLen\s*>\s*32/);
+  assert.match(transferPhp, /preg_match\('\/\^\[\\x20-\\x7E\]\+\$\/',\s*\$authCode\)/);
+});
+
+// ============================================================================
+// CRITERIO 16: Identificación explícita de integración en vivo no ejecutada
+// ============================================================================
+test('ResellerClub Bridge 16: [NO EJECUTADA] Prueba en vivo de extremo a extremo con ResellerClub y entorno PHP', {
+  skip: 'Requiere credenciales activas de ResellerClub y entorno de ejecución PHP (IONOS/Apache) no disponibles en el entorno de pruebas local'
+}, () => {
+  // Esta prueba se declara formalmente como no ejecutada para no simular una integración real
+  assert.fail('No debe ejecutarse si está omitida');
+});
+

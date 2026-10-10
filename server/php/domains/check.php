@@ -12,6 +12,24 @@ require_once __DIR__ . '/../reseller/client.php';
 
 apply_banelio_cors();
 
+// REGLA: El código Auth/EPP NUNCA debe viajar por GET ni en parámetros de URL
+$forbiddenAuthKeys = [
+    'auth_code',
+    'auth-code',
+    'authcode',
+    'epp_code',
+    'epp-code',
+    'eppcode'
+];
+foreach (array_keys($_GET) as $key) {
+    if (in_array(strtolower((string)$key), $forbiddenAuthKeys, true)) {
+        send_json_response([
+            'success' => false,
+            'error' => 'Por seguridad, el código Auth/EPP debe recibirse exclusivamente mediante una solicitud POST protegida, nunca como parámetro GET ni en la URL.'
+        ], 400);
+    }
+}
+
 $domainRaw = trim($_GET['domain'] ?? $_GET['domain-name'] ?? $_GET['domain_name'] ?? '');
 if (empty($domainRaw)) {
     send_json_response([
