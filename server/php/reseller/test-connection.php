@@ -3,7 +3,7 @@
  * BANELIO - Diagnóstico de Conexión con ResellerClub
  * Archivo: server/php/reseller/test-connection.php
  *
- * Ejecuta una consulta segura y de solo lectura a la cuenta mayorista.
+ * Consulta segura y de solo lectura a la cuenta mayorista.
  */
 
 require_once __DIR__ . '/config.php';
@@ -23,7 +23,6 @@ try {
         ], 503);
     }
 
-    // Consulta de solo lectura a los detalles del revendedor
     $details = $client->get('resellers/details.json');
 
     if (!is_array($details)) {
@@ -33,22 +32,19 @@ try {
         ], 502);
     }
 
-    // NUNCA exponer contraseñas, api keys, ni tokens
-    $sanitized = [
-        'company' => $details['company'] ?? 'Banelio',
-        'resellerstatus' => $details['resellerstatus'] ?? 'Active',
-        'resellerid' => $client->getResellerIdMasked(),
-        'country' => $details['country'] ?? 'MX',
-        'sellingcurrencysymbol' => $details['sellingcurrencysymbol'] ?? 'MXN',
-        'environment' => $client->getEnvironment(),
-        'supportsautorenew' => ($details['supportsautorenew'] ?? 'true') === 'true'
-    ];
-
     send_json_response([
         'success' => true,
         'message' => 'Banelio está conectado correctamente con ResellerClub.',
         'environment' => $client->getEnvironment(),
-        'reseller' => $sanitized
+        'reseller' => [
+            'company' => $details['company'] ?? 'Banelio',
+            'resellerstatus' => $details['resellerstatus'] ?? 'Active',
+            'resellerid' => $client->getResellerIdMasked(),
+            'country' => $details['country'] ?? 'MX',
+            'sellingcurrencysymbol' => $details['sellingcurrencysymbol'] ?? 'MXN',
+            'environment' => $client->getEnvironment(),
+            'supportsautorenew' => ($details['supportsautorenew'] ?? 'true') === 'true'
+        ]
     ], 200);
 
 } catch (Exception $e) {

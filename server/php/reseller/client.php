@@ -28,10 +28,10 @@ class ResellerClubClient {
             $config = get_resellerclub_config();
         }
 
-        $this->resellerId = $config['resellerId'];
-        $this->apiKey = $config['apiKey'];
-        $this->baseUrl = rtrim($config['baseUrl'], '/') . '/';
-        $this->environment = $config['environment'];
+        $this->resellerId = $config['resellerId'] ?? '';
+        $this->apiKey = $config['apiKey'] ?? '';
+        $this->baseUrl = rtrim($config['baseUrl'] ?? '', '/') . '/';
+        $this->environment = $config['environment'] ?? 'sandbox';
     }
 
     public function isConfigured() {
@@ -48,36 +48,25 @@ class ResellerClubClient {
         return $len > 4 ? substr($this->resellerId, 0, 2) . '***' . substr($this->resellerId, -2) : '***';
     }
 
-    /**
-     * Petición GET hacia ResellerClub
-     */
     public function get($endpoint, array $params = []) {
         return $this->request('GET', $endpoint, $params);
     }
 
-    /**
-     * Petición POST hacia ResellerClub
-     */
     public function post($endpoint, array $params = []) {
         return $this->request('POST', $endpoint, $params);
     }
 
-    /**
-     * Ejecutor centralizado de cURL con inyección de auth-userid y api-key
-     */
     public function request($method, $endpoint, array $params = []) {
         if (!$this->isConfigured()) {
             throw new Exception('Credenciales de ResellerClub no configuradas en el servidor.', 503);
         }
 
-        $endpointClean = ltrim($endpoint, '/');
-        $url = $this->baseUrl . $endpointClean;
-
-        // Inyectar credenciales oficiales de forma obligatoria
+        $url = $this->baseUrl . ltrim($endpoint, '/');
         $authParams = [
             'auth-userid' => $this->resellerId,
             'api-key' => $this->apiKey
         ];
+        $allParams = array_merge($authParams, $params);
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -90,20 +79,15 @@ class ResellerClubClient {
         $method = strtoupper($method);
 
         if ($method === 'GET') {
-            $allParams = array_merge($authParams, $params);
             $queryString = http_build_query($allParams);
             $fullUrl = $url . (strpos($url, '?') === false ? '?' : '&') . $queryString;
             curl_setopt($ch, CURLOPT_URL, $fullUrl);
             curl_setopt($ch, CURLOPT_HTTPGET, true);
         } elseif ($method === 'POST') {
-            // En ResellerClub HTTP API, auth-userid y api-key pueden ir en query o post body
-            $allParams = array_merge($authParams, $params);
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($allParams));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/x-www-form-urlencoded'
-            ]);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
         } else {
             throw new Exception("Método HTTP no soportado: {$method}", 405);
         }
@@ -119,16 +103,13 @@ class ResellerClubClient {
 
         $decoded = json_decode($response, true);
 
-        // Si la respuesta no es JSON válido (ej. error 500 HTML de Cloudflare/Proxy)
         if ($decoded === null && !empty($response)) {
             if ($httpCode >= 400) {
                 throw new Exception("El proveedor mayorista respondió con una falla temporal de servicio.", 502);
             }
-            // En algunas llamadas simples devuelve un id escalar
             return trim($response);
         }
 
-        // Detección de error semántico oficial de ResellerClub
         if (is_array($decoded) && isset($decoded['status']) && strtoupper($decoded['status']) === 'ERROR') {
             throw new Exception(translate_resellerclub_error($decoded['message'] ?? ''), 400);
         }

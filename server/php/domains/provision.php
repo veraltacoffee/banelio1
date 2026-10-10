@@ -4,14 +4,7 @@
  * Archivo: server/php/domains/provision.php
  *
  * Ejecuta el registro o transferencia de dominios en ResellerClub
- * de forma server-authoritative tras la confirmación verificada de pago.
- *
- * Operaciones soportadas:
- *  - 'register': Registro de nuevo dominio (domains/register.json)
- *  - 'transfer': Transferencia de dominio existente (domains/transfer.json)
- *
- * NUNCA simula éxito: devuelve el orderId/entityId real de ResellerClub
- * o el error detallado del proveedor.
+ * tras la confirmación verificada de pago.
  */
 
 require_once __DIR__ . '/../reseller/config.php';
@@ -20,33 +13,22 @@ require_once __DIR__ . '/../reseller/client.php';
 apply_banelio_cors();
 verify_banelio_bridge_auth();
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    send_json_response([
-        'success' => false,
-        'error' => 'Método HTTP no permitido. Se requiere POST.'
-    ], 405);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    send_json_response(['success' => false, 'error' => 'Método HTTP no permitido. Se requiere POST.'], 405);
 }
 
-// Leer cuerpo JSON o POST form-data
-$rawInput = file_get_contents('php://input');
-$postData = json_decode($rawInput, true);
+$postData = json_decode(file_get_contents('php://input'), true);
 if (!is_array($postData)) {
     $postData = $_POST;
 }
 
 $action = strtolower(trim($postData['action'] ?? 'register'));
 $domainRaw = trim($postData['domain'] ?? '');
-$years = isset($postData['years']) ? (int)$postData['years'] : 1;
-if ($years < 1 || $years > 10) {
-    $years = 1;
-}
+$years = (int)($postData['years'] ?? 1);
+if ($years < 1 || $years > 10) $years = 1;
 
-// Validación de dominio
 if (empty($domainRaw)) {
-    send_json_response([
-        'success' => false,
-        'error' => 'El nombre de dominio es obligatorio para aprovisionar.'
-    ], 400);
+    send_json_response(['success' => false, 'error' => 'El nombre de dominio es obligatorio para aprovisionar.'], 400);
 }
 
 $domainClean = strtolower(preg_replace('/^https?:\/\//i', '', $domainRaw));
@@ -55,39 +37,23 @@ $domainClean = rtrim($domainClean, '/');
 $parts = explode('.', $domainClean);
 
 if (count($parts) < 2) {
-    send_json_response([
-        'success' => false,
-        'error' => 'Dominio inválido. Debe incluir nombre y extensión (ej. midominio.com).'
-    ], 400);
+    send_json_response(['success' => false, 'error' => 'Dominio inválido. Debe incluir nombre y extensión (ej. midominio.com).'], 400);
 }
 
 $sld = $parts[0];
 $tld = implode('.', array_slice($parts, 1));
 
-// Datos del registrante/cliente
 $customerId = trim($postData['customer_id'] ?? '');
 $contactId = trim($postData['contact_id'] ?? '');
 $authCode = trim($postData['auth_code'] ?? $postData['epp_code'] ?? '');
 
-// Nameservers opcionales (default ResellerClub / Banelio DNS)
-$ns = isset($postData['ns']) && is_array($postData['ns']) && count($postData['ns']) >= 2
+$ns = (isset($postData['ns']) && is_array($postData['ns']) && count($postData['ns']) >= 2)
     ? $postData['ns']
     : ['ns1.orderbox-host.com', 'ns2.orderbox-host.com'];
 
-// Validación específica para transferencias
 if ($action === 'transfer') {
-    if (empty($authCode)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El código Auth/EPP es obligatorio para transferir un dominio.'
-        ], 400);
-    }
-    $authLen = strlen($authCode);
-    if ($authLen < 6 || $authLen > 32) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El código Auth/EPP debe tener entre 6 y 32 caracteres.'
-        ], 400);
+    if (empty($authCode) || strlen($authCode) < 6 || strlen($authCode) > 32) {
+        send_json_response(['success' => false, 'error' => 'El código Auth/EPP es obligatorio y debe tener entre 6 y 32 caracteres.'], 400);
     }
 }
 
@@ -95,79 +61,51 @@ try {
     $client = new ResellerClubClient();
 
     if (!$client->isConfigured()) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Credenciales de ResellerClub no configuradas en el servidor IONOS.'
-        ], 503);
+        send_json_response(['success' => false, 'error' => 'Credenciales de ResellerClub no configuradas en el servidor.'], 503);
     }
 
-    $registrant = isset($postData['registrant']) && is_array($postData['registrant'])
-        ? $postData['registrant']
-        : [];
+    $reg = (isset($postData['registrant']) && is_array($postData['registrant'])) ? $postData['registrant'] : $postData;
 
-    $customerEmail = trim(strtolower($registrant['email'] ?? $postData['email'] ?? ''));
-    $customerName = trim($registrant['name'] ?? $postData['name'] ?? '');
-    $companyName = trim($registrant['company'] ?? $registrant['org'] ?? $customerName);
+    $customerEmail = trim(strtolower($reg['email'] ?? ''));
+    $customerName = trim($reg['name'] ?? '');
+    $companyName = trim($reg['company'] ?? $reg['org'] ?? $customerName);
+    $regAddress = trim($reg['address'] ?? '');
+    $regCity = trim($reg['city'] ?? '');
+    $regState = trim($reg['state'] ?? '');
+    $regCountry = strtoupper(trim($reg['country'] ?? ''));
+    $regZip = trim($reg['postalCode'] ?? $reg['zipcode'] ?? '');
+    $regPhone = preg_replace('/\D/', '', $reg['phone'] ?? '');
+    $regPhoneCc = preg_replace('/\D/', '', $reg['phone_cc'] ?? '');
 
-    $regAddress = trim($registrant['address'] ?? $postData['address'] ?? '');
-    $regCity = trim($registrant['city'] ?? $postData['city'] ?? '');
-    $regState = trim($registrant['state'] ?? $postData['state'] ?? '');
-    $regCountry = strtoupper(trim($registrant['country'] ?? $postData['country'] ?? ''));
-    $regZip = trim($registrant['postalCode'] ?? $registrant['zipcode'] ?? $postData['zipcode'] ?? '');
-    $regPhone = preg_replace('/\D/', '', $registrant['phone'] ?? $postData['phone'] ?? '');
-    $regPhoneCc = preg_replace('/\D/', '', $registrant['phone_cc'] ?? $postData['phone_cc'] ?? '');
-
-    // Validación estricta de registrante: prohibición de datos incompletos o ficticios
     if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El correo electrónico del registrante es obligatorio y debe ser válido.'
-        ], 400);
+        send_json_response(['success' => false, 'error' => 'El correo electrónico del registrante es obligatorio y debe ser válido.'], 400);
     }
     if (empty($customerName) || strlen($customerName) < 3) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El nombre completo del registrante es obligatorio para operar en ResellerClub.'
-        ], 400);
+        send_json_response(['success' => false, 'error' => 'El nombre completo del registrante es obligatorio.'], 400);
     }
     if (empty($regAddress) || empty($regCity) || empty($regState) || empty($regCountry) || empty($regZip)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Faltan datos obligatorios de dirección del registrante (dirección, ciudad, estado, código postal o país). No se permite el uso de información ficticia.'
-        ], 400);
+        send_json_response(['success' => false, 'error' => 'Faltan datos obligatorios de dirección física del registrante.'], 400);
     }
-    if (empty($regPhone)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El número telefónico del registrante es obligatorio. No se permite el uso de información ficticia.'
-        ], 400);
-    }
-    if (empty($regPhoneCc)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'El código de país del teléfono (phone_cc) es obligatorio. No se permite el uso de información ficticia ni prefijos predeterminados.'
-        ], 400);
+    if (empty($regPhone) || empty($regPhoneCc)) {
+        send_json_response(['success' => false, 'error' => 'El teléfono y código de país del registrante son obligatorios.'], 400);
     }
 
-    // 1. Resolver o registrar el cliente en ResellerClub si no se pasó customer_id
+    // 1. Resolver o registrar cliente
     if (empty($customerId)) {
-        // Buscar si ya existe por email/username
         try {
             $existingCustomer = $client->get('customers/details.json', ['username' => $customerEmail]);
             if (is_array($existingCustomer) && !empty($existingCustomer['customerid'])) {
                 $customerId = (string)$existingCustomer['customerid'];
             }
-        } catch (Exception $e) {
-            // No existe, procederemos a registrarlo con datos reales
-        }
+        } catch (Exception $e) {}
 
         if (empty($customerId)) {
             $passwd = 'Bnl!' . bin2hex(random_bytes(6)) . '9A';
-            $signupData = [
+            $newCustId = $client->post('customers/signup.json', [
                 'username' => $customerEmail,
                 'passwd' => $passwd,
                 'name' => $customerName,
-                'company' => !empty($companyName) ? $companyName : $customerName,
+                'company' => $companyName ?: $customerName,
                 'address-line-1' => $regAddress,
                 'city' => $regCity,
                 'state' => $regState,
@@ -176,22 +114,17 @@ try {
                 'tel-no-cc' => $regPhoneCc,
                 'tel-no' => $regPhone,
                 'lang-pref' => 'es'
-            ];
+            ]);
 
-            $newCustId = $client->post('customers/signup.json', $signupData);
             if (empty($newCustId) || !is_numeric($newCustId)) {
-                send_json_response([
-                    'success' => false,
-                    'error' => 'No fue posible registrar la cuenta de cliente en ResellerClub.'
-                ], 502);
+                send_json_response(['success' => false, 'error' => 'No fue posible registrar la cuenta de cliente en ResellerClub.'], 502);
             }
             $customerId = (string)$newCustId;
         }
     }
 
-    // 2. Resolver o registrar contacto WHOIS si no se pasó contact_id
+    // 2. Resolver o registrar contacto WHOIS
     if (empty($contactId)) {
-        // Buscar si ya tiene contactos creados
         try {
             $contactsSearch = $client->get('contacts/search.json', [
                 'customer-id' => $customerId,
@@ -210,9 +143,9 @@ try {
         } catch (Exception $e) {}
 
         if (empty($contactId)) {
-            $contactParams = [
+            $newContactId = $client->post('contacts/add.json', [
                 'name' => $customerName,
-                'company' => !empty($companyName) ? $companyName : $customerName,
+                'company' => $companyName ?: $customerName,
                 'email' => $customerEmail,
                 'address-line-1' => $regAddress,
                 'city' => $regCity,
@@ -223,20 +156,16 @@ try {
                 'tel-no' => $regPhone,
                 'customer-id' => $customerId,
                 'type' => 'Contact'
-            ];
+            ]);
 
-            $newContactId = $client->post('contacts/add.json', $contactParams);
             if (empty($newContactId) || !is_numeric($newContactId)) {
-                send_json_response([
-                    'success' => false,
-                    'error' => 'No fue posible crear el contacto WHOIS en ResellerClub.'
-                ], 502);
+                send_json_response(['success' => false, 'error' => 'No fue posible crear el contacto WHOIS en ResellerClub.'], 502);
             }
             $contactId = (string)$newContactId;
         }
     }
 
-    // 3. Ejecutar la llamada de aprovisionamiento en ResellerClub
+    // 3. Ejecutar llamada al proveedor
     if ($action === 'register') {
         $regParams = [
             'domain-name' => $sld,
@@ -253,8 +182,6 @@ try {
         ];
 
         $resellerResponse = $client->post('domains/register.json', $regParams);
-
-        // ResellerClub retorna { "actiontype": "AddDomain", "entityid": "123456", "status": "Success", ... }
         $orderId = is_array($resellerResponse)
             ? (string)($resellerResponse['entityid'] ?? $resellerResponse['orderid'] ?? '')
             : (is_numeric($resellerResponse) ? (string)$resellerResponse : '');
@@ -263,16 +190,13 @@ try {
             $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
                 ? (string)$resellerResponse['message']
                 : 'ResellerClub no devolvió confirmación del registro.';
-            send_json_response([
-                'success' => false,
-                'error' => translate_resellerclub_error($rawMsg)
-            ], 502);
+            send_json_response(['success' => false, 'error' => translate_resellerclub_error($rawMsg)], 502);
         }
 
         $rcStatus = is_array($resellerResponse) && isset($resellerResponse['status'])
             ? trim($resellerResponse['status'])
             : 'Success';
-        $isProvisioned = strtolower($rcStatus) === 'success' || strtolower($rcStatus) === 'active';
+        $isProvisioned = in_array(strtolower($rcStatus), ['success', 'active'], true);
 
         send_json_response([
             'success' => true,
@@ -304,7 +228,6 @@ try {
         ];
 
         $resellerResponse = $client->post('domains/transfer.json', $transParams);
-
         $orderId = is_array($resellerResponse)
             ? (string)($resellerResponse['entityid'] ?? $resellerResponse['orderid'] ?? '')
             : (is_numeric($resellerResponse) ? (string)$resellerResponse : '');
@@ -313,10 +236,7 @@ try {
             $rawMsg = is_array($resellerResponse) && isset($resellerResponse['message'])
                 ? (string)$resellerResponse['message']
                 : 'ResellerClub no devolvió confirmación de la transferencia.';
-            send_json_response([
-                'success' => false,
-                'error' => translate_resellerclub_error($rawMsg)
-            ], 502);
+            send_json_response(['success' => false, 'error' => translate_resellerclub_error($rawMsg)], 502);
         }
 
         send_json_response([
@@ -327,14 +247,11 @@ try {
             'customerId' => $customerId,
             'contactId' => $contactId,
             'status' => 'TRANSFER_INITIATED',
-            'message' => "Orden de transferencia para {$domainClean} iniciada exitosamente en ResellerClub (ID: {$orderId}). En espera de confirmación y liberación por el registry."
+            'message' => "Orden de transferencia para {$domainClean} iniciada exitosamente en ResellerClub (ID: {$orderId})."
         ], 200);
 
     } else {
-        send_json_response([
-            'success' => false,
-            'error' => "Acción no soportada: {$action}. Solo 'register' o 'transfer'."
-        ], 400);
+        send_json_response(['success' => false, 'error' => "Acción no soportada: {$action}."], 400);
     }
 
 } catch (Exception $e) {

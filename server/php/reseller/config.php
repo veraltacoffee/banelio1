@@ -3,7 +3,7 @@
  * BANELIO - Configuración Centralizada de ResellerClub
  * Archivo: server/php/reseller/config.php
  *
- * Administra credenciales y entorno sin exponer secretos al navegador.
+ * Administra credenciales, autenticación HMAC y CORS sin exponer secretos al navegador.
  */
 
 // Bloqueo estricto de acceso HTTP directo a este archivo de biblioteca
@@ -14,13 +14,9 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     exit;
 }
 
-if (!defined('BANELIO_BRIDGE_LOADED')) {
-    define('BANELIO_BRIDGE_LOADED', true);
-}
-
 // 1. Manejo estricto de CORS para Banelio
 function apply_banelio_cors() {
-    $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     $allowedOrigins = [
         'https://banelio.com',
         'https://www.banelio.com',
@@ -39,7 +35,7 @@ function apply_banelio_cors() {
     header('Access-Control-Allow-Headers: Content-Type, Authorization, Accept, X-Requested-With, User-Agent, X-Banelio-Signature, X-Banelio-Timestamp');
     header('Content-Type: application/json; charset=utf-8');
 
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
         http_response_code(200);
         exit;
     }
@@ -48,187 +44,138 @@ function apply_banelio_cors() {
 // 2. Helper de respuesta JSON estandarizada
 function send_json_response($data, $statusCode = 200) {
     http_response_code($statusCode);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// 2a. Carga segura y unificada de configuración local
+// 3. Carga de configuración local (IONOS)
 function load_banelio_local_config() {
     static $loaded = false;
     if ($loaded) return;
     $loaded = true;
 
-    // 1. Intentar cargar desde un directorio superior fuera de la raíz web pública (óptimo en IONOS)
     $parentPath = dirname(__DIR__, 2) . '/config.local.php';
     if (file_exists($parentPath)) {
         require_once $parentPath;
         return;
     }
 
-    // 2. Cargar desde el directorio reseller local (protegido por .htaccess)
-    $localConfigPath = __DIR__ . '/config.local.php';
-    if (file_exists($localConfigPath)) {
-        require_once $localConfigPath;
+    $localPath = __DIR__ . '/config.local.php';
+    if (file_exists($localPath)) {
+        require_once $localPath;
     }
 }
 
-// 2b. Traducción segura de errores de ResellerClub a mensajes limpios para clientes
+// 4. Traducción y sanitización de errores de ResellerClub
 function translate_resellerclub_error($rawMsg) {
     if (empty($rawMsg) || !is_string($rawMsg)) {
         return 'Error en la operación solicitada al proveedor mayorista.';
     }
 
-    $rawLower = strtolower($rawMsg);
+    $lower = strtolower($rawMsg);
 
-    // Mapeo seguro a mensajes en español sin exponer datos internos
-    if (strpos($rawLower, 'domain already registered') !== false || strpos($rawLower, 'already registered') !== false) {
+    if (strpos($lower, 'already registered') !== false) {
         return 'El dominio ya se encuentra registrado.';
     }
-    if (strpos($rawLower, 'invalid domain') !== false || strpos($rawLower, 'domain name is invalid') !== false) {
+    if (strpos($lower, 'invalid domain') !== false) {
         return 'El nombre de dominio es inválido o no está soportado.';
     }
-    if (strpos($rawLower, 'invalid customer') !== false || strpos($rawLower, 'customer does not exist') !== false) {
+    if (strpos($lower, 'invalid customer') !== false || strpos($lower, 'customer does not exist') !== false) {
         return 'El cliente especificado no existe o es inválido en el proveedor.';
     }
-    if (strpos($rawLower, 'auth code') !== false || strpos($rawLower, 'secret key') !== false || strpos($rawLower, 'epp') !== false) {
+    if (strpos($lower, 'auth code') !== false || strpos($lower, 'secret key') !== false || strpos($lower, 'epp') !== false) {
         return 'El código Auth/EPP proporcionado es incorrecto o inválido.';
     }
-    if (strpos($rawLower, 'locked') !== false || strpos($rawLower, 'transfer prohibited') !== false) {
+    if (strpos($lower, 'locked') !== false || strpos($lower, 'transfer prohibited') !== false) {
         return 'El dominio se encuentra bloqueado para transferencias en el registrador actual.';
     }
-    if (strpos($rawLower, 'contact') !== false && (strpos($rawLower, 'invalid') !== false || strpos($rawLower, 'missing') !== false)) {
+    if (strpos($lower, 'contact') !== false && (strpos($lower, 'invalid') !== false || strpos($lower, 'missing') !== false)) {
         return 'Los datos de contacto WHOIS son inválidos o incompletos.';
     }
-    if (strpos($rawLower, 'phone') !== false || strpos($rawLower, 'tel-no') !== false) {
+    if (strpos($lower, 'phone') !== false || strpos($lower, 'tel-no') !== false) {
         return 'El formato del número telefónico o código de país es inválido.';
     }
-    if (strpos($rawLower, 'insufficient funds') !== false || strpos($rawLower, 'balance') !== false) {
+    if (strpos($lower, 'insufficient funds') !== false || strpos($lower, 'balance') !== false) {
         return 'Operación no disponible temporalmente en el proveedor mayorista.';
     }
 
     // Filtrar fugas técnicas (rutas, curl, php, trazas de pila)
-    if (stripos($rawMsg, 'curl') !== false ||
-        stripos($rawMsg, 'httpapi.com') !== false ||
-        stripos($rawMsg, 'stack trace') !== false ||
-        stripos($rawMsg, 'exception') !== false ||
-        stripos($rawMsg, '.php') !== false ||
-        stripos($rawMsg, 'sql') !== false ||
-        stripos($rawMsg, 'database') !== false ||
-        stripos($rawMsg, 'path') !== false) {
+    if (preg_match('/curl|httpapi\.com|stack trace|exception|\.php|sql|database|path/i', $rawMsg)) {
         return 'Error en el procesamiento del proveedor mayorista.';
     }
 
-    // Sanitizar longitud y caracteres especiales
-    $clean = strip_tags($rawMsg);
-    $clean = preg_replace('/[^\p{L}\p{N}\s\.\,\-\_\:\?\!\(\)]/u', '', $clean);
-    $clean = trim($clean);
-    if (strlen($clean) > 160) {
-        $clean = substr($clean, 0, 160) . '...';
-    }
-
-    return !empty($clean) ? $clean : 'Error en la operación solicitada al proveedor mayorista.';
+    $clean = trim(preg_replace('/[^\p{L}\p{N}\s\.\,\-\_\:\?\!\(\)]/u', '', strip_tags($rawMsg)));
+    return strlen($clean) > 160 ? substr($clean, 0, 160) . '...' : ($clean ?: 'Error en la operación solicitada al proveedor mayorista.');
 }
 
-// 2c. Sanitizador general de excepciones para evitar fugas de información
+// 5. Sanitizador general de excepciones
 function sanitize_exception_message(Exception $e, $defaultMessage = 'Error en el procesamiento del proveedor mayorista.') {
     $code = $e->getCode();
-
-    if ($code === 503) {
-        return 'Servicio de integración temporalmente no disponible.';
-    }
-    if ($code === 502) {
-        return 'No fue posible establecer comunicación con el proveedor del registro de dominios.';
-    }
-    if ($code === 401 || $code === 403) {
-        return 'Error de autenticación o autorización con el proveedor.';
-    }
-    if ($code === 404) {
-        return 'El recurso solicitado no fue encontrado en el proveedor.';
-    }
-    if ($code === 400) {
-        return translate_resellerclub_error($e->getMessage());
-    }
+    if ($code === 503) return 'Servicio de integración temporalmente no disponible.';
+    if ($code === 502) return 'No fue posible establecer comunicación con el proveedor del registro de dominios.';
+    if ($code === 401 || $code === 403) return 'Error de autenticación o autorización con el proveedor.';
+    if ($code === 404) return 'El recurso solicitado no fue encontrado en el proveedor.';
+    if ($code === 400) return translate_resellerclub_error($e->getMessage());
 
     return $defaultMessage;
 }
 
-// 2d. Resolución de clave compartida HMAC servidor a servidor
+// 6. Resolución de clave compartida HMAC
 function get_bridge_secret() {
     load_banelio_local_config();
-    $secret = defined('PHP_BRIDGE_SECRET') ? PHP_BRIDGE_SECRET : (
-        getenv('PHP_BRIDGE_SECRET') ?: (
-            defined('RESELLER_BRIDGE_SECRET') ? RESELLER_BRIDGE_SECRET : (getenv('RESELLER_BRIDGE_SECRET') ?: '')
-        )
-    );
-    return trim((string)$secret);
+    if (defined('PHP_BRIDGE_SECRET')) return trim((string)PHP_BRIDGE_SECRET);
+    if ($s = getenv('PHP_BRIDGE_SECRET')) return trim((string)$s);
+    if (defined('RESELLER_BRIDGE_SECRET')) return trim((string)RESELLER_BRIDGE_SECRET);
+    return trim((string)(getenv('RESELLER_BRIDGE_SECRET') ?: ''));
 }
 
-// 2e. Verificación estricta de autenticación HMAC-SHA256 (Server-to-Server)
+// 7. Verificación estricta de autenticación HMAC-SHA256 (Server-to-Server)
 function verify_banelio_bridge_auth() {
-    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
         return true;
     }
 
     $secret = get_bridge_secret();
     if (empty($secret)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Configuración de seguridad del servidor no establecida.'
-        ], 503);
+        send_json_response(['success' => false, 'error' => 'Configuración de seguridad del servidor no establecida.'], 503);
     }
 
-    $timestamp = isset($_SERVER['HTTP_X_BANELIO_TIMESTAMP']) ? trim((string)$_SERVER['HTTP_X_BANELIO_TIMESTAMP']) : '';
-    $receivedSig = isset($_SERVER['HTTP_X_BANELIO_SIGNATURE']) ? trim((string)$_SERVER['HTTP_X_BANELIO_SIGNATURE']) : '';
+    $timestamp = trim((string)($_SERVER['HTTP_X_BANELIO_TIMESTAMP'] ?? ''));
+    $receivedSig = trim((string)($_SERVER['HTTP_X_BANELIO_SIGNATURE'] ?? ''));
 
     if (empty($timestamp) || empty($receivedSig)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Acceso denegado: firma de autenticación requerida.'
-        ], 401);
+        send_json_response(['success' => false, 'error' => 'Acceso denegado: firma de autenticación requerida.'], 401);
     }
 
-    $timeVal = (int)$timestamp;
-    $now = time();
-    if (abs($now - $timeVal) > 300) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Acceso denegado: marca de tiempo inválida o expirada.'
-        ], 401);
+    if (abs(time() - (int)$timestamp) > 300) {
+        send_json_response(['success' => false, 'error' => 'Acceso denegado: marca de tiempo inválida o expirada.'], 401);
     }
 
-    $method = strtoupper(isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET');
-    $uriPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH);
-    if (empty($uriPath)) {
-        $uriPath = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
-    }
+    $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    $uriPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: ($_SERVER['SCRIPT_NAME'] ?? '');
+    $rawBody = file_get_contents('php://input');
+    $rawBody = $rawBody === false ? '' : $rawBody;
 
-    $rawInput = file_get_contents('php://input');
-    $rawBody = $rawInput === false ? '' : $rawInput;
-
-    // Verificación directa contra la ruta canónica solicitada
     $canonical = "{$method}|{$uriPath}|{$timestamp}|{$rawBody}";
     $expectedSig = hash_hmac('sha256', $canonical, $secret);
 
     $matched = hash_equals($expectedSig, $receivedSig);
 
-    // Fallback estricto únicamente si el servidor web omite el prefijo /api en REQUEST_URI
+    // Fallback si el servidor web omite el prefijo /api
     if (!$matched && strpos($uriPath, '/api/') !== 0) {
         $apiPath = '/api/' . ltrim($uriPath, '/');
-        $canonicalFallback = "{$method}|{$apiPath}|{$timestamp}|{$rawBody}";
-        $matched = hash_equals(hash_hmac('sha256', $canonicalFallback, $secret), $receivedSig);
+        $matched = hash_equals(hash_hmac('sha256', "{$method}|{$apiPath}|{$timestamp}|{$rawBody}", $secret), $receivedSig);
     }
 
     if (!$matched) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Acceso denegado: firma de autenticación inválida.'
-        ], 401);
+        send_json_response(['success' => false, 'error' => 'Acceso denegado: firma de autenticación inválida.'], 401);
     }
 
     return true;
 }
 
-// 3. Resolución segura de credenciales
+// 8. Resolución de credenciales de ResellerClub
 function get_resellerclub_config() {
     load_banelio_local_config();
 

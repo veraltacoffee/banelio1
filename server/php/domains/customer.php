@@ -1,9 +1,9 @@
 <?php
 /**
- * BANELIO - Gestión Mínima de Clientes en ResellerClub
+ * BANELIO - Gestión de Clientes en ResellerClub
  * Archivo: server/php/domains/customer.php
  *
- * Operaciones necesarias para consultar y crear cuentas de cliente en el proveedor.
+ * Operaciones para consultar y registrar clientes en el proveedor.
  */
 
 require_once __DIR__ . '/../reseller/config.php';
@@ -21,18 +21,13 @@ if (!$client->isConfigured()) {
     ], 503);
 }
 
-// ==========================================
 // 1. GET: Consultar datos del cliente
-// ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $customerId = trim($_GET['customer_id'] ?? '');
     $email = trim(strtolower($_GET['email'] ?? ''));
 
     if (empty($customerId) && empty($email)) {
-        send_json_response([
-            'success' => false,
-            'error' => 'Debes proporcionar customer-id o email.'
-        ], 400);
+        send_json_response(['success' => false, 'error' => 'Debes proporcionar customer-id o email.'], 400);
     }
 
     try {
@@ -40,26 +35,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $data = $client->get('customers/details.json', $params);
 
         if (!is_array($data) || empty($data['customerid'])) {
-            send_json_response([
-                'success' => false,
-                'error' => 'Cliente no encontrado en el proveedor.'
-            ], 404);
+            send_json_response(['success' => false, 'error' => 'Cliente no encontrado en el proveedor.'], 404);
         }
-
-        $sanitized = [
-            'customerId' => (string)$data['customerid'],
-            'username' => $data['user_name'] ?? '',
-            'name' => $data['name'] ?? '',
-            'company' => $data['company'] ?? '',
-            'city' => $data['city'] ?? '',
-            'state' => $data['state'] ?? '',
-            'country' => $data['country'] ?? '',
-            'status' => $data['customer_status'] ?? 'Active'
-        ];
 
         send_json_response([
             'success' => true,
-            'customer' => $sanitized
+            'customer' => [
+                'customerId' => (string)$data['customerid'],
+                'username' => $data['user_name'] ?? '',
+                'name' => $data['name'] ?? '',
+                'company' => $data['company'] ?? '',
+                'city' => $data['city'] ?? '',
+                'state' => $data['state'] ?? '',
+                'country' => $data['country'] ?? '',
+                'status' => $data['customer_status'] ?? 'Active'
+            ]
         ], 200);
 
     } catch (Exception $e) {
@@ -70,13 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 }
 
-// ==========================================
 // 2. POST: Alta de cliente en el proveedor
-// ==========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Aceptar JSON en request body o form-data
-    $rawInput = file_get_contents('php://input');
-    $postData = json_decode($rawInput, true);
+    $postData = json_decode(file_get_contents('php://input'), true);
     if (!is_array($postData)) {
         $postData = $_POST;
     }
@@ -91,39 +77,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $zipcode = trim($postData['zipcode'] ?? '');
     $telCc = preg_replace('/\D/', '', $postData['phone_cc'] ?? '');
     $telNo = preg_replace('/\D/', '', $postData['phone'] ?? '');
-    $lang = trim($postData['lang'] ?? 'es');
 
-    // Validación estricta de datos reales obligatorios (sin valores ficticios)
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         send_json_response(['success' => false, 'error' => 'El correo electrónico es obligatorio y debe ser válido.'], 400);
     }
     if (empty($name) || strlen($name) < 3) {
         send_json_response(['success' => false, 'error' => 'El nombre completo es obligatorio.'], 400);
     }
-    if (empty($address)) {
-        send_json_response(['success' => false, 'error' => 'La dirección física es obligatoria.'], 400);
+    if (empty($address) || empty($city) || empty($state) || empty($country) || empty($zipcode)) {
+        send_json_response(['success' => false, 'error' => 'Todos los campos de dirección física son obligatorios.'], 400);
     }
-    if (empty($city)) {
-        send_json_response(['success' => false, 'error' => 'La ciudad es obligatoria.'], 400);
-    }
-    if (empty($state)) {
-        send_json_response(['success' => false, 'error' => 'El estado o provincia es obligatorio.'], 400);
-    }
-    if (empty($country)) {
-        send_json_response(['success' => false, 'error' => 'El código de país es obligatorio.'], 400);
-    }
-    if (empty($zipcode)) {
-        send_json_response(['success' => false, 'error' => 'El código postal es obligatorio.'], 400);
-    }
-    if (empty($telNo)) {
-        send_json_response(['success' => false, 'error' => 'El número telefónico es obligatorio.'], 400);
-    }
-    if (empty($telCc)) {
-        send_json_response(['success' => false, 'error' => 'El código de país del teléfono (phone_cc) es obligatorio.'], 400);
+    if (empty($telNo) || empty($telCc)) {
+        send_json_response(['success' => false, 'error' => 'El número telefónico y el código de país son obligatorios.'], 400);
     }
 
     try {
-        // Primero verificar si ya existe
+        // Verificar si ya existe previamente
         try {
             $existing = $client->get('customers/details.json', ['username' => $email]);
             if (is_array($existing) && !empty($existing['customerid'])) {
@@ -135,17 +104,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ], 200);
             }
         } catch (Exception $e) {
-            // Continúa con el registro si no existe
+            // No existe, continuar con signup
         }
 
-        // Generar contraseña robusta y aleatoria para el proveedor
         $passwd = 'Bnl!' . bin2hex(random_bytes(6)) . '9A';
-
-        $signupParams = [
+        $newCustomerId = $client->post('customers/signup.json', [
             'username' => $email,
             'passwd' => $passwd,
             'name' => $name,
-            'company' => !empty($company) ? $company : $name,
+            'company' => $company ?: $name,
             'address-line-1' => $address,
             'city' => $city,
             'state' => $state,
@@ -153,16 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'zipcode' => $zipcode,
             'tel-no-cc' => $telCc,
             'tel-no' => $telNo,
-            'lang-pref' => $lang
-        ];
-
-        $newCustomerId = $client->post('customers/signup.json', $signupParams);
+            'lang-pref' => trim($postData['lang'] ?? 'es')
+        ]);
 
         if (empty($newCustomerId) || !is_numeric($newCustomerId)) {
-            send_json_response([
-                'success' => false,
-                'error' => 'No fue posible crear la cuenta de cliente en el proveedor.'
-            ], 502);
+            send_json_response(['success' => false, 'error' => 'No fue posible crear la cuenta de cliente en el proveedor.'], 502);
         }
 
         send_json_response([
