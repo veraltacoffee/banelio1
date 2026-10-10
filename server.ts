@@ -1399,7 +1399,11 @@ async function startServer() {
       const result = await resolveCustomerDomains(customer, domainEntitlements);
       return res.json(result);
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      console.error('BANELIO: Error al obtener dominios del cliente:', err?.name || 'Error');
+      return res.status(500).json({
+        success: false,
+        error: 'No se pudieron cargar los dominios en este momento.'
+      });
     }
   });
 
