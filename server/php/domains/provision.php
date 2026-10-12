@@ -86,6 +86,17 @@ try {
         }
     }
 
+    if (empty($regPhoneCc) && !empty($regCountry)) {
+        $countryPrefixes = [
+            'MX' => '52', 'US' => '1', 'CA' => '1', 'ES' => '34',
+            'CO' => '57', 'AR' => '54', 'CL' => '56', 'PE' => '51',
+            'BR' => '55', 'UK' => '44', 'GB' => '44', 'DE' => '49', 'FR' => '33'
+        ];
+        if (isset($countryPrefixes[$regCountry])) {
+            $regPhoneCc = $countryPrefixes[$regCountry];
+        }
+    }
+
     if (empty($customerEmail) || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
         send_json_response(['success' => false, 'error' => 'El correo electrónico del registrante es obligatorio y debe ser válido.'], 400);
     }
@@ -176,6 +187,32 @@ try {
 
     // 3. Ejecutar llamada al proveedor
     if ($action === 'register') {
+        // REGLA: Comprobar disponibilidad autoritativa en ResellerClub antes de registrar
+        try {
+            $availCheck = $client->get('domains/available.json', [
+                'domain-name' => $sld,
+                'tlds' => [$tld]
+            ]);
+            $checkKey = $sld . '.' . $tld;
+            $availStatus = isset($availCheck[$checkKey]['status']) ? strtolower(trim((string)$availCheck[$checkKey]['status'])) : '';
+            if ($availStatus !== 'available') {
+                send_json_response([
+                    'success' => false,
+                    'action' => 'register',
+                    'domain' => $domainClean,
+                    'status' => $availStatus ?: 'unknown',
+                    'error' => "El dominio {$domainClean} no se encuentra disponible para registro en el proveedor (estado autoritativo: " . ($availStatus ?: 'no concluyente') . ').'
+                ], 409);
+            }
+        } catch (Exception $e) {
+            send_json_response([
+                'success' => false,
+                'action' => 'register',
+                'domain' => $domainClean,
+                'error' => sanitize_exception_message($e, "No fue posible verificar la disponibilidad autoritativa de {$domainClean} antes del registro.")
+            ], 502);
+        }
+
         $regParams = [
             'domain-name' => $sld,
             'tlds' => [$tld],

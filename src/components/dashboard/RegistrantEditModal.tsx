@@ -7,12 +7,14 @@ interface RegistrantEditModalProps {
   domain: UserService | null;
   isOpen: boolean;
   onClose: () => void;
+  onSaved?: (updatedContact: DomainRegistrantContact) => void;
 }
 
 export default function RegistrantEditModal({
   domain,
   isOpen,
-  onClose
+  onClose,
+  onSaved
 }: RegistrantEditModalProps) {
   const { updateService, sharedRegistrantContact, addToast, language } = useApp();
 
@@ -50,6 +52,8 @@ export default function RegistrantEditModal({
     updateService(domain.id, {
       registrantContact: updatedContact
     });
+
+    onSaved?.(updatedContact);
 
     addToast({
       type: 'success',

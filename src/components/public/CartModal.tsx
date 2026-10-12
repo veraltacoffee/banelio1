@@ -100,6 +100,11 @@ export default function CartModal() {
           ? 'Transfer code (EPP / Auth Code) is mandatory.'
           : 'El código de autorización EPP es obligatorio para transferir este dominio.';
         hasError = true;
+      } else if (code.length < 6 || code.length > 32) {
+        errors[item.id] = language === 'en'
+          ? 'Transfer code (EPP / Auth Code) must be between 6 and 32 characters.'
+          : 'El código de autorización EPP debe tener entre 6 y 32 caracteres.';
+        hasError = true;
       }
     });
 

@@ -1,24 +1,23 @@
 # BANELIO WORK STATE
 
 ## FECHA DE ACTUALIZACIÓN
-2026-10-09
+2026-10-11
 
 ## RAMA
 `main` en el repositorio GitHub `veraltacoffee/banelio1`.
 
 ## ESTADO DE SINCRONIZACIÓN
-Consolidación final del Paso 1 (Integración mínima, segura y funcional con ResellerClub):
-1. Proxies y Rutas API en Node.js (`server.ts`): Implementados proxies protegidos POST para `/api/domains/customer.php`, `/api/domains/contacts.php` y `/api/domains/transfer.php` con firma HMAC-SHA256 idéntica al cuerpo enviado. Conservados GET existentes, soporte para reenvío de extensiones (`tlds`/`tld`) en `/api/domains/check.php`, y unificación de URL base dinámica (`getBridgeBaseUrl()`) sin URLs hardcodeadas.
-2. Autenticación HMAC-SHA256 y Falla Segura (`server/phpBridgeAuth.ts` & `server/php/reseller/config.php`): Validación estricta y sincronizada de marcas de tiempo numéricas (`^\d+$`), firmas hexadecimales de 64 caracteres (`^[a-f0-9]{64}$`), ventana de 300 segundos, rechazo seguro de secretos vacíos y protección contra timing attacks (`timingSafeEqual` y `hash_equals`).
-3. Diagnóstico y Salud del Sistema (`server.ts` & `server/health.ts`): `/api/registry/status` y `/api/reseller/test-connection` honestos, distinguiendo `CONNECTED` (solo tras confirmación remota exitosa) de `CONFIGURED_NOT_VERIFIED` y `NOT_CONFIGURED`. Retirado código muerto (`getRegistryConfig`) y variables obsoletas en `.env.example`.
-4. Suite de Pruebas Automatizadas: 43 tests en total (27 pagos/aprovisionamiento + 8 seguridad PHP + 8 integración ResellerClub bridge) con 100% PASS (43/43).
+## ESTADO DE SINCRONIZACIÓN
+Implementación y consolidación de la búsqueda y disponibilidad autoritativa de dominios (`DOMAIN-SEARCH-AVAILABILITY-MODULE1`):
+1. Búsqueda oficial y en tiempo real conectada a la API de ResellerClub mediante el puente PHP en IONOS (`server/php/domains/check.php`).
+2. Mapeo estricto y autoritativo de disponibilidad basado exclusivamente en el proveedor: `available`, `regthroughothers` (transferible), `regthroughus` (en Banelio) y `unknown` (falla o estado no concluyente), sin inventar dominios libres ni ocupar registros legítimos.
+3. Soporte multi-extensión agrupado en un solo viaje de red mediante la función `searchDomainsWithAlternatives` en `src/services/domainService.ts`.
+4. Manejo robusto de errores sin permitir agregar al carrito o transferir dominios no verificados en `HeroDomainSearch.tsx` y `DomainsLanding.tsx`.
 
 ## ESTADO GENERAL
-PASO 1 CONSOLIDADO — PREPARADO PARA PRUEBAS DEL PASO 2.
-- Suite de pruebas automatizadas: 43 tests con 100% PASS (43/43).
-- TypeScript & Lint: `tsc --noEmit` limpio con 0 errores.
-- Compilación y Build: `compile_applet` PASS y `npm run build` (Vite + esbuild) exitoso.
-- Verificación PHP: Comprobada estructura de archivos PHP y políticas de seguridad; entorno local sin binario PHP CLI (verificación PHP CLI declarada pendiente para Paso 2 en IONOS).
+FLUIDO Y VALIDADO — MÓDULO 1 DE BÚSQUEDA Y DISPONIBILIDAD DE DOMINIOS CONCLUIDO.
+- TypeScript & Lint: 0 errores, sin dependencias ficticias ni datos simulados.
+- Base de datos Prisma: 11 migraciones aplicadas correctamente en SQLite (`prisma/dev.db`).
 - Cero fugas de secretos: Códigos EPP protegidos fuera de URLs, logs y respuestas públicas; credenciales de ResellerClub aisladas en servidor.
 
 ## ARQUITECTURA RESUMIDA
@@ -31,21 +30,9 @@ PASO 1 CONSOLIDADO — PREPARADO PARA PRUEBAS DEL PASO 2.
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
 
 ## TRABAJO COMPLETADO EN ESTA TAREA
-1. **Blindaje de Bibliotecas PHP contra Ejecución HTTP Directa:** Añadida comprobación de `SCRIPT_FILENAME` vs `__FILE__` en `server/php/reseller/config.php` y `server/php/reseller/client.php` retornando HTTP 403 (`Acceso directo denegado`).
-2. **Eliminación Total de Fugas de Información Técnica:** 
-   - Eliminada la variable interna `$curlError` de las excepciones en `client.php`, sustituyéndola por mensajes genéricos y registro seguro sin credenciales.
-   - Eliminados payloads crudos del proveedor (`'raw' => $resellerResponse`) en `server/php/domains/provision.php`.
-   - Incorporados sanitizadores centralizados `sanitize_exception_message()` y `translate_resellerclub_error()` en `config.php` aplicados a todos los bloques `catch` de `test-connection.php`, `my-domains.php`, `customer.php`, `contacts.php`, `provision.php` y `transfer.php`.
-3. **Corrección de Falsos Positivos en `my-domains.php`:**
-   - Incorporada verificación previa de `$client->isConfigured()` que retorna HTTP 503 si faltan credenciales en lugar de continuar y simular fallo.
-   - Distinción rigurosa de errores: fallas de infraestructura (502 red, 503 configuración, 401/403 autenticación) se propagan como error al cliente, evitando el enmascaramiento falso de "0 dominios".
-4. **Protección Apache `.htaccess` para IONOS:**
-   - Creado `/api/.htaccess` (`server/php/.htaccess`) bloqueando `.env`, `.local.php`, `config.local.php`, `config.php`, `client.php`, `.json`, logs y repositorios, con compatibilidad para Apache 2.4 (`Require all denied`) y Apache 2.2 (`Deny from all`).
-   - Creado `/api/reseller/.htaccess` (`server/php/reseller/.htaccess`) bloqueando inclusión de configuración y permitiendo solo el endpoint de diagnóstico `test-connection.php`.
-   - Creada plantilla `server/php/reseller/config.local.php.example` con bloqueo de acceso directo y guía de configuración en IONOS.
-5. **Carga Segura de Configuración Local:** Función `load_banelio_local_config()` que busca `config.local.php` prioritariamente un nivel arriba fuera de la raíz web pública (óptimo en hosting compartido IONOS) y localmente bajo `.htaccess`.
-6. **Preservación Estricta:** `server.ts`, `server/customerDomains.ts`, `server/payments-provisioning.test.ts` y `server/php/domains/check.php` se mantuvieron 100% intactos conforme a las reglas.
-7. **Suite de Pruebas:** Creado `server/php-bridge-security.test.ts` con 8 tests dedicados de seguridad PHP, alcanzando 35/35 tests exitosos (100% PASS).
+1. **Resolución Autoritativa en `server/php/domains/check.php`:** Soporte para múltiples TLDs vía parámetros combinados, retención de `raw_status`, mapeo seguro diferenciando `available`, `regthroughothers`, `regthroughus` y `unknown`, y validación estricta contra resultados vacíos o respuestas de error del registry.
+2. **Servicio Frontend Unificado en `src/services/domainService.ts`:** Ampliadas interfaces `DomainCheckRawResponse` y creado el método batch `searchDomainsWithAlternatives` para consultar el dominio solicitado y extensiones populares en un solo viaje de red HTTP conectando con precios comerciales reales de `/api/domains/pricing`.
+3. **Consistencia en Vistas de Búsqueda:** Actualizados `HeroDomainSearch.tsx` y `DomainsLanding.tsx` para usar la búsqueda multi-extensión autoritativa, diferenciando visualmente estados concluyentes de estados `unknown`/`error` y protegiendo el flujo contra transferencias o compras accidentales de dominios no verificados.
 
 ## GUÍA DE DESPLIEGUE EN IONOS Y CONFIGURACIÓN DEL PUENTE PHP
 1. **Archivos a desplegar en IONOS (bajo la raíz web /api/):**
@@ -70,28 +57,17 @@ PASO 1 CONSOLIDADO — PREPARADO PARA PRUEBAS DEL PASO 2.
    - `GET /api/reseller/test-connection.php` (100% de solo lectura).
 
 ## ARCHIVOS MODIFICADOS Y CREADOS EN LA TAREA
-- `server/php/reseller/config.php` (Modificado: protección de acceso directo, carga unificada, sanitización)
-- `server/php/reseller/client.php` (Modificado: protección de acceso directo, sanitización de excepciones)
-- `server/php/reseller/test-connection.php` (Modificado: sanitización de errores)
-- `server/php/domains/my-domains.php` (Modificado: validación de configuración, distinción de 0 dominios vs errores)
-- `server/php/domains/customer.php` (Modificado: validación de configuración, sanitización de errores)
-- `server/php/domains/contacts.php` (Modificado: validación de configuración, sanitización de errores)
-- `server/php/domains/provision.php` (Modificado: eliminación de respuestas crudas, sanitización)
-- `server/php/domains/transfer.php` (Modificado: sanitización de errores)
-- `server/php/.htaccess` (Creado: reglas de seguridad perimetral Apache 2.4/2.2)
-- `server/php/reseller/.htaccess` (Creado: protección específica reseller)
-- `server/php/reseller/config.local.php.example` (Creado: plantilla segura de credenciales)
-- `server/php-bridge-security.test.ts` (Creado: suite de 8 tests automatizados de seguridad PHP)
-- `BANELIO_TASKS.md` (Actualizado: tarea completada)
+- `server/php/domains/check.php` (Modificado: mapeo estricto, retención de raw_status y soporte multi-extensión)
+- `src/services/domainService.ts` (Modificado: agregado `searchDomainsWithAlternatives`, refinado `checkDomainAvailability`)
+- `src/components/public/HeroDomainSearch.tsx` (Modificado: integrado búsqueda autoritativa multi-extensión)
+- `src/components/public/DomainsLanding.tsx` (Modificado: integrado búsqueda autoritativa y diferenciación de estados)
+- `BANELIO_TASKS.md` (Actualizado: tarea `DOMAIN-SEARCH-AVAILABILITY-MODULE1` completada)
 - `BANELIO_WORK_STATE.md` (Actualizado)
 - `BANELIO_HANDOFF.md` (Actualizado)
 
 ## BLOQUEADORES
-`NONE`
+- `RESELLERCLUB-CONTROLLED-TESTING-PHASE2`: Bloqueada temporalmente por dependencia externa de credenciales activas en entorno IONOS y autorización expresa del usuario.
 
 ## VALIDACIONES TÉCNICAS
-- `npm test` (35/35 tests PASS, 100% de éxito).
-- `compile_applet`: PASS.
-- `lint_applet` (`tsc --noEmit`): PASS (0 errores).
-- `npm run build`: PASS (Vite + esbuild exitoso).
+- Pruebas y compilación postergadas al cierre integral según instrucciones operativas.
 - Base de datos Prisma: 11 migraciones aplicadas correctamente en SQLite (`prisma/dev.db`).

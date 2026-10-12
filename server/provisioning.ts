@@ -231,7 +231,13 @@ export async function provisionPaidOrder(
     const contactEmail = registrant?.email || customer?.email || '';
     const contactAddress = registrant?.address || '';
     const contactCity = registrant?.city || '';
-    const contactCountry = registrant?.country || '';
+    let contactCountry = registrant?.country || '';
+    if (!contactCountry && (order as any).countryCode) {
+      contactCountry = (order as any).countryCode;
+    }
+    if (!contactCountry && order.taxRate) {
+      contactCountry = 'MX';
+    }
     const contactState = registrant?.state || '';
     const contactPostalCode = registrant?.postalCode || registrant?.zipcode || '';
 
@@ -243,6 +249,18 @@ export async function provisionPaidOrder(
       if (match) {
         phoneCc = match[1];
         phoneSubscriber = match[2];
+      }
+    }
+
+    if (!phoneCc && contactCountry) {
+      const normCountry = contactCountry.trim().toUpperCase();
+      const codeMap: Record<string, string> = {
+        MX: '52', MÉXICO: '52', MEXICO: '52', US: '1', USA: '1', CA: '1',
+        ES: '34', ESPAÑA: '34', SPAIN: '34', CO: '57', COLOMBIA: '57',
+        AR: '54', ARGENTINA: '54', CL: '56', CHILE: '56', PE: '51', PERÚ: '51', PERU: '51'
+      };
+      if (codeMap[normCountry]) {
+        phoneCc = codeMap[normCountry];
       }
     }
 
@@ -307,10 +325,14 @@ export async function provisionPaidOrder(
       }
     });
 
+    const durationYears = item.periodUnit === 'year' && typeof item.periodYearsOrMonths === 'number' && item.periodYearsOrMonths >= 1 && item.periodYearsOrMonths <= 10
+      ? item.periodYearsOrMonths
+      : (item.periodUnit === 'year' && Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 10 ? item.quantity : 1);
+
     const payload = {
       action,
       domain: domainName,
-      years: item.periodUnit === 'year' && Number.isInteger(item.quantity) ? 1 : 1,
+      years: durationYears,
       auth_code: isTransfer ? eppCode : undefined,
       registrant: {
         name: contactName,

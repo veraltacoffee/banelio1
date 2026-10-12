@@ -39,12 +39,18 @@
 - **VALIDATION:**
   - `npx tsc --noEmit` limpio (0 errores).
   - `compile_applet` exitoso.
+  - `npm run build` exitoso (Vite + esbuild).
+  - `npm test`: 50/50 tests passing (100% aprobados, 1 skip por credenciales remotas).
+  - Despliegue de base de datos local SQLite (`dev.db`) con 11 migraciones aplicadas.
   - Verificación de validación remota de dominio transferible vía `/api/domains/transfer.php`.
-  - Validación de Auth/EPP Code (6 a 32 caracteres) tanto en modal (`DomainTransferModal.tsx`) como en validación server-side (`server/orders.ts`).
+  - Validación de Auth/EPP Code (6 a 32 caracteres) en `DomainTransferModal.tsx`, `CartModal.tsx` y server-side en `server/orders.ts`.
+  - Corrección de deduplicación de carrito y eliminación de items duplicados incompletos en `HeroDomainSearch.tsx`, `DomainsLanding.tsx` y `DomainTransferModal.tsx`.
+  - Soporte de entrada manual de dominio en `DomainTransferModal.tsx` cuando se abre desde Mi Panel.
+  - Propagación de propiedad `domain` en `AppContext.tsx` (`createServerOrder`) hacia `server/orders.ts`.
   - Creación de orden comercial estándar con SKU `DOMAIN_TRANSFER` en `/api/orders/create`.
   - Salida pública sanitizada en `toPublicOrder` (`hasEppCode: true` sin exponer la clave en texto plano).
   - Sin dependencias activas de `transfer-order.php`, `transfer-auth.php` ni `transfer-status.php`.
-- **HANDOFF:** Flujo migrado al checkout comercial estándar y validado en todas sus capas. Los 4 documentos de continuidad actualizados.
+- **HANDOFF:** Flujo de transferencia de dominios completamente consolidado de extremo a extremo sin estados falsos ni simulaciones. Siguiente tarea: `RESELLERCLUB-CONTROLLED-TESTING-PHASE2`.
 
 ---
 
@@ -196,9 +202,58 @@
 
 ---
 
+### TASK: CUSTOMER-DOMAINS-PORTAL-SYNC
+- **TASK ID:** CUSTOMER-DOMAINS-PORTAL-SYNC
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGH
+- **OWNER:** Frontend & Domains Integration Engineer
+- **OBJECTIVE:** Consolidar la sincronización homogénea de dominios entre el backend autoritativo y el panel de cliente:
+  1. Normalización de dominios en `server/customerDomains.ts`: homogenización de campos para `LOCAL_ENTITLEMENTS` y `IONOS_RESELLERCLUB_REMOTE` (`domain`, `creationDate`, `expiryDate`, `privacyProtection`, `locked`, `autoRenew`, `providerOrderId`, `eppCode`, `registrant`).
+  2. Vinculación completa del tipo `UserService` en `src/components/dashboard/CustomerDashboard.tsx` para dominios del servidor (resolución de `providerId`, `expiryDate`, `registeredDate`, `planName`, `nameservers`, `dnsRecords`, `eppCode`, `registrantContact`).
+  3. Sincronización atómica e inmediata de toggles de configuración de dominios (`whoisPrivacy`, `transferLock`, `autoRenew`) reflejada en el estado de dominios de servidor.
+  4. Adición del callback `onSaved` en `src/components/dashboard/RegistrantEditModal.tsx` conectado al panel para reflejar al instante la titularidad ICANN actualizada.
+- **ALLOWED FILES:**
+  - `server/customerDomains.ts`
+  - `src/components/dashboard/CustomerDashboard.tsx`
+  - `src/components/dashboard/RegistrantEditModal.tsx`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+- **DEPENDENCIES:** Ninguna (trabajo de sincronización independiente de credenciales remotas).
+- **VALIDATION:** Verificación de consistencia de tipos y contratos en frontend y backend.
+- **HANDOFF:** Panel de cliente y resolución de dominios totalmente unificados y consistentes. Siguiente tarea: `RESELLERCLUB-CONTROLLED-TESTING-PHASE2`.
+
+---
+
+### TASK: DOMAIN-SEARCH-AVAILABILITY-MODULE1
+- **TASK ID:** DOMAIN-SEARCH-AVAILABILITY-MODULE1
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Domains & Search Integration Engineer
+- **OBJECTIVE:** Dejar implementada la búsqueda pública de dominios conectada a la fuente autoritativa de ResellerClub mediante el puente PHP en IONOS (`server/php/domains/check.php`):
+  1. Resolución autoritativa basada exclusivamente en la respuesta real de ResellerClub (`domains/available.json`).
+  2. Diferenciación estricta de estados reales: disponible para registro (`available`), registrado por terceros (`regthroughothers` / transferible), registrado con Banelio (`regthroughus`), y estado no concluyente o falla de registry (`unknown`).
+  3. Soporte para consultas multi-extensión eficientes en un solo viaje de red mediante parámetros de TLDs agregados (`check.php?domain=sld&tlds=ext1,ext2,...`).
+  4. Función de búsqueda unificada `searchDomainsWithAlternatives` en `src/services/domainService.ts` consultando precios comerciales reales por TLD desde `/api/domains/pricing` sin datos ficticios ni simulaciones.
+  5. Preservación íntegra de la interfaz, experiencia adaptable a dispositivos y componentes existentes (`HeroDomainSearch.tsx`, `DomainsLanding.tsx`).
+  6. Manejo honesto de respuestas incompletas o errores sin inventar disponibilidad ni permitir añadir al carrito o transferir dominios no verificados.
+- **ALLOWED FILES:**
+  - `server/php/domains/check.php`
+  - `src/services/domainService.ts`
+  - `src/components/public/HeroDomainSearch.tsx`
+  - `src/components/public/DomainsLanding.tsx`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+- **DEPENDENCIES:** Puente PHP en IONOS (`server/php/domains/check.php`), Catálogo de dominios Banelio (`/api/domains/pricing`).
+- **VALIDATION:** Verificación estática y de consistencia lógica entre puente PHP, servicio de dominio y vistas públicas.
+- **HANDOFF:** Módulo público 1 de búsqueda y disponibilidad 100% implementado y conectado a la arquitectura autoritativa. Siguiente tarea: `RESELLERCLUB-CONTROLLED-TESTING-PHASE2`.
+
+---
+
 ## IN PROGRESS
 
-*(Ninguna tarea en ejecución. El sistema se encuentra consolidado a la espera de autorización expresa para las pruebas del paso 2).*
+*(Ninguna tarea en ejecución).*
 
 ---
 
@@ -206,7 +261,7 @@
 
 ### TASK: RESELLERCLUB-CONTROLLED-TESTING-PHASE2
 - **TASK ID:** RESELLERCLUB-CONTROLLED-TESTING-PHASE2
-- **STATUS:** PENDING
+- **STATUS:** PENDING (Esperando credenciales de prueba en IONOS)
 - **PRIORITY:** HIGH
 - **OWNER:** Integrations & QA Engineer
 - **OBJECTIVE:** Ejecutar las pruebas controladas del Paso 2 una vez que el usuario configure las credenciales de prueba en IONOS / ResellerClub:
@@ -221,4 +276,4 @@
 
 ## BLOCKED
 
-*(Ninguna tarea bloqueada).*
+- **TASK ID:** RESELLERCLUB-CONTROLLED-TESTING-PHASE2 (Bloqueada temporalmente por dependencia externa de credenciales activas en entorno IONOS).

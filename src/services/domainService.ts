@@ -14,12 +14,18 @@
 export interface DomainCheckRawResponse {
   success: boolean;
   domain?: string;
+  available?: boolean;
   error?: string;
   result?: Record<
     string,
     {
       classkey?: string;
       status?: string;
+      raw_status?: string;
+      rawStatus?: string;
+      available?: boolean;
+      can_register?: boolean;
+      can_transfer?: boolean;
     }
   >;
 }
@@ -362,13 +368,20 @@ export async function checkDomainAvailability(
       };
     }
 
-    // Extraer el status del campo result[domain].status
+    // Extraer el status del campo result[domain]
     const domainResult = data.result?.[normalizedDomain] || 
       (data.result ? Object.values(data.result)[0] : null);
 
-    const rawStatus = (domainResult?.status || '').toLowerCase().trim();
+    const rawStatus = (
+      domainResult?.raw_status ||
+      domainResult?.rawStatus ||
+      domainResult?.status ||
+      ''
+    ).toLowerCase().trim();
 
-    if (rawStatus === 'available') {
+    const isAvailable = Boolean(domainResult?.available ?? (rawStatus === 'available'));
+
+    if (isAvailable && rawStatus === 'available') {
       return {
         domain: normalizedDomain,
         tld,
@@ -391,7 +404,7 @@ export async function checkDomainAvailability(
         isAvailable: false,
         status: 'unavailable',
         rawStatus,
-        statusText: 'No disponible',
+        statusText: rawStatus === 'regthroughus' ? 'Registrado en Banelio' : 'No disponible',
         priceUSD: resolvedPrice,
         isPromo: resolvedPromo
       };
@@ -404,7 +417,8 @@ export async function checkDomainAvailability(
         rawStatus,
         statusText: 'No disponible',
         priceUSD: resolvedPrice,
-        isPromo: resolvedPromo
+        isPromo: resolvedPromo,
+        errorMsg: rawStatus ? `Estado no concluyente del Registry: ${rawStatus}` : 'El Registry no devolvió un estado concluyente.'
       };
     }
   } catch (networkError: any) {
@@ -420,6 +434,226 @@ export async function checkDomainAvailability(
       errorMsg: isTimeout
         ? 'El servidor tardó en responder. Por favor reintenta.'
         : 'No fue posible contactar con el servicio de verificación.'
+    };
+  }
+}
+
+export interface SearchDomainsWithAlternativesResult {
+  primary: DomainSearchResult;
+  alternatives: DomainSearchResult[];
+  all: DomainSearchResult[];
+  error?: string;
+}
+
+/**
+ * Búsqueda autoritativa multi-extensión:
+ * Consulta el dominio principal y extensiones complementarias en una sola solicitud
+ * a la API de ResellerClub mediante el puente PHP /api/domains/check.php.
+ */
+export async function searchDomainsWithAlternatives(
+  inputDomain: string,
+  complementaryTlds: string[] = []
+): Promise<SearchDomainsWithAlternativesResult> {
+  const sanitized = sanitizeDomainInput(inputDomain);
+  if (!sanitized.valid) {
+    const fallbackResult: DomainSearchResult = {
+      domain: inputDomain,
+      tld: 'com',
+      isAvailable: false,
+      status: 'error',
+      statusText: 'Dominio no válido',
+      priceUSD: null,
+      errorMsg: sanitized.error || 'Ingresa un nombre de dominio válido.'
+    };
+    return {
+      primary: fallbackResult,
+      alternatives: [],
+      all: [fallbackResult],
+      error: sanitized.error
+    };
+  }
+
+  const primaryTld = sanitized.tld;
+  const tldPricingList = await fetchDomainPricing();
+  const getPriceForTld = (tld: string): { price: number | null; isPromo: boolean } => {
+    const clean = tld.toLowerCase().replace(/^\./, '');
+    const entry = tldPricingList.find((e) => e.tld.toLowerCase() === clean);
+    return {
+      price: entry && typeof entry.registrationPriceUSD === 'number' && entry.registrationPriceUSD > 0 ? entry.registrationPriceUSD : null,
+      isPromo: Boolean(entry?.isPromo)
+    };
+  };
+
+  const primaryPricing = getPriceForTld(primaryTld);
+
+  // Filtrar y limpiar TLDs complementarios evitando duplicar la extensión principal
+  const cleanComplementary = complementaryTlds
+    .map((t) => t.toLowerCase().replace(/^\./, '').trim())
+    .filter((t) => t && t !== primaryTld);
+
+  const tldsQueryParam = cleanComplementary.join(',');
+  const queryUrl = `/api/domains/check.php?domain=${encodeURIComponent(sanitized.cleanDomain)}${
+    tldsQueryParam ? `&tlds=${encodeURIComponent(tldsQueryParam)}` : ''
+  }`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const response = await fetch(queryUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let errorDetail = 'Estamos verificando el dominio. Inténtalo nuevamente.';
+      try {
+        const errorJson = await response.json();
+        if (errorJson?.error) errorDetail = errorDetail;
+      } catch {}
+
+      const errorResult: DomainSearchResult = {
+        domain: sanitized.cleanDomain,
+        tld: primaryTld,
+        isAvailable: false,
+        status: 'error',
+        statusText: 'No disponible temporalmente',
+        priceUSD: primaryPricing.price,
+        isPromo: primaryPricing.isPromo,
+        errorMsg: errorDetail
+      };
+
+      return {
+        primary: errorResult,
+        alternatives: [],
+        all: [errorResult],
+        error: errorDetail
+      };
+    }
+
+    const data: DomainCheckRawResponse = await response.json();
+
+    if (!data.success && data.error) {
+      const errorResult: DomainSearchResult = {
+        domain: sanitized.cleanDomain,
+        tld: primaryTld,
+        isAvailable: false,
+        status: 'error',
+        statusText: 'No disponible',
+        priceUSD: primaryPricing.price,
+        isPromo: primaryPricing.isPromo,
+        errorMsg: data.error
+      };
+      return {
+        primary: errorResult,
+        alternatives: [],
+        all: [errorResult],
+        error: data.error
+      };
+    }
+
+    const resultMap = data.result || {};
+    let primaryResult: DomainSearchResult | null = null;
+    const alternatives: DomainSearchResult[] = [];
+
+    // Procesar cada dominio devuelto por el Registry
+    for (const [fullDomain, item] of Object.entries(resultMap)) {
+      const parts = fullDomain.split('.');
+      const itemTld = parts.slice(1).join('.') || 'com';
+      const pricing = getPriceForTld(itemTld);
+
+      const rawStatus = (
+        item?.raw_status ||
+        item?.rawStatus ||
+        item?.status ||
+        ''
+      ).toLowerCase().trim();
+
+      const isItemAvailable = Boolean(item?.available ?? (rawStatus === 'available'));
+
+      let domainStatus: 'available' | 'unavailable' | 'unknown' = 'unknown';
+      let statusText = 'No disponible';
+
+      if (isItemAvailable && rawStatus === 'available') {
+        domainStatus = 'available';
+        statusText = 'Disponible';
+      } else if (
+        rawStatus === 'regthroughothers' ||
+        rawStatus === 'regthroughus' ||
+        rawStatus === 'registered' ||
+        rawStatus === 'unavailable'
+      ) {
+        domainStatus = 'unavailable';
+        statusText = rawStatus === 'regthroughus' ? 'Registrado en Banelio' : 'No disponible';
+      } else {
+        domainStatus = 'unknown';
+        statusText = 'No disponible';
+      }
+
+      const domainResultObj: DomainSearchResult = {
+        domain: fullDomain,
+        tld: itemTld,
+        isAvailable: domainStatus === 'available',
+        status: domainStatus,
+        rawStatus,
+        statusText,
+        priceUSD: pricing.price,
+        isPromo: pricing.isPromo,
+        suggestion: fullDomain !== sanitized.cleanDomain,
+        errorMsg: domainStatus === 'unknown' ? 'No se pudo verificar el estado en el Registry.' : undefined
+      };
+
+      if (fullDomain === sanitized.cleanDomain) {
+        primaryResult = domainResultObj;
+      } else {
+        alternatives.push(domainResultObj);
+      }
+    }
+
+    // Si el dominio principal no vino explícito en resultMap pero hubo resultados
+    if (!primaryResult) {
+      primaryResult = {
+        domain: sanitized.cleanDomain,
+        tld: primaryTld,
+        isAvailable: false,
+        status: 'unknown',
+        statusText: 'No disponible',
+        priceUSD: primaryPricing.price,
+        isPromo: primaryPricing.isPromo,
+        errorMsg: 'El Registry no devolvió información para el dominio principal.'
+      };
+    }
+
+    return {
+      primary: primaryResult,
+      alternatives,
+      all: [primaryResult, ...alternatives]
+    };
+  } catch (networkError: any) {
+    const isTimeout = networkError?.name === 'AbortError';
+    const errorMsg = isTimeout
+      ? 'El servidor tardó en responder. Por favor reintenta.'
+      : 'No fue posible contactar con el servicio de verificación.';
+
+    const networkErrorResult: DomainSearchResult = {
+      domain: sanitized.cleanDomain,
+      tld: primaryTld,
+      isAvailable: false,
+      status: 'error',
+      statusText: isTimeout ? 'Tiempo de espera agotado' : 'Sin conexión',
+      priceUSD: primaryPricing.price,
+      isPromo: primaryPricing.isPromo,
+      errorMsg
+    };
+
+    return {
+      primary: networkErrorResult,
+      alternatives: [],
+      all: [networkErrorResult],
+      error: errorMsg
     };
   }
 }

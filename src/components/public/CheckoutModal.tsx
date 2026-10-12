@@ -189,6 +189,18 @@ export default function CheckoutModal() {
       return;
     }
 
+    // Validar datos del titular si se eligió completarlos ahora en checkout
+    if (cart.some((c) => c.type === 'DOMAIN') && registrantTiming === 'NOW') {
+      if (!regPhone.trim() || !regAddress.trim() || !regCity.trim() || !regState.trim() || !regPostalCode.trim()) {
+        addToast({
+          type: 'error',
+          title: 'Datos de Registrador Incompletos',
+          message: 'Por favor completa los campos obligatorios de dirección física y teléfono para el titular del dominio, o selecciona "Completar después en Mi Panel".'
+        });
+        return;
+      }
+    }
+
     // 1. Ensure user is authenticated or registers real account
     let activeCustomerEmail = customerEmail.trim();
     let activeCustomerName = customerName.trim();
@@ -261,6 +273,19 @@ export default function CheckoutModal() {
       activeCustomerName = customerUser.name;
     }
 
+    const resolvedRegistrant = {
+      name: activeCustomerName,
+      company: companyName.trim() || undefined,
+      email: activeCustomerEmail,
+      phone: regPhone.trim() || customerUser?.phone || '',
+      taxId: regTaxId.trim() || '',
+      address: regAddress.trim() || customerUser?.address || '',
+      city: regCity.trim() || customerUser?.city || '',
+      state: regState.trim() || customerUser?.state || '',
+      postalCode: regPostalCode.trim() || customerUser?.postalCode || '',
+      country: countryCode || customerUser?.country || 'MX'
+    };
+
     setIsProcessing(true);
 
     // Crear la orden PRIMERO (server-authoritative). El servidor valida SKUs,
@@ -269,7 +294,10 @@ export default function CheckoutModal() {
     try {
       serverOrder = await processCheckout(
         paymentMethod,
-        { name: activeCustomerName, email: activeCustomerEmail }
+        { name: activeCustomerName, email: activeCustomerEmail },
+        undefined,
+        undefined,
+        resolvedRegistrant
       );
     } catch (err: any) {
       setIsProcessing(false);

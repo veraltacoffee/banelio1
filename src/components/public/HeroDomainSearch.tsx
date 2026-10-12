@@ -4,7 +4,7 @@ import { formatMoney } from '../../utils/pricing';
 import { Search, Loader2, CheckCircle2, XCircle, ShoppingBag, Shield, RefreshCw, Info, AlertCircle } from 'lucide-react';
 import WhoisModal from '../shared/WhoisModal';
 import DomainTransferModal from './DomainTransferModal';
-import { sanitizeDomainInput, checkDomainAvailability, checkDomainTransferEligibility, fetchTransferPricing, TransferPricingEntry, DomainSearchResult } from '../../services/domainService';
+import { sanitizeDomainInput, checkDomainAvailability, searchDomainsWithAlternatives, checkDomainTransferEligibility, fetchTransferPricing, TransferPricingEntry, DomainSearchResult } from '../../services/domainService';
 
 export default function HeroDomainSearch() {
   const { tlds, getTldPrice, currency, addToCart, cart, t, language } = useApp();
@@ -60,34 +60,19 @@ export default function HeroDomainSearch() {
         };
         setSearchResults([primaryResult]);
       } else {
-        // 1. Check the primary searched domain directly with the real backend endpoint: /api/domains/check.php?domain={domain}
-        const primaryResult = await checkDomainAvailability(sanitized.cleanDomain, primaryPrice, isPromo);
-
-        // 2. Query complementary TLDs for the brand name using the exact same real backend /api/domains/check.php endpoint
+        // Consultar el dominio principal y extensiones complementarias en una sola consulta autoritativa
         const complementaryTlds = tlds
           .filter((tItem) => tItem.tld !== sanitized.tld)
-          .slice(0, 7); // Top extensions to check concurrently
+          .slice(0, 7)
+          .map((tItem) => tItem.tld);
 
-        const complementaryPromises = complementaryTlds.map(async (tItem) => {
-          const altDomain = `${sanitized.domainNameOnly}.${tItem.tld}`;
-          const altPrice = getTldPrice(tItem.tld);
-          return checkDomainAvailability(altDomain, altPrice, !!tItem.isPromo);
-        });
+        const batchResult = await searchDomainsWithAlternatives(sanitized.cleanDomain, complementaryTlds);
+        setSearchResults(batchResult.all);
 
-        const altResultsSettled = await Promise.allSettled(complementaryPromises);
-        const altResults: DomainSearchResult[] = [];
-
-        altResultsSettled.forEach((res) => {
-          if (res.status === 'fulfilled') {
-            altResults.push(res.value);
-          }
-        });
-
-        const combinedResults = [primaryResult, ...altResults];
-        setSearchResults(combinedResults);
-
-        if (primaryResult.status === 'error' && primaryResult.errorMsg) {
-          setSearchError(primaryResult.errorMsg);
+        if (batchResult.primary.status === 'error' && batchResult.primary.errorMsg) {
+          setSearchError(batchResult.primary.errorMsg);
+        } else if (batchResult.error) {
+          setSearchError(batchResult.error);
         }
       }
     } catch (err: any) {
@@ -498,15 +483,6 @@ export default function HeroDomainSearch() {
                           <button
                             id={`transfer-occupied-btn-${item.domain.replace('.', '-')}`}
                             onClick={() => {
-                              addToCart({
-                                type: 'DOMAIN',
-                                sku: `domain-${resolveTransferTld(item.domain)}-transfer`,
-                                name: item.domain,
-                                periodYearsOrMonths: 1,
-                                periodUnit: 'year',
-                                basePriceUSD: getTransferPrice(item.domain) ?? 0,
-                                addons: { isTransfer: true, whoisPrivacy: true }
-                              });
                               setTransferDomain(item.domain);
                               setTransferPriceUSD(getTransferPrice(item.domain) ?? 0);
                             }}

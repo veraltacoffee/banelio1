@@ -41,6 +41,16 @@ if (empty($domainRaw)) {
 // Sanitizar dominio
 $domainClean = strtolower(preg_replace('/^https?:\/\//i', '', $domainRaw));
 $domainClean = preg_replace('/^www\./i', '', $domainClean);
+$domainClean = trim($domainClean, '/');
+$domainClean = preg_replace('/[^a-z0-9.-]/', '', $domainClean);
+
+if (empty($domainClean)) {
+    send_json_response([
+        'success' => false,
+        'error' => 'Nombre de dominio no válido.'
+    ], 400);
+}
+
 $parts = explode('.', $domainClean);
 $sld = $parts[0];
 
@@ -48,19 +58,30 @@ $sld = $parts[0];
 $tldsToQuery = [];
 if (count($parts) > 1) {
     $tldsToQuery[] = implode('.', array_slice($parts, 1));
-} else {
-    $customTlds = $_GET['tlds'] ?? $_GET['tld'] ?? '';
-    if (!empty($customTlds)) {
-        $tldsToQuery = is_array($customTlds) ? $customTlds : explode(',', $customTlds);
-    } else {
-        $tldsToQuery = ['com', 'net', 'org', 'mx', 'com.mx'];
+}
+
+// Soporte para TLDs complementarios en la misma consulta
+$customTlds = $_GET['tlds'] ?? $_GET['tld'] ?? '';
+if (!empty($customTlds)) {
+    $extraTlds = is_array($customTlds) ? $customTlds : explode(',', (string)$customTlds);
+    foreach ($extraTlds as $et) {
+        $cleanEt = strtolower(trim(ltrim((string)$et, '.')));
+        if (!empty($cleanEt) && !in_array($cleanEt, $tldsToQuery, true)) {
+            $tldsToQuery[] = $cleanEt;
+        }
     }
+}
+
+// Si no se proporcionaron extensiones, consultar las principales por defecto
+if (empty($tldsToQuery)) {
+    $tldsToQuery = ['com', 'net', 'org', 'mx', 'com.mx'];
 }
 
 // Limpiar TLDs
 $cleanTlds = [];
 foreach ($tldsToQuery as $tld) {
     $t = strtolower(trim(ltrim($tld, '.')));
+    $t = preg_replace('/[^a-z0-9.-]/', '', $t);
     if (!empty($t) && !in_array($t, $cleanTlds, true)) {
         $cleanTlds[] = $t;
     }
@@ -76,7 +97,7 @@ if (empty($sld) || empty($cleanTlds)) {
 try {
     $client = new ResellerClubClient();
 
-    // Preparar llamada GET /domains/available.json
+    // Preparar llamada GET /domains/available.json hacia ResellerClub
     $params = [
         'domain-name' => $sld,
         'tlds' => $cleanTlds
@@ -93,32 +114,47 @@ try {
 
     $results = [];
     $isDirectQueryAvailable = false;
+    $targetMatchDomain = count($parts) > 1 ? $domainClean : ($sld . '.' . $cleanTlds[0]);
 
     foreach ($response as $fullDomain => $details) {
         if (!is_array($details)) continue;
 
-        $statusRaw = isset($details['status']) ? strtolower($details['status']) : '';
+        $statusRaw = isset($details['status']) ? strtolower(trim((string)$details['status'])) : '';
         $isAvailable = ($statusRaw === 'available');
 
-        // Mapeo seguro y estricto de disponibilidad
-        $statusStandard = 'unavailable';
+        // Mapeo seguro, autoritativo y estricto de disponibilidad según la respuesta real del proveedor
+        $statusStandard = 'unknown';
         if ($isAvailable) {
             $statusStandard = 'available';
         } elseif ($statusRaw === 'regthroughus') {
             $statusStandard = 'regthroughus';
-        } else {
+        } elseif ($statusRaw === 'regthroughothers' || $statusRaw === 'registered' || $statusRaw === 'unavailable') {
             $statusStandard = 'regthroughothers';
+        } else {
+            // Respuestas incompletas o errores del registry no inventan estado ocupado ni libre
+            $statusStandard = 'unknown';
         }
 
         $results[$fullDomain] = [
             'status' => $statusStandard,
+            'raw_status' => $statusRaw,
             'available' => $isAvailable,
+            'can_register' => $isAvailable,
+            'can_transfer' => ($statusStandard === 'regthroughothers'),
             'classkey' => isset($details['classkey']) ? $details['classkey'] : null
         ];
 
-        if ($fullDomain === $domainClean && $isAvailable) {
+        if ($fullDomain === $targetMatchDomain && $isAvailable) {
             $isDirectQueryAvailable = true;
         }
+    }
+
+    if (empty($results)) {
+        send_json_response([
+            'success' => false,
+            'domain' => $domainClean,
+            'error' => 'El proveedor mayorista no retornó resultados de disponibilidad para las extensiones solicitadas.'
+        ], 502);
     }
 
     send_json_response([

@@ -4,7 +4,7 @@ import { formatMoney } from '../../utils/pricing';
 import { Search, Loader2, CheckCircle2, Shield, ShoppingBag, RefreshCw, Info, Lock, Cpu, AlertCircle, XCircle } from 'lucide-react';
 import WhoisModal from '../shared/WhoisModal';
 import DomainTransferModal from './DomainTransferModal';
-import { sanitizeDomainInput, checkDomainAvailability, checkDomainTransferEligibility, fetchTransferPricing, TransferPricingEntry, DomainSearchResult } from '../../services/domainService';
+import { sanitizeDomainInput, checkDomainAvailability, searchDomainsWithAlternatives, checkDomainTransferEligibility, fetchTransferPricing, TransferPricingEntry, DomainSearchResult } from '../../services/domainService';
 
 export default function DomainsLanding() {
   const { tlds, getTldPrice, currency, addToCart, cart, t, language } = useApp();
@@ -58,32 +58,18 @@ export default function DomainsLanding() {
         };
         setSearchResults([primaryResult]);
       } else {
-        const primaryResult = await checkDomainAvailability(sanitized.cleanDomain, primaryPrice, isPromo);
-
         const complementaryTlds = tlds
           .filter((tItem) => tItem.tld !== sanitized.tld)
-          .slice(0, 7);
+          .slice(0, 7)
+          .map((tItem) => tItem.tld);
 
-        const complementaryPromises = complementaryTlds.map(async (tItem) => {
-          const altDomain = `${sanitized.domainNameOnly}.${tItem.tld}`;
-          const altPrice = getTldPrice(tItem.tld);
-          return checkDomainAvailability(altDomain, altPrice, !!tItem.isPromo);
-        });
+        const batchResult = await searchDomainsWithAlternatives(sanitized.cleanDomain, complementaryTlds);
+        setSearchResults(batchResult.all);
 
-        const altResultsSettled = await Promise.allSettled(complementaryPromises);
-        const altResults: DomainSearchResult[] = [];
-
-        altResultsSettled.forEach((res) => {
-          if (res.status === 'fulfilled') {
-            altResults.push(res.value);
-          }
-        });
-
-        const combinedResults = [primaryResult, ...altResults];
-        setSearchResults(combinedResults);
-
-        if (primaryResult.status === 'error' && primaryResult.errorMsg) {
-          setSearchError(primaryResult.errorMsg);
+        if (batchResult.primary.status === 'error' && batchResult.primary.errorMsg) {
+          setSearchError(batchResult.primary.errorMsg);
+        } else if (batchResult.error) {
+          setSearchError(batchResult.error);
         }
       }
     } catch (err: any) {
@@ -336,7 +322,9 @@ export default function DomainsLanding() {
                             </span>
                           ) : (
                             <span className="text-[10px] font-bold uppercase tracking-wider bg-[#8A8F98] text-[#555A52] px-2.5 py-0.5 rounded-full">
-                              {language === 'en' ? 'Not Available' : 'No disponible'}
+                              {item.status === 'unknown' || item.status === 'error'
+                                ? (language === 'en' ? 'Could not determine' : 'No se pudo determinar')
+                                : (language === 'en' ? 'Not Available' : 'No disponible')}
                             </span>
                           )}
                           {item.isPromo && (
@@ -445,7 +433,13 @@ export default function DomainsLanding() {
                             <span>{t('hero_whois_btn')}</span>
                           </button>
 
-                          {getTransferPrice(item.domain) === null ? (
+                          {item.status === 'unknown' || item.status === 'error' ? (
+                            <span className="text-[11px] font-semibold text-[#858A82] px-2 py-2 text-right max-w-[180px]">
+                              {language === 'en'
+                                ? 'Status could not be verified'
+                                : 'No se pudo verificar el estado'}
+                            </span>
+                          ) : getTransferPrice(item.domain) === null ? (
                             <span className="text-[11px] font-semibold text-[#B45309] px-2 py-2 text-right">
                               {language === 'en' ? 'Transfer pricing not configured' : 'Precio de transferencia no configurado'}
                             </span>
@@ -453,15 +447,6 @@ export default function DomainsLanding() {
                             <button
                               id={`transfer-occupied-landing-btn-${item.domain.replace('.', '-')}`}
                               onClick={() => {
-                                addToCart({
-                                  type: 'DOMAIN',
-                                  sku: `domain-${resolveTransferTld(item.domain)}-transfer`,
-                                  name: item.domain,
-                                  periodYearsOrMonths: 1,
-                                  periodUnit: 'year',
-                                  basePriceUSD: getTransferPrice(item.domain) ?? 0,
-                                  addons: { isTransfer: true, whoisPrivacy: true }
-                                });
                                 setTransferDomain(item.domain);
                                 setTransferPriceUSD(getTransferPrice(item.domain) ?? 0);
                               }}

@@ -41,7 +41,9 @@ export default function DomainTransferModal({
     customerUser,
     currency,
     language,
+    cart,
     addToCart,
+    removeFromCart,
     setIsCartOpen,
     setSharedRegistrantContact,
     addToast
@@ -49,6 +51,7 @@ export default function DomainTransferModal({
 
   const [step, setStep] = useState<TransferStep>(1);
   const [cleanDomain, setCleanDomain] = useState<string>('');
+  const [inputDomain, setInputDomain] = useState<string>('');
 
   // Eligibility check state
   const [isCheckingEligibility, setIsCheckingEligibility] = useState<boolean>(false);
@@ -78,6 +81,42 @@ export default function DomainTransferModal({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [resolvedPrice, setResolvedPrice] = useState<number>(priceUSD || 12.99);
 
+  const runEligibilityCheck = (targetDomain: string, targetPrice?: number) => {
+    setIsCheckingEligibility(true);
+    checkDomainTransferEligibility(targetDomain, targetPrice)
+      .then((result) => {
+        setIsEligible(result.canTransfer);
+        setEligibilityStatus(result.status);
+        setEligibilityMessage(result.message);
+        if (result.priceUSD && result.priceUSD > 0) {
+          setResolvedPrice(result.priceUSD);
+        }
+      })
+      .catch(() => {
+        setIsEligible(false);
+        setEligibilityStatus('error');
+        setEligibilityMessage('No fue posible contactar con el registry para verificar transferibilidad.');
+      })
+      .finally(() => {
+        setIsCheckingEligibility(false);
+      });
+  };
+
+  const handleVerifyManualDomain = (domToVerify?: string) => {
+    const candidate = (domToVerify || inputDomain).trim();
+    const sanitized = sanitizeDomainInput(candidate);
+    if (!sanitized.valid) {
+      setValidationErrors({
+        domain: sanitized.error || (language === 'en' ? 'Please enter a valid domain' : 'Por favor ingresa un nombre de dominio válido.')
+      });
+      return;
+    }
+    setValidationErrors({});
+    setCleanDomain(sanitized.cleanDomain);
+    setInputDomain(sanitized.cleanDomain);
+    runEligibilityCheck(sanitized.cleanDomain, priceUSD > 0 ? priceUSD : undefined);
+  };
+
   // Initialize on open
   useEffect(() => {
     if (isOpen) {
@@ -89,12 +128,19 @@ export default function DomainTransferModal({
       setEligibilityStatus('');
       setEligibilityMessage('');
 
-      const sanitized = sanitizeDomainInput(domain);
-      const targetDomain = sanitized.valid ? sanitized.cleanDomain : domain.trim().toLowerCase();
-      setCleanDomain(targetDomain);
-
-      if (priceUSD > 0) {
-        setResolvedPrice(priceUSD);
+      const raw = (domain || '').trim();
+      if (raw) {
+        const sanitized = sanitizeDomainInput(raw);
+        const targetDomain = sanitized.valid ? sanitized.cleanDomain : raw.toLowerCase();
+        setCleanDomain(targetDomain);
+        setInputDomain(targetDomain);
+        if (priceUSD > 0) {
+          setResolvedPrice(priceUSD);
+        }
+        runEligibilityCheck(targetDomain, priceUSD);
+      } else {
+        setCleanDomain('');
+        setInputDomain('');
       }
 
       if (customerUser) {
@@ -111,28 +157,6 @@ export default function DomainTransferModal({
           country: customerUser.country || 'Mexico',
           postal_code: customerUser.postalCode || ''
         });
-      }
-
-      // Check transfer eligibility upon modal open
-      if (targetDomain) {
-        setIsCheckingEligibility(true);
-        checkDomainTransferEligibility(targetDomain, priceUSD)
-          .then((result) => {
-            setIsEligible(result.canTransfer);
-            setEligibilityStatus(result.status);
-            setEligibilityMessage(result.message);
-            if (result.priceUSD && result.priceUSD > 0) {
-              setResolvedPrice(result.priceUSD);
-            }
-          })
-          .catch(() => {
-            setIsEligible(false);
-            setEligibilityStatus('error');
-            setEligibilityMessage('No fue posible contactar con el registry para verificar transferibilidad.');
-          })
-          .finally(() => {
-            setIsCheckingEligibility(false);
-          });
       }
     }
   }, [isOpen, domain, customerUser, priceUSD]);
@@ -214,6 +238,14 @@ export default function DomainTransferModal({
 
     // Keep shared registrant contact synchronized in AppContext
     setSharedRegistrantContact(registrant);
+
+    // If an item for this domain was already in the cart, remove it first to ensure clean replacement
+    const existing = cart.find(
+      (item) => item.name.toLowerCase() === cleanDomain.toLowerCase() && item.type === 'DOMAIN'
+    );
+    if (existing) {
+      removeFromCart(existing.id);
+    }
 
     // Add DOMAIN_TRANSFER product to commercial cart
     addToCart({
@@ -318,62 +350,130 @@ export default function DomainTransferModal({
         {/* ============================================================ */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in">
-            <div className="p-5 bg-[#F7F8F0] border border-[#8A8F98] rounded-2xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {!cleanDomain ? (
+              <div className="p-5 bg-[#F7F8F0] border border-[#8A8F98] rounded-2xl space-y-3">
                 <div>
-                  <span className="text-xs text-[#555A52] font-semibold uppercase tracking-wider block">
-                    {language === 'en' ? 'Domain to Transfer' : 'Dominio a Transferir'}
-                  </span>
-                  <span className="text-2xl font-black text-[#070707] font-mono tracking-tight">{cleanDomain}</span>
+                  <label className="text-xs text-[#555A52] font-semibold uppercase tracking-wider block mb-1">
+                    {language === 'en' ? 'Domain to Transfer' : 'Dominio a Transferir'} *
+                  </label>
+                  <p className="text-xs text-[#555A52] mb-3">
+                    {language === 'en'
+                      ? 'Enter the domain registered with another provider you want to transfer to Banelio.'
+                      : 'Ingresa el dominio registrado con otro proveedor que deseas transferir hacia Banelio.'}
+                  </p>
                 </div>
-                <div className="text-right sm:text-right">
-                  <span className="text-xs text-[#555A52] font-semibold block">
-                    {language === 'en' ? 'Transfer + 1 Year Renewal' : 'Transferencia + 1 Año Renovación'}
-                  </span>
-                  <span className="text-2xl font-black text-[#070707]">{formatMoney(resolvedPrice, currency)}</span>
-                </div>
-              </div>
 
-              {/* Status indicator */}
-              <div className="mt-4 pt-4 border-t border-[#8A8F98]">
-                {isCheckingEligibility ? (
-                  <div className="flex items-center gap-2 text-xs text-[#555A52] font-medium">
-                    <RefreshCw size={15} className="animate-spin text-[#B8F23A]" />
-                    <span>Verificando elegibilidad con el Registry...</span>
-                  </div>
-                ) : isEligible === false && eligibilityStatus === 'available' ? (
-                  <div className="flex items-start gap-2.5 text-xs text-amber-700 font-bold bg-amber-50 p-3 rounded-xl border border-amber-200">
-                    <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-black text-amber-800">Dominio Disponible para Registro Nuevo</p>
-                      <p className="font-normal text-amber-700 mt-0.5">
-                        Este dominio no está registrado actualmente. Puedes registrarlo como dominio nuevo directamente sin necesidad de transferencia.
-                      </p>
-                    </div>
-                  </div>
-                ) : isEligible === false && eligibilityStatus === 'regthroughus' ? (
-                  <div className="flex items-start gap-2.5 text-xs text-blue-700 font-bold bg-blue-50 p-3 rounded-xl border border-blue-200">
-                    <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-black text-blue-800">Dominio ya gestionado en Banelio</p>
-                      <p className="font-normal text-blue-700 mt-0.5">
-                        Este dominio ya se encuentra registrado y activo dentro de la plataforma Banelio. Puedes gestionarlo desde tu panel de cliente.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5 text-xs text-[#070707] font-bold">
-                    <CheckCircle2 size={16} className="text-[#B8F23A] shrink-0" />
-                    <span>
-                      {eligibilityMessage ||
-                        (language === 'en'
-                          ? 'Status: Registered externally (Eligible for transfer)'
-                          : 'Estado: Registrado con otro proveedor (Elegible para transferencia)')}
-                    </span>
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    id="manual-transfer-domain-input"
+                    value={inputDomain}
+                    onChange={(e) => {
+                      setInputDomain(e.target.value);
+                      if (validationErrors.domain) setValidationErrors({});
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleVerifyManualDomain();
+                      }
+                    }}
+                    placeholder="ejemplo.com"
+                    className={`flex-1 px-4 py-2.5 bg-white border ${
+                      validationErrors.domain ? 'border-red-500' : 'border-[#8A8F98]'
+                    } rounded-xl text-sm font-mono font-bold text-[#070707] outline-none focus:border-[#B8F23A]`}
+                  />
+                  <button
+                    type="button"
+                    id="manual-transfer-domain-verify-btn"
+                    disabled={isCheckingEligibility || !inputDomain.trim()}
+                    onClick={() => handleVerifyManualDomain()}
+                    className="px-6 py-2.5 bg-[#B8F23A] hover:bg-[#B8F23A] disabled:bg-[#8A8F98] text-[#070707] font-black text-xs rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isCheckingEligibility ? <RefreshCw size={14} className="animate-spin" /> : null}
+                    <span>{language === 'en' ? 'Verify Domain' : 'Verificar'}</span>
+                  </button>
+                </div>
+
+                {validationErrors.domain && (
+                  <p className="text-[11px] font-semibold text-red-600 flex items-center gap-1 mt-1">
+                    <AlertCircle size={12} />
+                    {validationErrors.domain}
+                  </p>
                 )}
               </div>
-            </div>
+            ) : (
+              <div className="p-5 bg-[#F7F8F0] border border-[#8A8F98] rounded-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs text-[#555A52] font-semibold uppercase tracking-wider block">
+                      {language === 'en' ? 'Domain to Transfer' : 'Dominio a Transferir'}
+                    </span>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-2xl font-black text-[#070707] font-mono tracking-tight">{cleanDomain}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCleanDomain('');
+                          setIsEligible(null);
+                          setEligibilityStatus('');
+                          setEligibilityMessage('');
+                        }}
+                        className="text-[11px] font-bold text-[#555A52] hover:text-[#070707] underline cursor-pointer"
+                      >
+                        {language === 'en' ? 'Change' : 'Cambiar'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-right sm:text-right">
+                    <span className="text-xs text-[#555A52] font-semibold block">
+                      {language === 'en' ? 'Transfer + 1 Year Renewal' : 'Transferencia + 1 Año Renovación'}
+                    </span>
+                    <span className="text-2xl font-black text-[#070707]">{formatMoney(resolvedPrice, currency)}</span>
+                  </div>
+                </div>
+
+                {/* Status indicator */}
+                <div className="mt-4 pt-4 border-t border-[#8A8F98]">
+                  {isCheckingEligibility ? (
+                    <div className="flex items-center gap-2 text-xs text-[#555A52] font-medium">
+                      <RefreshCw size={15} className="animate-spin text-[#B8F23A]" />
+                      <span>Verificando elegibilidad con el Registry...</span>
+                    </div>
+                  ) : isEligible === false && eligibilityStatus === 'available' ? (
+                    <div className="flex items-start gap-2.5 text-xs text-amber-700 font-bold bg-amber-50 p-3 rounded-xl border border-amber-200">
+                      <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-black text-amber-800">Dominio Disponible para Registro Nuevo</p>
+                        <p className="font-normal text-amber-700 mt-0.5">
+                          Este dominio no está registrado actualmente. Puedes registrarlo como dominio nuevo directamente sin necesidad de transferencia.
+                        </p>
+                      </div>
+                    </div>
+                  ) : isEligible === false && eligibilityStatus === 'regthroughus' ? (
+                    <div className="flex items-start gap-2.5 text-xs text-blue-700 font-bold bg-blue-50 p-3 rounded-xl border border-blue-200">
+                      <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-black text-blue-800">Dominio ya gestionado en Banelio</p>
+                        <p className="font-normal text-blue-700 mt-0.5">
+                          Este dominio ya se encuentra registrado y activo dentro de la plataforma Banelio. Puedes gestionarlo desde tu panel de cliente.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2.5 text-xs text-[#070707] font-bold">
+                      <CheckCircle2 size={16} className="text-[#B8F23A] shrink-0" />
+                      <span>
+                        {eligibilityMessage ||
+                          (language === 'en'
+                            ? 'Status: Registered externally (Eligible for transfer)'
+                            : 'Estado: Registrado con otro proveedor (Elegible para transferencia)')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="p-4 bg-white border border-[#8A8F98] rounded-2xl space-y-2 text-xs text-[#555A52]">
               <div className="font-bold text-[#070707] flex items-center gap-1.5">
@@ -395,7 +495,7 @@ export default function DomainTransferModal({
               >
                 {language === 'en' ? 'Cancel' : 'Cancelar'}
               </button>
-              {isEligible !== false ? (
+              {cleanDomain && isEligible !== false ? (
                 <button
                   type="button"
                   id="transfer-step1-continue-btn"

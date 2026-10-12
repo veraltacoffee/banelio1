@@ -152,7 +152,8 @@ interface AppContextType {
     paymentMethod: PaymentMethod,
     customerInfo: { name: string; email: string },
     oxxoDetails?: { reference: string; expiresAt: string },
-    paymentStatus?: { confirmed: boolean; gatewayReference?: string }
+    paymentStatus?: { confirmed: boolean; gatewayReference?: string },
+    registrantContact?: Partial<DomainRegistrantContact>
   ) => Promise<Order>;
   tickets: SupportTicket[];
   createTicket: (subject: string, category: any, priority: any, message: string) => void;
@@ -752,8 +753,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Cart operations
   const addToCart = (item: Omit<CartItem, 'id'>) => {
     // Check if already in cart
-    const exists = cart.find((i) => i.name.toLowerCase() === item.name.toLowerCase() && i.type === item.type);
-    if (exists) {
+    const existsIndex = cart.findIndex((i) => i.name.toLowerCase() === item.name.toLowerCase() && i.type === item.type);
+    if (existsIndex >= 0) {
+      if (item.addons?.isTransfer || item.sku === 'DOMAIN_TRANSFER') {
+        setCart((prev) =>
+          prev.map((i, idx) => (idx === existsIndex ? { ...item, id: i.id } : i))
+        );
+        addToast({
+          type: 'success',
+          title: 'Carrito actualizado',
+          message: `${item.name} se actualizó con los datos de transferencia.`
+        });
+        setIsCartOpen(true);
+        return;
+      }
       addToast({
         type: 'info',
         title: 'Ya en el carrito',
@@ -1015,20 +1028,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // generen una nueva identidad de checkout.
   const createServerOrderCheckoutRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
-  const createServerOrder = async (customerInfo: { name: string; email: string }): Promise<any> => {
+  const createServerOrder = async (
+    customerInfo: { name: string; email: string },
+    options?: { registrant?: Partial<DomainRegistrantContact> }
+  ): Promise<any> => {
     const items = cart.map((item) => ({
       sku: item.sku || '',
       quantity: cartItemQuantity(item),
       periodYearsOrMonths: Math.max(1, item.periodYearsOrMonths || 1),
       periodUnit: item.periodUnit || 'year',
       isTransfer: Boolean(item.addons?.isTransfer) || undefined,
-      ...(item.addons?.isTransfer && item.addons?.eppCode ? { eppCode: item.addons.eppCode } : {})
+      domain: item.type === 'DOMAIN' ? item.name : undefined,
+      ...(item.addons?.isTransfer && item.addons?.eppCode ? { eppCode: item.addons.eppCode } : {}),
+      ...(item.type === 'DOMAIN' && item.addons?.registrantContact ? {
+        registrant: {
+          name: item.addons.registrantContact.name,
+          org: item.addons.registrantContact.company,
+          email: item.addons.registrantContact.email,
+          phone: item.addons.registrantContact.phone,
+          address: item.addons.registrantContact.address,
+          city: item.addons.registrantContact.city,
+          state: item.addons.registrantContact.state,
+          postalCode: item.addons.registrantContact.postalCode,
+          country: item.addons.registrantContact.country
+        }
+      } : {})
     }));
 
     const checkoutFingerprint = JSON.stringify({
       items: [...items].sort((a, b) =>
-        `${a.sku}|${a.quantity}|${a.periodYearsOrMonths}|${a.periodUnit}|${Boolean(a.isTransfer)}|${a.eppCode || ''}`.localeCompare(
-          `${b.sku}|${b.quantity}|${b.periodYearsOrMonths}|${b.periodUnit}|${Boolean(b.isTransfer)}|${b.eppCode || ''}`
+        `${a.sku}|${a.quantity}|${a.periodYearsOrMonths}|${a.periodUnit}|${Boolean(a.isTransfer)}|${a.eppCode || ''}|${a.domain || ''}`.localeCompare(
+          `${b.sku}|${b.quantity}|${b.periodYearsOrMonths}|${b.periodUnit}|${Boolean(b.isTransfer)}|${b.eppCode || ''}|${b.domain || ''}`
         )
       ),
       countryCode,
@@ -1047,6 +1077,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const idempotencyKey = createServerOrderCheckoutRef.current.key;
 
+    const resolvedRegistrant = options?.registrant || (sharedRegistrantContact?.email || sharedRegistrantContact?.name ? sharedRegistrantContact : null);
+    const registrantPayload = resolvedRegistrant && (resolvedRegistrant.name || resolvedRegistrant.email) ? {
+      name: resolvedRegistrant.name || customerInfo.name,
+      org: resolvedRegistrant.company,
+      email: resolvedRegistrant.email || customerInfo.email,
+      phone: resolvedRegistrant.phone,
+      address: resolvedRegistrant.address,
+      city: resolvedRegistrant.city,
+      state: resolvedRegistrant.state,
+      postalCode: resolvedRegistrant.postalCode,
+      country: resolvedRegistrant.country || countryCode
+    } : undefined;
+
     const res = await fetch('/api/orders/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1058,17 +1101,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         customer: {
           email: customerInfo?.email || customerUser?.email || undefined,
           name: customerInfo?.name || customerUser?.name || undefined,
-          registrant: sharedRegistrantContact?.email ? {
-            name: sharedRegistrantContact.name,
-            org: sharedRegistrantContact.company,
-            email: sharedRegistrantContact.email,
-            phone: sharedRegistrantContact.phone,
-            address: sharedRegistrantContact.address,
-            city: sharedRegistrantContact.city,
-            state: sharedRegistrantContact.state,
-            postalCode: sharedRegistrantContact.postalCode,
-            country: sharedRegistrantContact.country
-          } : undefined
+          phone: resolvedRegistrant?.phone || undefined,
+          registrant: registrantPayload
         },
         items
       })
@@ -1099,14 +1133,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     paymentMethod: PaymentMethod,
     customerInfo: { name: string; email: string },
     oxxoDetails?: { reference: string; expiresAt: string },
-    paymentStatus?: { confirmed: boolean; gatewayReference?: string }
+    paymentStatus?: { confirmed: boolean; gatewayReference?: string },
+    registrantContact?: Partial<DomainRegistrantContact>
   ): Promise<Order> => {
     let serverOrder: any;
     try {
-      serverOrder = await createServerOrder({
-        name: customerInfo.name || customerUser?.name || 'Cliente',
-        email: customerInfo.email || customerUser?.email || ''
-      });
+      serverOrder = await createServerOrder(
+        {
+          name: customerInfo.name || customerUser?.name || 'Cliente',
+          email: customerInfo.email || customerUser?.email || ''
+        },
+        { registrant: registrantContact }
+      );
     } catch (err: any) {
       addToast({
         type: 'error',

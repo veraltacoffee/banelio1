@@ -175,17 +175,31 @@ export default function CustomerDashboard() {
   const customerDisplayEmail = customerUser?.email || '';
 
   // Filter domain services (prioritizing authoritative /api/customer/domains, fallback to services)
-  const domainServices = serverDomains.length > 0
-    ? serverDomains.map((d) => ({
-        id: String(d.id || d.identifier),
-        name: d.domain || d.identifier || d.serviceName || d.name || 'dominio.com',
-        type: 'DOMAIN' as const,
-        status: (d.status || 'Active') as any,
-        renewalDate: d.expiryDate || d.expiresAt || d.renewalDate || 'Anual',
-        autoRenew: d.autoRenew ?? true,
-        whoisPrivacy: d.privacyProtection ?? true,
-        transferLock: d.locked ?? true
-      }))
+  const domainServices: UserService[] = serverDomains.length > 0
+    ? serverDomains.map((d) => {
+        const domainName = d.domain || (d.config && typeof d.config === 'object' && d.config.domain) || d.identifier || d.serviceName || d.name || 'dominio.com';
+        const expDate = d.expiryDate ? String(d.expiryDate).slice(0, 10) : (d.expiresAt ? String(d.expiresAt).slice(0, 10) : (d.renewalDate || 'Anual'));
+        const regDate = d.creationDate ? String(d.creationDate).slice(0, 10) : (d.grantedAt ? String(d.grantedAt).slice(0, 10) : (d.registeredDate || 'Reciente'));
+        const provId = String(d.providerOrderId || (d.config && typeof d.config === 'object' && d.config.providerOrderId) || d.providerId || d.entityId || d.id || 'N/A');
+        return {
+          id: String(d.id || d.identifier),
+          name: domainName,
+          type: 'DOMAIN' as const,
+          planName: d.planName || d.sku || 'Registro de Dominio',
+          status: (d.status || 'Active') as any,
+          providerId: provId,
+          registeredDate: regDate,
+          expiryDate: expDate,
+          renewalDate: expDate,
+          autoRenew: d.autoRenew ?? true,
+          whoisPrivacy: d.privacyProtection ?? d.whoisPrivacy ?? true,
+          transferLock: d.locked ?? d.transferLock ?? true,
+          nameservers: Array.isArray(d.nameservers) ? d.nameservers : ['ns1.banelio.com', 'ns2.banelio.com'],
+          dnsRecords: Array.isArray(d.dnsRecords) ? d.dnsRecords : [],
+          eppCode: d.eppCode || (d.config && typeof d.config === 'object' && d.config.eppCode) || undefined,
+          registrantContact: d.registrantContact || (d.config && typeof d.config === 'object' && d.config.registrant) || undefined
+        };
+      })
     : services.filter((s) => s.type === 'DOMAIN');
 
   // Customer orders (prioritize authoritative server orders, then session orders)
@@ -198,21 +212,33 @@ export default function CustomerDashboard() {
       });
 
   const handleToggleWhois = (service: UserService) => {
+    const nextVal = !service.whoisPrivacy;
     updateService(service.id, {
-      whoisPrivacy: !service.whoisPrivacy
+      whoisPrivacy: nextVal
     });
+    setServerDomains((prev) =>
+      prev.map((d) => (String(d.id || d.identifier) === service.id ? { ...d, privacyProtection: nextVal, whoisPrivacy: nextVal } : d))
+    );
   };
 
   const handleToggleAutoRenew = (service: UserService) => {
+    const nextVal = !service.autoRenew;
     updateService(service.id, {
-      autoRenew: !service.autoRenew
+      autoRenew: nextVal
     });
+    setServerDomains((prev) =>
+      prev.map((d) => (String(d.id || d.identifier) === service.id ? { ...d, autoRenew: nextVal } : d))
+    );
   };
 
   const handleToggleTransferLock = (service: UserService) => {
+    const nextVal = !service.transferLock;
     updateService(service.id, {
-      transferLock: !service.transferLock
+      transferLock: nextVal
     });
+    setServerDomains((prev) =>
+      prev.map((d) => (String(d.id || d.identifier) === service.id ? { ...d, locked: nextVal, transferLock: nextVal } : d))
+    );
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -1688,6 +1714,13 @@ export default function CustomerDashboard() {
         domain={registrantModalDomain}
         isOpen={Boolean(registrantModalDomain)}
         onClose={() => setRegistrantModalDomain(null)}
+        onSaved={(updatedContact) => {
+          if (registrantModalDomain) {
+            setServerDomains((prev) =>
+              prev.map((d) => (String(d.id || d.identifier) === registrantModalDomain.id ? { ...d, registrantContact: updatedContact } : d))
+            );
+          }
+        }}
       />
 
       {eppModalDomain && (

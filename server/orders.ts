@@ -107,6 +107,20 @@ export interface OrderCreateInput {
     isTransfer?: boolean;
     eppCode?: string;
     domain?: string;
+    registrant?: {
+      name?: string;
+      org?: string;
+      company?: string;
+      email?: string;
+      phone?: string;
+      phone_cc?: string;
+      phoneCc?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
   }>;
 }
 
@@ -178,6 +192,27 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
   const catalog = await getActiveCatalog(prisma);
   const catalogBySku = new Map(catalog.map((c) => [c.sku, c]));
 
+function sanitizeRegistrant(reg: any) {
+  if (!reg || typeof reg !== 'object') return null;
+  const name = typeof reg.name === 'string' ? reg.name.trim() : '';
+  const email = typeof reg.email === 'string' ? reg.email.trim().toLowerCase() : '';
+  if (!name && !email) return null;
+  return {
+    name,
+    org: typeof (reg.org ?? reg.company) === 'string' ? (reg.org ?? reg.company).trim() : undefined,
+    email,
+    phone: typeof reg.phone === 'string' ? reg.phone.trim() : '',
+    phone_cc: typeof reg.phone_cc === 'string'
+      ? reg.phone_cc.trim()
+      : (typeof reg.phoneCc === 'string' ? reg.phoneCc.trim() : ''),
+    address: typeof reg.address === 'string' ? reg.address.trim() : '',
+    city: typeof reg.city === 'string' ? reg.city.trim() : '',
+    state: typeof reg.state === 'string' ? reg.state.trim() : '',
+    postalCode: typeof (reg.postalCode ?? reg.zipcode) === 'string' ? (reg.postalCode ?? reg.zipcode).trim() : '',
+    country: typeof reg.country === 'string' ? reg.country.trim() : ''
+  };
+}
+
   interface BuiltLine {
     sku: string;
     name: string;
@@ -185,11 +220,13 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     billingPeriod: string;
     unitPriceUSD: number;
     quantity: number;
+    periodYearsOrMonths: number;
     periodUnit: 'year' | 'month';
     isTransfer?: boolean;
     eppCode?: string;
     domain?: string;
     transferStatus?: string;
+    registrant?: any;
   }
 
   const lines: BuiltLine[] = [];
@@ -250,11 +287,25 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
         active: true
       };
     } else {
-      if (!catalogBySku.has(sku)) {
+      let catalogSku = sku;
+      if (!catalogBySku.has(catalogSku)) {
+        if (catalogSku.startsWith('tld-')) {
+          const altSku = `domain-${catalogSku.slice(4)}`;
+          if (catalogBySku.has(altSku)) catalogSku = altSku;
+        } else if (catalogSku.startsWith('domain-') && !catalogSku.endsWith('-transfer') && !catalogSku.endsWith('-renew')) {
+          const altSku = `tld-${catalogSku.slice(7)}`;
+          if (catalogBySku.has(altSku)) catalogSku = altSku;
+        } else if (domainName && domainName.includes('.')) {
+          const tldPart = domainName.split('.').slice(1).join('.').replace(/\./g, '-');
+          if (catalogBySku.has(`domain-${tldPart}`)) catalogSku = `domain-${tldPart}`;
+        }
+      }
+
+      if (!catalogBySku.has(catalogSku)) {
         // Distinguish "SKU doesn't exist" from "SKU exists but inactive".
-        const rawItem = await prisma.catalogItem.findUnique({ where: { sku } });
+        const rawItem = await prisma.catalogItem.findUnique({ where: { sku: catalogSku } });
         if (rawItem && rawItem.active === false) {
-          throw new OrderValidationError(400, `El producto con SKU ${sku} no está activo.`);
+          throw new OrderValidationError(400, `El producto con SKU ${catalogSku} no está activo.`);
         }
         // Transferencia/renovación SIN precio real configurado: respuesta honesta,
         // NUNCA se cobra un precio inventado (lema: no fabricar datos).
@@ -274,7 +325,13 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
         }
         throw new OrderValidationError(400, `SKU no existe en el catálogo: ${sku}`);
       }
-      def = catalogBySku.get(sku)!;
+      def = catalogBySku.get(catalogSku)!;
+
+      if (def.category === 'DOMAIN' && domainName) {
+        if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(domainName)) {
+          throw new OrderValidationError(400, `El formato del nombre de dominio no es válido: ${domainName}`);
+        }
+      }
     }
 
     const qtyRaw = raw.quantity;
@@ -356,6 +413,10 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
       : 0;
     totalOrderCostUSD += lineCostUSD;
 
+    const itemRegistrantClean = (raw as any).registrant && typeof (raw as any).registrant === 'object'
+      ? sanitizeRegistrant((raw as any).registrant)
+      : null;
+
     lines.push({
       sku: isDomainTransfer ? 'DOMAIN_TRANSFER' : sku,
       name: def.name,
@@ -363,13 +424,15 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
       billingPeriod,
       unitPriceUSD: discountedUnitPrice,
       quantity,
+      periodYearsOrMonths: periods,
       periodUnit: catalogPeriodUnit,
       isTransfer: isDomainTransfer,
       ...(domainName ? { domain: domainName } : {}),
       ...(isDomainTransfer && typeof raw.eppCode === 'string' && raw.eppCode.trim()
         ? { eppCode: raw.eppCode.trim() }
         : {}),
-      ...(isDomainTransfer ? { transferStatus: 'PENDING_TRANSFER' } : {})
+      ...(isDomainTransfer ? { transferStatus: 'PENDING_TRANSFER' } : {}),
+      ...(itemRegistrantClean ? { registrant: itemRegistrantClean } : {})
     });
 
     subtotal += lineTotal;
@@ -474,12 +537,15 @@ export async function createOrder(input: OrderCreateInput): Promise<any> {
     billingPeriod: l.billingPeriod,
     unitPriceUSD: l.unitPriceUSD,
     quantity: l.quantity,
+    periodYearsOrMonths: l.periodYearsOrMonths || 1,
     periodUnit: l.periodUnit,
     isTransfer: l.isTransfer || false,
     ...(l.domain ? { domain: l.domain } : {}),
     ...(l.isTransfer ? { operation: 'transfer', transferStatus: l.transferStatus || 'PENDING_TRANSFER' } : {}),
     ...(l.isTransfer && l.eppCode ? { eppCode: l.eppCode } : {}),
-    ...(l.category === 'DOMAIN' && registrantClean ? { registrant: registrantClean } : {}),
+    ...(l.category === 'DOMAIN' && (l.registrant || registrantClean)
+      ? { registrant: l.registrant || registrantClean }
+      : {}),
     ...(partnerCommission?.eligible
       ? {
           referralAttribution: {

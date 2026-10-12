@@ -25,14 +25,14 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
 - **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 43 tests automatizados con 100% PASS (43/43: 27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP + 8 de integración puente ResellerClub), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
+- **Pruebas y Validación:** 50 tests automatizados con 100% PASS (50/50: 27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP + 15 de integración puente ResellerClub; 1 skip de entorno remoto), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
 - El Paso 1 ha concluido con éxito. El sistema se encuentra técnicamente consolidado y preparado para las pruebas del Paso 2.
 
 ## 5. Tareas del sistema
-- **ÚLTIMA TAREA COMPLETADA:** `RESELLERCLUB-CONSOLIDATION-PHASE1` (Status: `COMPLETED`).
+- **ÚLTIMA TAREA COMPLETADA:** `DOMAIN-SEARCH-AVAILABILITY-MODULE1` (Status: `COMPLETED`).
 - **TAREA PENDIENTE (PASO 2):** `RESELLERCLUB-CONTROLLED-TESTING-PHASE2` (Requiere credenciales activas en entorno IONOS y autorización expresa).
   - **Archivos a desplegar en IONOS bajo `/api/`:**
     - `/api/.htaccess` (Protección perimetral)
@@ -43,24 +43,22 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
   - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
-- Implementados proxies POST protegidos para `/api/domains/customer.php`, `/api/domains/contacts.php` y `/api/domains/transfer.php` con firma HMAC idéntica al cuerpo JSON transmitido.
-- Blindada validación de códigos Auth/EPP rechazando su presencia en parámetros GET o URLs con HTTP 400.
-- Sincronizada validación estricta de marcas de tiempo numéricas y firmas hexadecimales de 64 caracteres en `server/phpBridgeAuth.ts` y `server/php/reseller/config.php`.
-- Unificada resolución de URLs base con `getBridgeBaseUrl()` y eliminadas URLs hardcodeadas y código muerto (`getRegistryConfig`).
-- Limpiadas variables obsoletas en `.env.example`.
-- Creada suite de pruebas automatizadas `server/resellerclub-bridge.test.ts` cubriendo los 8 criterios del Paso 1, alcanzando 43/43 tests exitosos.
+- Implementada la búsqueda autoritativa de dominios conectada a ResellerClub mediante el puente PHP en IONOS (`server/php/domains/check.php`).
+- Configurado mapeo estricto diferenciando disponibilidad para registro (`available`), dominio ocupado transferible (`regthroughothers`), dominio registrado en Banelio (`regthroughus`) y estado no concluyente o error de registry (`unknown`).
+- Incorporado soporte multi-extensión agrupado en un solo viaje de red mediante la función `searchDomainsWithAlternatives` en `src/services/domainService.ts`, vinculando precios comerciales reales sin datos simulados.
+- Actualizados los componentes públicos `HeroDomainSearch.tsx` y `DomainsLanding.tsx` para reflejar con fidelidad los estados reales del proveedor y bloquear transferencias o compras con estados indeterminados.
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.
-- **Validación:** Ejecuta `lint_applet` y `compile_applet` al finalizar.
-- **Cierre documental:** Actualiza los 4 archivos de estado (`BANELIO_HANDOFF.md`, `BANELIO_RULES.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
+- **Validación:** Verificaciones al final del proyecto.
+- **Cierre documental:** Actualiza los archivos de estado (`BANELIO_HANDOFF.md`, `BANELIO_WORK_STATE.md`, `BANELIO_TASKS.md`).
 - **Respaldo:** El ZIP descargable de AI Studio sirve como snapshot seguro e íntegro.
 
 ## 8. Bloqueadores
-`NONE`
+- `RESELLERCLUB-CONTROLLED-TESTING-PHASE2`: Bloqueada temporalmente por dependencia de credenciales activas en entorno IONOS y autorización expresa del usuario.
 
 ## 9. Próximo paso
-Ejecutar la copia manual de los 9 archivos PHP a IONOS, configurar las 3 variables clave en IONOS y Node.js, y verificar la conectividad mediante `/api/reseller/test-connection.php`.
+Configurar credenciales en IONOS para habilitar la ejecución controlada de la prueba en vivo del Paso 2 (`RESELLERCLUB-CONTROLLED-TESTING-PHASE2`).
 
 ## 10. Reglas de seguridad
 - Trabajar únicamente en la tarea explícitamente autorizada.
