@@ -252,18 +252,6 @@ export async function provisionPaidOrder(
       }
     }
 
-    if (!phoneCc && contactCountry) {
-      const normCountry = contactCountry.trim().toUpperCase();
-      const codeMap: Record<string, string> = {
-        MX: '52', MÉXICO: '52', MEXICO: '52', US: '1', USA: '1', CA: '1',
-        ES: '34', ESPAÑA: '34', SPAIN: '34', CO: '57', COLOMBIA: '57',
-        AR: '54', ARGENTINA: '54', CL: '56', CHILE: '56', PE: '51', PERÚ: '51', PERU: '51'
-      };
-      if (codeMap[normCountry]) {
-        phoneCc = codeMap[normCountry];
-      }
-    }
-
     const missingFields: string[] = [];
     if (!contactName || contactName.length < 3) missingFields.push('nombre');
     if (!contactEmail || !contactEmail.includes('@')) missingFields.push('correo');
@@ -448,12 +436,20 @@ export async function provisionPaidOrder(
       // Actualizar Entitlement asociado en Prisma
       if (order.customerId) {
         try {
-          const entitlement = await prisma.entitlement.findFirst({
+          const existingEntitlements = await prisma.entitlement.findMany({
             where: {
               orderId: order.id,
-              serviceType: 'DOMAIN',
-              sku: item.sku
+              serviceType: 'DOMAIN'
             }
+          });
+
+          const entitlement = existingEntitlements.find((e) => {
+            const cfg = (e.config as any) || {};
+            return (
+              (cfg.domain && cfg.domain.toLowerCase() === domainName.toLowerCase()) ||
+              e.name.toLowerCase().includes(domainName.toLowerCase()) ||
+              e.sku === item.sku
+            );
           });
 
           if (entitlement) {
@@ -469,6 +465,7 @@ export async function provisionPaidOrder(
                   provider: 'resellerclub',
                   providerOrderId,
                   action,
+                  providerStatus: bridgeData.status || undefined,
                   transferStatus: isTransferAction ? 'TRANSFER_INITIATED' : undefined,
                   updatedAt: new Date().toISOString()
                 }
@@ -491,6 +488,7 @@ export async function provisionPaidOrder(
                   provider: 'resellerclub',
                   providerOrderId,
                   action,
+                  providerStatus: bridgeData.status || undefined,
                   transferStatus: isTransferAction ? 'TRANSFER_INITIATED' : undefined,
                   updatedAt: new Date().toISOString()
                 }
@@ -549,12 +547,15 @@ export async function provisionPaidOrder(
     };
   }
 
-  // Verificar si todas las líneas están completamente provisionadas o si hay transferencias en curso
+  // Verificar si todas las líneas están completamente provisionadas o si hay transferencias o registros en curso
   const allProvisioned = results.length > 0 && results.every((r) => r.status === 'PROVISIONED');
+  const hasTransfers = results.some((r) => r.action === 'transfer');
   const finalOrderStatus = allProvisioned ? 'PROVISIONED' : 'PROVISIONING';
   const finalMessage = allProvisioned
     ? 'Aprovisionamiento de dominios completado exitosamente con confirmación de ResellerClub.'
-    : 'Orden de transferencia iniciada exitosamente en el proveedor. En espera de confirmación y liberación por el registry.';
+    : (hasTransfers
+        ? 'Orden de transferencia iniciada exitosamente en el proveedor. En espera de confirmación y liberación por el registry.'
+        : 'Registro de dominio enviado exitosamente al proveedor. En espera de confirmación de activación por el registry.');
 
   await prisma.order.update({
     where: { id: orderId },

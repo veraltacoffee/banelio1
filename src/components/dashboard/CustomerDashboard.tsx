@@ -79,6 +79,7 @@ export default function CustomerDashboard() {
 
   // Real Orders from backend /api/customer/orders
   const [serverOrders, setServerOrders] = useState<any[]>([]);
+  const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
 
   // Real Domains from backend /api/customer/domains
   const [serverDomains, setServerDomains] = useState<any[]>([]);
@@ -239,6 +240,49 @@ export default function CustomerDashboard() {
     setServerDomains((prev) =>
       prev.map((d) => (String(d.id || d.identifier) === service.id ? { ...d, locked: nextVal, transferLock: nextVal } : d))
     );
+  };
+
+  const handleRetryProvision = async (orderId: string) => {
+    setRetryingOrderId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/retry-provision`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        addToast({
+          type: 'success',
+          title: language === 'en' ? 'Provisioning Succeeded' : 'Aprovisionamiento Exitoso',
+          message: data.message || 'La orden fue procesada exitosamente con el proveedor.'
+        });
+      } else {
+        addToast({
+          type: 'error',
+          title: language === 'en' ? 'Retry Failed' : 'Incidencia al Reintentar',
+          message: data.error || 'No fue posible completar el aprovisionamiento en este momento.'
+        });
+      }
+      const ordersRes = await fetch('/api/customer/orders', { credentials: 'include' });
+      if (ordersRes.ok) {
+        const oData = await ordersRes.json();
+        if (oData?.success && Array.isArray(oData.orders)) setServerOrders(oData.orders);
+      }
+      const domainsRes = await fetch('/api/customer/domains', { credentials: 'include' });
+      if (domainsRes.ok) {
+        const dData = await domainsRes.json();
+        if (dData?.success && Array.isArray(dData.domains)) setServerDomains(dData.domains);
+      }
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: language === 'en' ? 'Connection Error' : 'Error de Conexión',
+        message: err?.message || 'No fue posible conectar con el servidor.'
+      });
+    } finally {
+      setRetryingOrderId(null);
+    }
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -1175,45 +1219,93 @@ export default function CustomerDashboard() {
                       <th className="py-4 px-6">{language === 'en' ? 'Total' : 'Total'}</th>
                       <th className="py-4 px-6">{language === 'en' ? 'Status' : 'Estado'}</th>
                       <th className="py-4 px-6">{language === 'en' ? 'Payment' : 'Pago'}</th>
-                      <th className="py-4 px-6 text-right">{language === 'en' ? 'Receipt' : 'Comprobante'}</th>
+                      <th className="py-4 px-6">{language === 'en' ? 'Provisioning' : 'Aprovisionamiento'}</th>
+                      <th className="py-4 px-6 text-right">{language === 'en' ? 'Actions' : 'Acciones'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#8A8F98]">
-                    {customerOrders.map((ord) => (
-                      <tr key={ord.id} className="hover:bg-[#F7F8F0] transition-colors">
-                        <td className="py-4 px-6 font-mono font-bold text-[#070707]">
-                          {ord.invoiceNumber || ord.id}
-                        </td>
-                        <td className="py-4 px-6 text-[#555A52]">
-                          {new Date(ord.date).toLocaleDateString()}
-                        </td>
-                        <td className="py-4 px-6 font-medium text-[#070707]">
-                          {ord.items?.map((i) => i.description).join(', ') || 'Servicios Banelio'}
-                        </td>
-                        <td className="py-4 px-6 font-bold text-[#070707]">
-                          {formatMoney(ord.totalUSD, currency)}
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="bg-[#F7F8F0] text-[#070707] border border-[#8A8F98] text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
-                            {ord.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="bg-[#B8F23A] text-[#070707] text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                            {ord.paymentStatus || ord.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <button
-                            onClick={() => generateInvoicePDF(ord)}
-                            className="px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#F7F8F0] border border-[#8A8F98] text-[#070707] rounded-xl font-bold text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Download size={13} className="text-[#070707]" />
-                            <span>PDF</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {customerOrders.map((ord) => {
+                      const provStatus = ord.provisionStatus || 'NONE';
+                      const isFailed = provStatus === 'FAILED';
+                      const isRetrying = retryingOrderId === ord.id;
+
+                      return (
+                        <tr key={ord.id} className="hover:bg-[#F7F8F0] transition-colors">
+                          <td className="py-4 px-6 font-mono font-bold text-[#070707]">
+                            {ord.invoiceNumber || ord.id}
+                          </td>
+                          <td className="py-4 px-6 text-[#555A52]">
+                            {new Date(ord.date).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-6 font-medium text-[#070707]">
+                            {ord.items?.map((i: any) => i.description || i.name).join(', ') || 'Servicios Banelio'}
+                          </td>
+                          <td className="py-4 px-6 font-bold text-[#070707]">
+                            {formatMoney(ord.totalUSD, currency)}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="bg-[#F7F8F0] text-[#070707] border border-[#8A8F98] text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                              {ord.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="bg-[#B8F23A] text-[#070707] text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                              {ord.paymentStatus || ord.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            {provStatus === 'PROVISIONED' && (
+                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Check size={10} />
+                                {language === 'en' ? 'Provisioned' : 'Registrado'}
+                              </span>
+                            )}
+                            {provStatus === 'PROVISIONING' && (
+                              <span className="bg-blue-100 text-blue-800 border border-blue-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <RefreshCw size={10} className="animate-spin" />
+                                {language === 'en' ? 'Processing' : 'En proceso'}
+                              </span>
+                            )}
+                            {provStatus === 'FAILED' && (
+                              <span
+                                className="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1 cursor-help"
+                                title={ord.failureReason || 'Incidencia durante el registro'}
+                              >
+                                <AlertTriangle size={10} />
+                                {language === 'en' ? 'Action required' : 'Requiere atención'}
+                              </span>
+                            )}
+                            {provStatus === 'NONE' && (
+                              <span className="bg-[#F7F8F0] text-[#555A52] border border-[#8A8F98] text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
+                                {language === 'en' ? 'Pending' : 'Pendiente'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isFailed && (
+                                <button
+                                  onClick={() => handleRetryProvision(ord.id)}
+                                  disabled={isRetrying}
+                                  className="px-2.5 py-1.5 bg-[#B8F23A] hover:bg-[#B8F23A] text-[#070707] rounded-xl font-bold text-[11px] inline-flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                                  title="Reintentar aprovisionamiento con el proveedor"
+                                >
+                                  <RefreshCw size={12} className={isRetrying ? 'animate-spin' : ''} />
+                                  <span>{isRetrying ? 'Reintentando...' : 'Reintentar'}</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => generateInvoicePDF(ord)}
+                                className="px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#F7F8F0] border border-[#8A8F98] text-[#070707] rounded-xl font-bold text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <Download size={13} className="text-[#070707]" />
+                                <span>PDF</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

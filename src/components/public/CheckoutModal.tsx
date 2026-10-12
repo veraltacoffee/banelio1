@@ -42,6 +42,7 @@ export default function CheckoutModal() {
     countryCode,
     processCheckout,
     customerUser,
+    clearCart,
     registerCustomer,
     loginCustomer,
     logoutCustomer,
@@ -69,6 +70,7 @@ export default function CheckoutModal() {
   const [gatewayReference, setGatewayReference] = useState<string>('');
   const [paypalApproveUrl, setPaypalApproveUrl] = useState<string>('');
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string>('');
   const [usdMxnRate, setUsdMxnRate] = useState<number | null>(null);
 
   // Cargar el tipo de cambio REAL del servidor (usado solo para MOSTRAR el
@@ -306,6 +308,9 @@ export default function CheckoutModal() {
       return;
     }
     const orderId = serverOrder?.id;
+    if (orderId) {
+      setActiveOrderId(orderId);
+    }
 
     if (paymentMethod === 'OXXO_PAY') {
       // 1. Solicitar el voucher REAL a Stripe (solo con orderId). El servidor
@@ -483,32 +488,60 @@ export default function CheckoutModal() {
     }
   };
 
-  // Called only AFTER the gateway confirms the payment. Provisions the order.
+  // Called only AFTER the gateway confirms the payment. Verifies real server-side provisioning.
   const completeConfirmed = async (gatewayRef: string) => {
     const paymentLabel = paymentMethod === 'STRIPE_CARD' ? 'Stripe' : 'PayPal';
     setStep('PROVISIONING');
     setProvisionLogs((prev) => [
       ...prev,
-      `[3/4] Pago confirmado por ${paymentLabel}. Registrando la orden en el servidor...`
+      `[3/4] Pago confirmado por ${paymentLabel}. Verificando aprovisionamiento en el servidor...`
     ]);
-    let order: Order;
-    try {
-      order = await processCheckout(
-        paymentMethod,
-        { name: customerName || 'Cliente', email: customerEmail || '' },
-        undefined,
-        { confirmed: true, gatewayReference: gatewayRef }
-      );
-    } catch {
-      setIsProcessing(false);
-      setPaymentNotice(
-        'No se pudo registrar tu orden en el servidor. Tu carrito sigue guardado.'
-      );
-      setStep('PAYMENT_FAILED');
-      return;
+
+    const targetOrderId = activeOrderId || completedOrder?.id;
+    if (targetOrderId) {
+      try {
+        const orderRes = await fetch(`/api/orders/${targetOrderId}`, { credentials: 'include' });
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          if (orderData.success && orderData.order) {
+            setCompletedOrder(orderData.order);
+            setGatewayReference(gatewayRef);
+            clearCart();
+            setIsCheckoutOpen(true);
+            setIsProcessing(false);
+
+            if (orderData.order.provisionStatus === 'PROVISIONED') {
+              setProvisionLogs((prev) => [
+                ...prev,
+                `[4/4] Aprovisionamiento de dominios completado exitosamente en ResellerClub.`
+              ]);
+              setStep('SUCCESS');
+              try {
+                confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+              } catch {}
+              return;
+            } else if (orderData.order.provisionStatus === 'PROVISIONING') {
+              setProvisionLogs((prev) => [
+                ...prev,
+                `[4/4] Operación enviada exitosamente al proveedor. En proceso de activación por el registry.`
+              ]);
+              setPaymentNotice('Tu orden fue confirmada. El registro o transferencia de dominio está en curso con el proveedor. Puedes seguir el avance en Mi Panel.');
+              setStep('SUCCESS');
+              return;
+            } else if (orderData.order.provisionStatus === 'FAILED') {
+              setPaymentNotice(`Pago recibido. Incidencia durante el registro: ${orderData.order.failureReason || 'Error al conectar con el registry'}. Puedes reintentar el aprovisionamiento desde la sección de Mis Pedidos en Mi Panel.`);
+              setStep('PAYMENT_PENDING');
+              return;
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('BANELIO: error al consultar orden confirmada:', err?.message);
+      }
     }
-    setCompletedOrder(order);
-    // processCheckout closes the modal on a confirmed order; reopen to show SUCCESS.
+
+    // Fallback si no fue posible consultar la orden por red pero el pago está confirmado
+    clearCart();
     setIsCheckoutOpen(true);
     setIsProcessing(false);
     setStep('SUCCESS');

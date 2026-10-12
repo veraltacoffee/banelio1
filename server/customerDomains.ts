@@ -49,28 +49,10 @@ export async function resolveCustomerDomains(
 
   const registryConnected = Boolean(remoteQueried);
 
-  const normalizedLocalDomains = localEntitlements.map((e: any) => {
-    if (!e || typeof e !== 'object') return e;
-    const config = e.config && typeof e.config === 'object' ? e.config : {};
-    return {
-      ...e,
-      domain: e.domain || config.domain || e.name || 'dominio.com',
-      status: e.status === 'PROVISIONED' ? 'Active' : (e.status || 'Active'),
-      creationDate: e.creationDate || (e.grantedAt ? new Date(e.grantedAt).toISOString() : null),
-      expiryDate: e.expiryDate || (e.expiresAt ? new Date(e.expiresAt).toISOString() : null),
-      privacyProtection: e.privacyProtection ?? (config.privacyProtection ?? true),
-      locked: e.locked ?? (config.locked ?? true),
-      autoRenew: e.autoRenew ?? (config.autoRenew ?? true),
-      providerOrderId: e.providerOrderId || config.providerOrderId || undefined,
-      eppCode: e.eppCode || config.eppCode || undefined,
-      registrant: e.registrant || config.registrant || undefined
-    };
-  });
-
   return {
     success: true,
-    count: remoteQueried ? remoteDomains.length : normalizedLocalDomains.length,
-    domains: remoteQueried ? remoteDomains : normalizedLocalDomains,
+    count: remoteQueried ? remoteDomains.length : localEntitlements.length,
+    domains: remoteQueried ? remoteDomains : localEntitlements,
     source: remoteQueried ? 'IONOS_RESELLERCLUB_REMOTE' : 'LOCAL_ENTITLEMENTS',
     registryConnected,
     backendDependent: !remoteQueried,

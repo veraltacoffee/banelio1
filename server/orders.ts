@@ -331,6 +331,17 @@ function sanitizeRegistrant(reg: any) {
         if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(domainName)) {
           throw new OrderValidationError(400, `El formato del nombre de dominio no es válido: ${domainName}`);
         }
+        const domainParts = domainName.split('.');
+        if (domainParts.length < 2 || domainParts.some((p) => !p || p.startsWith('-') || p.endsWith('-') || p.length > 63)) {
+          throw new OrderValidationError(400, `El nombre de dominio ${domainName} contiene etiquetas no válidas.`);
+        }
+        const domainTld = domainParts.slice(1).join('.');
+        const expectedSkuTld = sku.startsWith('domain-')
+          ? sku.slice(7).replace(/-transfer$/, '').replace(/-renew$/, '')
+          : (sku.startsWith('tld-') ? sku.slice(4) : '');
+        if (expectedSkuTld && expectedSkuTld !== 'transfer' && expectedSkuTld.replace(/-/g, '.') !== domainTld) {
+          throw new OrderValidationError(400, `La extensión del dominio (.${domainTld}) no coincide con el producto seleccionado (${sku}).`);
+        }
       }
     }
 

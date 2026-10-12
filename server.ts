@@ -915,24 +915,49 @@ export async function startServer() {
             error: paymentAuth.error,
           });
         }
+
+        // Si el PaymentIntent fue exitoso en Stripe y la orden aún no está marcada como pagada:
+        if (intent.confirmed && order.paymentStatus !== 'PAYMENT_CONFIRMED') {
+          const validation = validateStripePaymentIntentForOrder(order, {
+            id: intent.id,
+            status: intent.status,
+            amount: intent.amount,
+            amount_received: intent.amountReceived,
+            currency: intent.currency
+          });
+
+          if (validation.valid) {
+            const markResult = await markOrderPaid(order.id, intent.id);
+            if (markResult.changed && !markResult.alreadyPaid) {
+              try {
+                await provisionPaidOrder(order.id);
+              } catch (provErr: any) {
+                console.error(`BANELIO: error en aprovisionamiento orden ${order.id}:`, provErr?.message);
+              }
+            }
+          }
+        }
       }
+
+      const finalOrder = order ? await prisma.order.findUnique({ where: { id: order.id } }) : null;
 
       return res.json({
         configured: true,
         id: intent.id,
         status: intent.status,
         clientSecret: intent.clientSecret,
-        confirmed: intent.confirmed || (order ? order.paymentStatus === 'PAYMENT_CONFIRMED' : false),
+        confirmed: intent.confirmed || (finalOrder ? finalOrder.paymentStatus === 'PAYMENT_CONFIRMED' : false),
         amount: intent.amount,
         amount_received: intent.amountReceived,
         currency: intent.currency,
-        order: order
+        order: finalOrder
           ? {
-              id: order.id,
-              status: order.status,
-              paymentStatus: order.paymentStatus,
-              provisionStatus: order.provisionStatus,
-              total: Number(order.total)
+              id: finalOrder.id,
+              status: finalOrder.status,
+              paymentStatus: finalOrder.paymentStatus,
+              provisionStatus: finalOrder.provisionStatus,
+              failureReason: finalOrder.failureReason,
+              total: Number(finalOrder.total)
             }
           : null
       });
@@ -1564,7 +1589,8 @@ export async function startServer() {
       }
 
       const result = await retryProvisionOrder(orderId);
-      return res.json({ success: result.success, ...result });
+      const finalOrder = await getOrderById(orderId);
+      return res.json({ success: result.success, ...result, order: finalOrder });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message });
     }
@@ -1582,8 +1608,9 @@ export async function startServer() {
         return res.status(401).json({ success: false, error: 'Autenticación requerida.' });
       }
 
+      const isAdminQueryingAll = customer.role === 'ADMIN' && req.query.all === 'true';
       const orders = await prisma.order.findMany({
-        where: { customerId: customer.id },
+        where: isAdminQueryingAll ? {} : { customerId: customer.id },
         orderBy: { createdAt: 'desc' }
       });
 

@@ -22,17 +22,20 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
 - **Backend:** Node.js v22, Express 4, Prisma ORM 6.19.3 con SQLite (`prisma/dev.db`), 11 migraciones aplicadas.
 - **Autenticación y Seguridad Puente PHP:** Firma HMAC-SHA256 con ventana de 300s (`PHP_BRIDGE_SECRET`), protección HTTP perimetral mediante directivas `.htaccess` (Apache 2.4/2.2), bloqueo de acceso directo a librerías (`config.php`, `client.php`), eliminación de trazas de cURL y respuestas crudas, y sanitización estricta de excepciones en todos los endpoints sin exponer detalles internos al cliente.
 - **Deduplicación Webhooks:** Tabla persistente `StripeWebhookEvent` (`RECEIVED`, `PROCESSING`, `PROCESSED`, `FAILED`), protección atómica contra entregas simultáneas.
-- **Aprovisionamiento:** Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
+- **Aprovisionamiento y Registro de Dominios:**
+  - Verificación autoritativa de disponibilidad previa al registro (`domains/available.json`) en `server/php/domains/provision.php`, rechazando dominios ocupados, en Banelio (`regthroughus`), o con respuestas no concluyentes (`unknown`).
+  - Creación y reutilización de clientes y contactos WHOIS en ResellerClub (`customers/signup.json`, `contacts/add.json`).
+  - Tabla persistente `ProvisioningOperation` por ítem/orden (`PENDING`, `IN_PROGRESS`, `CONFIRMED`, `FAILED`, `UNCERTAIN`), prevención de reenvíos a ciegas, reintentos seguros (`retryProvisionOrder`) y recuperación multi-dominio.
+  - Sincronización automática tras confirmación autoritativa de pagos (Stripe Webhook, Stripe Retrieve reconciliado y PayPal Capture).
 - **Transferencias de Dominio:** Costos mayoristas de transferencia activos en catálogo, endpoint `/api/transfers/pricing` habilitado y validación rigurosa de Auth/EPP Code (6-32 caracteres).
 - **Pagos:** Server-authoritative para Stripe, PayPal y Stripe OXXO Pay.
-- **Pruebas y Validación:** 50 tests automatizados con 100% PASS (50/50: 27 de pagos/aprovisionamiento + 8 de seguridad de puente PHP + 15 de integración puente ResellerClub; 1 skip de entorno remoto), `compile_applet` exitoso, `lint_applet` limpio (0 errores), `build` exitoso.
 
 ## 4. Tarea activa
 - **Actualmente en ejecución:** NINGUNA.
-- El Paso 1 ha concluido con éxito. El sistema se encuentra técnicamente consolidado y preparado para las pruebas del Paso 2.
+- Fase 2 / Módulo 2 concluido con éxito. El flujo de registro real de dominios y aprovisionamiento automático post-pago se encuentra técnicamente implementado y blindado contra duplicados.
 
 ## 5. Tareas del sistema
-- **ÚLTIMA TAREA COMPLETADA:** `DOMAIN-SEARCH-AVAILABILITY-MODULE1` (Status: `COMPLETED`).
+- **ÚLTIMA TAREA COMPLETADA:** `DOMAIN-REGISTRATION-AND-PROVISIONING-MODULE2` (Status: `COMPLETED`).
 - **TAREA PENDIENTE (PASO 2):** `RESELLERCLUB-CONTROLLED-TESTING-PHASE2` (Requiere credenciales activas en entorno IONOS y autorización expresa).
   - **Archivos a desplegar en IONOS bajo `/api/`:**
     - `/api/.htaccess` (Protección perimetral)
@@ -43,10 +46,10 @@ Tras esta lectura, no releerlos completos y leer únicamente los archivos espec�
   - **Verificación:** Ejecutar `test-connection.php` (operación 100% de solo lectura, inocua para saldos y pedidos).
 
 ## 6. Último trabajo realizado
-- Implementada la búsqueda autoritativa de dominios conectada a ResellerClub mediante el puente PHP en IONOS (`server/php/domains/check.php`).
-- Configurado mapeo estricto diferenciando disponibilidad para registro (`available`), dominio ocupado transferible (`regthroughothers`), dominio registrado en Banelio (`regthroughus`) y estado no concluyente o error de registry (`unknown`).
-- Incorporado soporte multi-extensión agrupado en un solo viaje de red mediante la función `searchDomainsWithAlternatives` en `src/services/domainService.ts`, vinculando precios comerciales reales sin datos simulados.
-- Actualizados los componentes públicos `HeroDomainSearch.tsx` y `DomainsLanding.tsx` para reflejar con fidelidad los estados reales del proveedor y bloquear transferencias o compras con estados indeterminados.
+- Implementado el flujo completo de registro de dominios en `server/orders.ts`, `server/provisioning.ts` y `server/php/domains/provision.php`.
+- Vinculado el aprovisionamiento automático inmediatamente tras la confirmación de pago autoritativa en Stripe y PayPal.
+- Eliminada la duplicación de órdenes en checkout (`CheckoutModal.tsx`), consultando la orden autoritativa y actualizando el carrito de forma segura.
+- Agregada visualización en tiempo real del estado de aprovisionamiento (`PROVISIONED`, `PROVISIONING`, `FAILED`, `NONE`) y botón de reintento en el panel del cliente (`CustomerDashboard.tsx`).
 
 ## 7. Protocolo de continuidad
 - **Sesión activa:** Trabaja exclusivamente en la tarea autorizada sobre los archivos permitidos.

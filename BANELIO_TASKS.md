@@ -251,6 +251,36 @@
 
 ---
 
+### TASK: DOMAIN-REGISTRATION-AND-PROVISIONING-MODULE2
+- **TASK ID:** DOMAIN-REGISTRATION-AND-PROVISIONING-MODULE2
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Domain Registration & Provisioning Engineer
+- **OBJECTIVE:** Implementar el flujo completo de registro real de dominios y aprovisionamiento automático post-pago:
+  1. Validación rigurosa server-authoritative de dominios, etiquetas, extensiones y datos del titular/registrante ICANN en `server/orders.ts`.
+  2. Comprobación autoritativa de disponibilidad en tiempo real previa al registro en ResellerClub (`domains/available.json`) mediante el puente PHP en IONOS (`server/php/domains/provision.php`), rechazando dominios ocupados, en Banelio (`regthroughus`), o con respuestas no concluyentes (`unknown`).
+  3. Búsqueda y reutilización o alta de cuentas de clientes y contactos WHOIS en ResellerClub (`customers/signup.json`, `contacts/add.json`).
+  4. Ejecución del aprovisionamiento post-pago atado a confirmaciones de pasarelas de pago autoritativas (webhooks Stripe, capturas PayPal server-side, reconciliación en consulta directa de PaymentIntent en `/api/payments/stripe/retrieve`).
+  5. Protección idempotente contra llamadas duplicadas o concurrentes mediante `ProvisioningOperation` (`CONFIRMED`, `IN_PROGRESS`, `UNCERTAIN`, `FAILED`).
+  6. Actualización atómica de Entitlements por dominio individual y persistencia de `providerOrderId`, `providerStatus` y fechas pertinentes.
+  7. Eliminación de órdenes duplicadas en checkout (`CheckoutModal.tsx`), reflejo en tiempo real de estados reales (`PROVISIONED`, `PROVISIONING`, `FAILED`) y botón de reintento en el panel del cliente (`CustomerDashboard.tsx`).
+- **ALLOWED FILES:**
+  - `server/php/domains/provision.php`
+  - `server/provisioning.ts`
+  - `server/orders.ts`
+  - `server.ts`
+  - `src/components/public/CheckoutModal.tsx`
+  - `src/components/dashboard/CustomerDashboard.tsx`
+  - `BANELIO_WORK_STATE.md`
+  - `BANELIO_TASKS.md`
+  - `BANELIO_HANDOFF.md`
+  - `docs/AI-CONTEXT.md`
+- **DEPENDENCIES:** Puente PHP en IONOS (`server/php/domains/provision.php`), API de ResellerClub, Stripe Webhooks, PayPal API v2.
+- **VALIDATION:** Verificación estática de código y trazabilidad sin ejecutar pruebas según restricciones operativas.
+- **HANDOFF:** Módulo 2 de Registro Real y Aprovisionamiento Automático completado. Siguiente paso: validación integral final cuando se disponga de credenciales activas en entorno IONOS.
+
+---
+
 ## IN PROGRESS
 
 *(Ninguna tarea en ejecución).*

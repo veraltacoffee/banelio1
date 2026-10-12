@@ -136,10 +136,26 @@ try {
                 'lang-pref' => 'es'
             ]);
 
-            if (empty($newCustId) || !is_numeric($newCustId)) {
-                send_json_response(['success' => false, 'error' => 'No fue posible registrar la cuenta de cliente en ResellerClub.'], 502);
+            if (is_array($newCustId) && isset($newCustId['customerid'])) {
+                $customerId = (string)$newCustId['customerid'];
+            } elseif (is_numeric($newCustId)) {
+                $customerId = (string)$newCustId;
+            } else {
+                // Si la cuenta ya existía con este correo, consultar sus detalles directamente
+                try {
+                    $retryCustomer = $client->get('customers/details.json', ['username' => $customerEmail]);
+                    if (is_array($retryCustomer) && !empty($retryCustomer['customerid'])) {
+                        $customerId = (string)$retryCustomer['customerid'];
+                    }
+                } catch (Exception $e) {}
             }
-            $customerId = (string)$newCustId;
+
+            if (empty($customerId)) {
+                $rawMsg = is_array($newCustId) && isset($newCustId['message'])
+                    ? (string)$newCustId['message']
+                    : 'No fue posible registrar la cuenta de cliente en ResellerClub.';
+                send_json_response(['success' => false, 'error' => translate_resellerclub_error($rawMsg)], 502);
+            }
         }
     }
 
@@ -148,7 +164,7 @@ try {
         try {
             $contactsSearch = $client->get('contacts/search.json', [
                 'customer-id' => $customerId,
-                'no-of-records' => 1,
+                'no-of-records' => 5,
                 'page-no' => 1
             ]);
             if (is_array($contactsSearch)) {
@@ -178,10 +194,18 @@ try {
                 'type' => 'Contact'
             ]);
 
-            if (empty($newContactId) || !is_numeric($newContactId)) {
-                send_json_response(['success' => false, 'error' => 'No fue posible crear el contacto WHOIS en ResellerClub.'], 502);
+            if (is_array($newContactId) && isset($newContactId['entityid'])) {
+                $contactId = (string)$newContactId['entityid'];
+            } elseif (is_numeric($newContactId)) {
+                $contactId = (string)$newContactId;
             }
-            $contactId = (string)$newContactId;
+
+            if (empty($contactId)) {
+                $rawMsg = is_array($newContactId) && isset($newContactId['message'])
+                    ? (string)$newContactId['message']
+                    : 'No fue posible crear el contacto WHOIS en ResellerClub.';
+                send_json_response(['success' => false, 'error' => translate_resellerclub_error($rawMsg)], 502);
+            }
         }
     }
 
@@ -194,14 +218,31 @@ try {
                 'tlds' => [$tld]
             ]);
             $checkKey = $sld . '.' . $tld;
-            $availStatus = isset($availCheck[$checkKey]['status']) ? strtolower(trim((string)$availCheck[$checkKey]['status'])) : '';
+            $availStatus = '';
+            if (is_array($availCheck)) {
+                foreach ($availCheck as $k => $det) {
+                    if (strtolower((string)$k) === strtolower($checkKey) && is_array($det) && isset($det['status'])) {
+                        $availStatus = strtolower(trim((string)$det['status']));
+                        break;
+                    }
+                }
+            }
+
             if ($availStatus !== 'available') {
+                $statusMsg = "El dominio {$domainClean} no se encuentra disponible para registro en el proveedor.";
+                if ($availStatus === 'regthroughus') {
+                    $statusMsg = "El dominio {$domainClean} ya se encuentra registrado con Banelio.";
+                } elseif ($availStatus === 'regthroughothers' || $availStatus === 'registered' || $availStatus === 'unavailable') {
+                    $statusMsg = "El dominio {$domainClean} ya se encuentra registrado por terceros. Para transferirlo a Banelio, utiliza la opción de transferencia de dominio.";
+                } elseif (empty($availStatus) || $availStatus === 'unknown') {
+                    $statusMsg = "No fue posible determinar la disponibilidad autoritativa de {$domainClean} en el Registry (estado no concluyente).";
+                }
                 send_json_response([
                     'success' => false,
                     'action' => 'register',
                     'domain' => $domainClean,
                     'status' => $availStatus ?: 'unknown',
-                    'error' => "El dominio {$domainClean} no se encuentra disponible para registro en el proveedor (estado autoritativo: " . ($availStatus ?: 'no concluyente') . ').'
+                    'error' => $statusMsg
                 ], 409);
             }
         } catch (Exception $e) {
