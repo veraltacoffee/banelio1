@@ -13,8 +13,7 @@ import {
   Zap,
   Globe2,
   Lock,
-  Headphones,
-  CheckCircle2
+  Headphones
 } from 'lucide-react';
 import { openHostingStore, openEmailStore, openSslStore } from '../../services/supersiteService';
 
@@ -92,10 +91,10 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
     {
       id: 'affiliates',
       badge: language === 'en' ? 'Partner Ecosystem' : 'Ecosistema de Partners',
-      title: language === 'en' ? 'Affiliates & Resellers' : 'Afiliados & Revendedores',
+      title: language === 'en' ? 'Affiliates & Partners' : 'Afiliados & Partners',
       desc: language === 'en'
-        ? 'Earn up to 30% recurring monthly revenue or launch your own white-label hosting business with cPanel WebHost Manager (WHM).'
-        : 'Gana hasta el 30% de comisión recurrente o inicia tu propia empresa de hosting marca blanca con WebHost Manager (WHM).',
+        ? 'Earn 10% commission on referred clients through your unique affiliate link or promo code.'
+        : 'Gana el 10% de comisión en clientes referidos mediante tu enlace exclusivo o código de descuento.',
       icon: <Users className="w-6 h-6 text-[#070707]" />,
       route: '/afiliados',
       actionLabel: language === 'en' ? 'Discover Program' : 'Conocer Programa',
@@ -127,12 +126,12 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
   ];
 
   return (
-    <section className="py-20 bg-white border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+    <section className="py-20 bg-white border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-4">
             <Sparkles size={13} className="text-[#070707]" />
             <span>{language === 'en' ? 'Complete Digital Portfolio' : 'Catálogo Comercial Integral'}</span>
           </div>
@@ -157,13 +156,13 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
               key={svc.id}
               className={`rounded-2xl p-7 flex flex-col justify-between transition-all border ${
                 svc.popular
-                  ? 'border-[#070707] bg-white ring-2 ring-[#B8F23A] shadow-xl relative'
-                  : 'border-[#8A8F98]/40 bg-[#F7F8F0]/30 hover:bg-white hover:border-[#8A8F98] hover:shadow-lg'
+                  ? 'border-[#070707] bg-white ring-2 ring-[#B9E86A] shadow-xl relative'
+                  : 'border-[#E2E5DA] bg-[#F7F8F0]/40 hover:bg-white hover:border-[#070707] hover:shadow-lg'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-[#B9E86A] flex items-center justify-center">
                     {svc.icon}
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#070707] text-[#FCFCF8]">
@@ -177,10 +176,10 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-[#8A8F98]/20 flex items-center justify-between gap-2">
+              <div className="pt-4 border-t border-[#E2E5DA] flex items-center justify-between gap-2">
                 <button
                   onClick={() => onNavigate(svc.route)}
-                  className="text-xs font-black text-[#070707] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-black text-[#070707] hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#070707]"
                 >
                   <span>{language === 'en' ? 'Learn More' : 'Conocer Más'}</span>
                   <ArrowRight size={13} />
@@ -189,7 +188,7 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
                 {svc.externalAction ? (
                   <button
                     onClick={svc.externalAction}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] text-xs font-black transition-transform hover:scale-[1.02] cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] text-xs font-black transition-transform hover:scale-[1.02] cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
                   >
                     <span>{svc.actionLabel}</span>
                     <ExternalLink size={12} />
@@ -197,7 +196,7 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
                 ) : (
                   <button
                     onClick={() => onNavigate(svc.route)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#070707] hover:bg-[#202020] text-white text-xs font-bold transition-transform hover:scale-[1.02] cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#070707] hover:bg-[#202020] text-[#FCFCF8] text-xs font-bold transition-transform hover:scale-[1.02] cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
                   >
                     <span>{svc.actionLabel}</span>
                     <ArrowRight size={12} />
@@ -209,10 +208,10 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
         </div>
 
         {/* Value Highlights */}
-        <div className="mt-16 pt-12 border-t border-[#8A8F98]/20 grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="mt-16 pt-12 border-t border-[#E2E5DA] grid grid-cols-2 md:grid-cols-4 gap-6">
           {highlights.map((hl, i) => (
             <div key={i} className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#B8F23A] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#DFF5B5] flex items-center justify-center shrink-0">
                 {hl.icon}
               </div>
               <div>

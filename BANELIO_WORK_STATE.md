@@ -3,52 +3,46 @@
 ## FECHA DE ACTUALIZACIÓN
 2026-10-17
 
-## REPOSITORIO Y RAMA
-- Repositorio de trabajo: `veraltacoffee/banelio2`
-- Rama de trabajo: `supersite2-integration`
-- Repositorio de respaldo intacto: `veraltacoffee/banelio1`
+## REPOSITORIO Y ESTADO
+- Repositorio: `veraltacoffee/banelio1`
+- Entorno: AI Studio Build (sin binario `git` en el entorno; cambios aplicados y verificados directamente sobre el espacio de trabajo activo).
+- Arquitectura: Frontend estático React 19 + TypeScript + Vite + Tailwind CSS v4, 100% compatible con hosting compartido IONOS.
 
-## ARQUITECTURA FINAL CONSOLIDADA
-**Frontend Estático IONOS + ResellerClub SuperSite 2:**
-1. **IONOS (`banelio.com`):**
-   - Frontend estático React 19 + TypeScript + Vite + Tailwind CSS v4.
-   - Páginas comerciales completas restauradas y activas:
-     * Portada Principal (`/`)
-     * Registro y Transferencia de Dominios (`/dominios`, `/domains`)
-     * Hosting Web Cloud NVMe & Reseller WHM (`/hosting`)
-     * Correo Corporativo: Titan, Google Workspace, Microsoft 365 (`/email`, `/correo`)
-     * Certificados SSL & Seguridad Web: DV, Wildcard, EV (`/ssl`, `/seguridad`)
-     * Diseño y Desarrollo Web Profesional (`/diseno-web`, `/web`)
-     * Servicios SEO & Posicionamiento en Google (`/seo`)
-     * Programa de Partners & Afiliados (`/afiliados`)
-     * Soluciones para Revendedores & Agencias (`/resellers`)
-     * Blog Oficial & Recursos Técnicos (`/blog`)
-   - Búsqueda y transferencia de dominios mediante formularios directos POST a ResellerClub SuperSite 2 sin almacenar ni exponer Auth/EPP.
-   - Botones contextuales en Hosting, Correo y SSL dirigidos a SuperSite 2 con fallback centralizado.
-   - Botones de contacto y WhatsApp para servicios a medida (Diseño Web, SEO, Afiliados, Reseller onboarding).
-   - Enrutamiento limpio SPA con `.htaccess` configurado en `public/.htaccess` para soporte de recargas en IONOS Apache.
-   - Cero código de backend propio en la compilación de salida (`dist/`).
-   - Cero dependencias de servidor (Express, SQLite, Prisma) en el frontend.
+## REDISEÑO VISUAL INTEGRAL Y PALETA OFICIAL
+Centralizada en variables CSS dentro de `src/index.css`:
+- **Negro principal:** `#070707`
+- **Blanco cálido:** `#FCFCF8`
+- **Fondo claro:** `#F7F8F0`
+- **Fondo alternativo:** `#F1F3E8`
+- **Lima claro:** `#DFF5B5`
+- **Lima principal:** `#CBEF8A`
+- **Lima de énfasis:** `#B9E86A`
+- **Verde oscuro:** `#49652A`
+- **Gris de texto:** `#555A52`
+- **Gris secundario:** `#858A82`
+- **Bordes y separadores:** `#E2E5DA`
 
-2. **ResellerClub SuperSite 2:**
-   - Comprobación oficial de disponibilidad de dominios en tiempo real ante Registries.
-   - Tienda comercial autoritativa, precios en tiempo real, planes y promociones.
-   - Carrito, checkout seguro y cobros comerciales.
-   - Aprovisionamiento de dominios, hosting, correos y certificados.
+*Se eliminó por completo el código de color lima antiguo (`#B8F23A`) y el gris antiguo (`#8A8F98`) en todos los archivos de la aplicación.*
 
-3. **Panel de Clientes de ResellerClub:**
-   - Gestión de servicios contratados (`https://banelio.myorderbox.com/customer`).
+## IMAGEN DEL INTRO (Hero)
+- **Fondo 100% blanco puro (`#FFFFFF`):** Procesada localmente a alta fidelidad y guardada en `public/hero_clean.png` y `public/hero_clean.webp`.
+- **Cero sombras:** Eliminadas sombras proyectadas, halos y drop-shadows.
+- **Integración fluida:** Fondo blanco puro integrado sin costuras con el contenedor `bg-white` de la sección en `HeroDomainSearch.tsx`.
 
-## CONFIGURACIÓN CENTRALIZADA
-- Módulo central: `src/config/supersite.ts`
-- Tienda SuperSite 2: `https://banelio.supersite2.myorderbox.com`
-- Panel de Clientes: `https://banelio.myorderbox.com/customer`
-- Búsqueda oficial: `https://banelio.supersite2.myorderbox.com/domain-registration/index.php` (POST)
-- Transferencia oficial: `https://banelio.supersite2.myorderbox.com/domain-registration/transfer/index.php` (POST)
-- URLs por categoría: `SUPERSITE_CATEGORY_URLS` (hosting, email, ssl) con fallback automático.
+## MARCA BLANCA Y TEXTOS PÚBLICOS
+- Ninguna mención pública o visible a plataformas externas de reventa en la interfaz de usuario.
+- Enlaces y botones de autoservicio etiquetados como "Tienda Banelio", "Panel de Clientes", "Ver planes", etc.
+- Conservación técnica íntegra de `supersiteService.ts` y `supersite.ts` para la funcionalidad de compra, búsqueda y transferencia.
+- Programa de afiliados ajustado: modelo estándar del 10% mediante enlace/código de referido, sin promesas de comisiones recurrentes.
 
-## ESTADO DE VERIFICACIÓN
+## FOOTER COMPLETO DE 5 COLUMNAS
+1. **Banelio:** Logotipo oficial, descripción veraz, contacto directo (`try@banelio.com`, `+52 660 125 4107`), enlace a WhatsApp 24/7 y 6 redes sociales oficiales verificadas.
+2. **Dominios y hosting:** Registro de dominios, transferencia, hosting Cloud NVMe, hosting revendedores WHM, privacidad Whois y LiteSpeed.
+3. **Servicios digitales:** Correo corporativo, certificados SSL, diseño web, posicionamiento SEO y blog.
+4. **Clientes y partners:** Tienda Banelio, Panel de control de clientes, Programa de afiliados y soluciones para revendedores.
+5. **Información legal:** Aviso de privacidad, Política de cookies, Términos y SLA 99.9%, Derechos ARCO (INAI), Contrato de dominios (ICANN) y Política de uso aceptable (AUP).
+
+## ESTADO DE COMPILACIÓN Y VERIFICACIÓN
 - `npm run lint` (`tsc --noEmit`): 0 errores.
-- `npm run build` (`vite build`): Exitoso. Directorio de salida: `dist/`.
-- Archivos generados en `dist/`: `.htaccess`, `index.html`, `sitemap.xml`, `robots.txt`, `assets/`.
-- Sin código de servidor `dist/server.cjs`.
+- `compile_applet` (`vite build`): Exitoso.
+- Sin dependencias de servidor ni scripts residuales.

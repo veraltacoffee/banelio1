@@ -2,16 +2,11 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Layout,
-  Smartphone,
   Zap,
   ShoppingBag,
-  Sparkles,
   Check,
   ArrowRight,
-  Code2,
-  Search,
-  MessageSquare,
-  Palette
+  MessageSquare
 } from 'lucide-react';
 
 export default function WebDesignLanding() {
@@ -84,10 +79,10 @@ export default function WebDesignLanding() {
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <Layout size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Custom Web Design & Engineering' : 'Diseño Web Profesional a Medida'}</span>
           </div>
@@ -109,14 +104,14 @@ export default function WebDesignLanding() {
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20una%20cotizacion%20de%20Diseno%20Web%20Profesional"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <MessageSquare size={16} />
               <span>{language === 'en' ? 'Request Custom Proposal on WhatsApp' : 'Solicitar Cotización por WhatsApp'}</span>
             </a>
             <a
               href="mailto:try@banelio.com?subject=Cotizacion%20Diseno%20Web%20Banelio"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#eaede0] border border-[#8A8F98] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Email Brief to try@banelio.com' : 'Enviar Requerimientos por Email'}</span>
             </a>
@@ -141,10 +136,10 @@ export default function WebDesignLanding() {
           {services.map((svc, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-7 border border-[#8A8F98]/40 shadow-xs hover:border-[#070707] hover:shadow-lg transition-all flex flex-col justify-between"
+              className="bg-white rounded-2xl p-7 border border-[#E2E5DA] shadow-xs hover:border-[#070707] hover:shadow-lg transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-xl bg-[#DFF5B5] flex items-center justify-center mb-4">
                   {idx === 0 ? <Zap className="w-6 h-6 text-[#070707]" /> : idx === 1 ? <Layout className="w-6 h-6 text-[#070707]" /> : <ShoppingBag className="w-6 h-6 text-[#070707]" />}
                 </div>
                 <h3 className="text-2xl font-black text-[#070707]">{svc.title}</h3>
@@ -152,7 +147,7 @@ export default function WebDesignLanding() {
                   {svc.tagline}
                 </p>
 
-                <ul className="space-y-3 text-xs text-[#070707] mt-6 pt-4 border-t border-[#8A8F98]/20">
+                <ul className="space-y-3 text-xs text-[#070707] mt-6 pt-4 border-t border-[#E2E5DA]">
                   {svc.features.map((f, fi) => (
                     <li key={fi} className="flex items-start gap-2.5">
                       <Check size={14} className="text-[#070707] shrink-0 mt-0.5" />
@@ -162,12 +157,12 @@ export default function WebDesignLanding() {
                 </ul>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#8A8F98]/20">
+              <div className="pt-6 mt-6 border-t border-[#E2E5DA]">
                 <a
                   href={`https://wa.me/526601254107?text=Hola%20Banelio,%20me%20interesa%20el%20servicio%20de%20${encodeURIComponent(svc.title)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3.5 px-4 rounded-xl text-xs font-black bg-[#070707] hover:bg-[#202020] text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
+                  className="w-full py-3.5 px-4 rounded-xl text-xs font-black bg-[#070707] hover:bg-[#202020] text-[#FCFCF8] flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
                 >
                   <span>{language === 'en' ? 'Get a Quote for this Service' : 'Cotizar este Servicio'}</span>
                   <ArrowRight size={14} />
@@ -179,7 +174,7 @@ export default function WebDesignLanding() {
       </section>
 
       {/* Methodology */}
-      <section className="py-20 bg-[#F7F8F0] border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <h2 className="text-2xl sm:text-4xl font-black text-[#070707] tracking-tight">
@@ -194,8 +189,8 @@ export default function WebDesignLanding() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {processSteps.map((step, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-[#8A8F98]/30 shadow-2xs">
-                <div className="text-2xl font-black text-[#B8F23A] mb-2 font-mono">{step.step}</div>
+              <div key={i} className="bg-white p-6 rounded-2xl border border-[#E2E5DA] shadow-2xs">
+                <div className="text-2xl font-black text-[#49652A] mb-2 font-mono">{step.step}</div>
                 <h3 className="text-base font-black text-[#070707] mb-2">{step.title}</h3>
                 <p className="text-xs text-[#555A52] leading-relaxed">{step.desc}</p>
               </div>

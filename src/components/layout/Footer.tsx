@@ -1,8 +1,8 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Scale, Phone, ExternalLink, ShieldCheck, Mail, Globe, Server } from 'lucide-react';
+import { Scale, Phone, ExternalLink, ShieldCheck, Mail, Globe, Server, Laptop, Users } from 'lucide-react';
 import { LegalDocType } from '../public/LegalModal';
-import { openCustomerPanel, openSuperSiteStore, openHostingStore, openEmailStore, openSslStore } from '../../services/supersiteService';
+import { openCustomerPanel, openSuperSiteStore } from '../../services/supersiteService';
 
 interface FooterProps {
   onNavigate: (route: string) => void;
@@ -76,50 +76,57 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
   ];
 
   return (
-    <footer className="bg-[#070707] text-[#959A92] text-xs border-t border-[#555A52]/30">
+    <footer className="bg-[#070707] text-[#D5D9CE] text-xs border-t border-[#555A52]/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         
-        {/* Main Grid: 5 columns */}
+        {/* Main Grid: 5 columns clearly structured */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
           
-          {/* Brand Col */}
-          <div className="space-y-3.5 lg:col-span-2">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onNavigate('/')}>
+          {/* Columna 1 — Banelio */}
+          <div className="space-y-4 lg:col-span-1">
+            <div
+              className="flex items-center gap-2.5 cursor-pointer"
+              onClick={() => onNavigate('/')}
+              title="Banelio"
+            >
               <img
                 src="https://res.cloudinary.com/hxbmhqiq/image/upload/f_auto,q_auto/LOGO_BANELIO_wide_2"
                 alt="Banelio Cloud Technologies"
                 referrerPolicy="no-referrer"
-                className="h-10 sm:h-12 w-auto object-contain brightness-0 invert"
+                className="h-10 sm:h-11 w-auto object-contain brightness-0 invert"
               />
             </div>
-            <p className="text-[#858A82] text-xs leading-relaxed max-w-sm">
+            <p className="text-[#D5D9CE] text-xs leading-relaxed">
               {t('footer_desc')}
             </p>
 
             {/* Direct Contact & Social */}
-            <div className="space-y-2 pt-2">
-              <div className="text-[11px] text-[#FCFCF8] space-y-1">
+            <div className="space-y-2.5 pt-1">
+              <div className="text-[12px] text-[#FCFCF8] space-y-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[#858A82]">{t('footer_support_sales')} </span>
-                  <a href="mailto:try@banelio.com" className="text-[#B8F23A] font-bold hover:underline">
+                  <Mail size={13} className="text-[#B9E86A] shrink-0" />
+                  <a
+                    href="mailto:try@banelio.com"
+                    className="text-[#B9E86A] font-bold hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                  >
                     try@banelio.com
                   </a>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]">
                   <a
                     href="tel:+526601254107"
-                    className="inline-flex items-center gap-1 text-[#FCFCF8] hover:text-[#B8F23A] transition-colors font-medium"
+                    className="inline-flex items-center gap-1 text-[#FCFCF8] hover:text-[#B9E86A] transition-colors font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                     title="Llamar a Banelio"
                   >
-                    <Phone size={12} className="text-[#B8F23A]" />
+                    <Phone size={12} className="text-[#B9E86A]" />
                     <span>+52 660 125 4107</span>
                   </a>
-                  <span>&middot;</span>
+                  <span className="text-[#858A82]">&middot;</span>
                   <a
                     href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20atencion%20comercial"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#B8F23A] hover:underline font-bold"
+                    className="text-[#B9E86A] hover:underline font-bold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                   >
                     WhatsApp 24/7
                   </a>
@@ -127,8 +134,8 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
               </div>
 
               <div className="pt-2">
-                <div className="text-[10px] font-bold text-[#FCFCF8] mb-1.5 flex items-center gap-1.5">
-                  <span>{t('footer_community')}</span>
+                <div className="text-[11px] font-bold text-[#FCFCF8] mb-2">
+                  {t('footer_community')}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {socialLinks.map((soc) => (
@@ -138,7 +145,7 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       title={`${soc.name} · Banelio`}
-                      className="w-7 h-7 rounded-lg bg-[#141414] hover:bg-[#B8F23A] text-[#FCFCF8] hover:text-[#070707] border border-[#555A52]/40 hover:border-[#B8F23A] flex items-center justify-center transition-all shadow-xs cursor-pointer group"
+                      className="w-7 h-7 rounded-lg bg-[#141414] hover:bg-[#B9E86A] text-[#FCFCF8] hover:text-[#070707] border border-[#555A52]/50 hover:border-[#B9E86A] flex items-center justify-center transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
                     >
                       {soc.icon}
                     </a>
@@ -148,106 +155,160 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
             </div>
           </div>
 
-          {/* Col 2: Dominios & Hosting */}
-          <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
-              <Globe size={13} className="text-[#B8F23A]" />
+          {/* Columna 2 — Dominios y hosting */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <Globe size={14} className="text-[#B9E86A]" />
               <span>Dominios & Hosting</span>
             </h4>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-[#D5D9CE]">
               <li>
-                <button onClick={() => onNavigate('/dominios')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/dominios')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_search_tlds')}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/dominios')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/dominios')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_transfer')}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/hosting')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/hosting')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_hosting_nvme')}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/resellers')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  Hosting Reseller WHM
+                <button
+                  onClick={() => onNavigate('/resellers')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  Hosting para Revendedores (WHM)
                 </button>
               </li>
-              <li>
-                <span className="text-[#686D65]">{t('footer_whois_free')}</span>
+              <li className="pt-1 text-[11px] text-[#858A82]">
+                <span>{t('footer_whois_free')}</span>
               </li>
-              <li>
-                <span className="text-[#686D65]">{t('footer_litespeed')}</span>
+              <li className="text-[11px] text-[#858A82]">
+                <span>{t('footer_litespeed')}</span>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Correo, SSL & Soluciones */}
-          <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
-              <ShieldCheck size={13} className="text-[#B8F23A]" />
-              <span>Correo, SSL & Soluciones</span>
+          {/* Columna 3 — Servicios digitales */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <Laptop size={14} className="text-[#B9E86A]" />
+              <span>Servicios Digitales</span>
             </h4>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-[#D5D9CE]">
               <li>
-                <button onClick={() => onNavigate('/email')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/email')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_pro_email')}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/ssl')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/ssl')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_ssl_certs')}
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/diseno-web')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/diseno-web')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   Diseño & Desarrollo Web
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/seo')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/seo')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   Posicionamiento SEO
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/afiliados')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  Programa de Afiliados
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onNavigate('/blog')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                <button
+                  onClick={() => onNavigate('/blog')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
                   {t('footer_arch_blog')}
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Col 4: SuperSite & Legal México */}
-          <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
-              <Scale size={13} className="text-[#B8F23A]" />
-              <span>Tienda & Legal</span>
+          {/* Columna 4 — Clientes y partners */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <Users size={14} className="text-[#B9E86A]" />
+              <span>Clientes & Partners</span>
             </h4>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-[#D5D9CE]">
               <li>
-                <button onClick={() => openSuperSiteStore('_blank')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left flex items-center gap-1">
-                  <span>Tienda SuperSite 2</span>
-                  <ExternalLink size={11} className="text-[#B8F23A]" />
-                </button>
-              </li>
-              <li>
-                <button onClick={() => openCustomerPanel('_blank')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left flex items-center gap-1">
-                  <span>{t('footer_client_panel')}</span>
-                  <ExternalLink size={11} className="text-[#B8F23A]" />
+                <button
+                  onClick={() => openSuperSiteStore('_blank')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  <span>Tienda Banelio</span>
+                  <ExternalLink size={12} className="text-[#B9E86A]" />
                 </button>
               </li>
               <li>
                 <button
+                  onClick={() => openCustomerPanel('_blank')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  <span>{t('footer_client_panel')}</span>
+                  <ExternalLink size={12} className="text-[#B9E86A]" />
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavigate('/afiliados')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  Programa de Afiliados
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavigate('/resellers')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  Soluciones para Revendedores
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Columna 5 — Información legal */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <Scale size={14} className="text-[#B9E86A]" />
+              <span>Información Legal</span>
+            </h4>
+            <ul className="space-y-2 text-[#D5D9CE]">
+              <li>
+                <button
                   id="footer-legal-privacy"
                   onClick={() => onOpenLegalModal && onOpenLegalModal('PRIVACY')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
                   {t('footer_privacy')}
                 </button>
@@ -256,45 +317,45 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                 <button
                   id="footer-legal-cookies"
                   onClick={() => onOpenLegalModal && onOpenLegalModal('COOKIES')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
                   {t('footer_cookies')}
                 </button>
               </li>
               <li>
                 <button
-                  id="footer-legal-arco"
-                  onClick={() => onOpenLegalModal && onOpenLegalModal('ARCO')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
-                >
-                  {t('footer_arco')}
-                </button>
-              </li>
-              <li>
-                <button
                   id="footer-legal-terms"
                   onClick={() => onOpenLegalModal && onOpenLegalModal('TERMS')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
                   {t('footer_terms')}
                 </button>
               </li>
               <li>
                 <button
-                  id="footer-legal-aup"
-                  onClick={() => onOpenLegalModal && onOpenLegalModal('AUP')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
+                  id="footer-legal-arco"
+                  onClick={() => onOpenLegalModal && onOpenLegalModal('ARCO')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
-                  {t('footer_aup')}
+                  {t('footer_arco')}
                 </button>
               </li>
               <li>
                 <button
                   id="footer-legal-domains"
                   onClick={() => onOpenLegalModal && onOpenLegalModal('DOMAIN_AGREEMENT')}
-                  className="hover:text-[#B8F23A] transition-colors cursor-pointer text-left"
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
                   {t('footer_domain_contract')}
+                </button>
+              </li>
+              <li>
+                <button
+                  id="footer-legal-aup"
+                  onClick={() => onOpenLegalModal && onOpenLegalModal('AUP')}
+                  className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
+                >
+                  {t('footer_aup')}
                 </button>
               </li>
             </ul>
@@ -302,27 +363,27 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
 
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-6 border-t border-[#555A52]/20 flex flex-col md:flex-row items-center justify-between gap-3 text-[#757A72] text-[11px]">
+        {/* Bottom Bar: Copyright & Quick Links */}
+        <div className="pt-8 border-t border-[#555A52]/40 flex flex-col md:flex-row items-center justify-between gap-4 text-[#D5D9CE] text-[11px]">
           <div>
             &copy; {new Date().getFullYear()} BANELIO &middot; {t('footer_rights')}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => onOpenLegalModal && onOpenLegalModal('PRIVACY')}
-              className="hover:text-[#FCFCF8] transition-colors cursor-pointer"
+              className="hover:text-[#B9E86A] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
             >
               {t('footer_data_protection')}
             </button>
-            <span>&middot;</span>
+            <span className="text-[#858A82]">&middot;</span>
             <button
               onClick={() => onOpenLegalModal && onOpenLegalModal('COOKIES')}
-              className="hover:text-[#FCFCF8] transition-colors cursor-pointer"
+              className="hover:text-[#B9E86A] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
             >
               {t('footer_cookie_settings')}
             </button>
-            <span>&middot;</span>
-            <span className="text-[#656A62]">ResellerClub SuperSite 2 eCommerce Integration</span>
+            <span className="text-[#858A82]">&middot;</span>
+            <span className="text-[#858A82]">Infraestructura Digital de Alto Rendimiento</span>
           </div>
         </div>
       </div>

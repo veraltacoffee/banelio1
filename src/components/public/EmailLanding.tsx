@@ -3,15 +3,10 @@ import { useApp } from '../../context/AppContext';
 import {
   Mail,
   ShieldCheck,
-  Check,
   ExternalLink,
-  Sparkles,
   Smartphone,
   Lock,
-  Globe,
   Users,
-  Calendar,
-  Send,
   CheckCircle2
 } from 'lucide-react';
 import { openEmailStore } from '../../services/supersiteService';
@@ -101,10 +96,10 @@ export default function EmailLanding() {
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <Mail size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Business Email Solutions' : 'Correo Corporativo con Dominio Propio'}</span>
           </div>
@@ -124,16 +119,16 @@ export default function EmailLanding() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => openEmailStore('_blank')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
-              <span>{language === 'en' ? 'View Email Plans in SuperSite' : 'Ver Planes de Correo en SuperSite'}</span>
+              <span>{language === 'en' ? 'View Email Plans' : 'Ver Planes de Correo'}</span>
               <ExternalLink size={16} />
             </button>
             <a
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20asesoria%20sobre%20correo%20empresarial"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#eaede0] border border-[#8A8F98] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Migration Assistance WhatsApp' : 'Asesoría de Migración por WhatsApp'}</span>
             </a>
@@ -160,12 +155,12 @@ export default function EmailLanding() {
               key={suite.id}
               className={`rounded-2xl p-7 flex flex-col justify-between transition-all border ${
                 suite.recommended
-                  ? 'border-[#070707] bg-white ring-2 ring-[#B8F23A] shadow-xl relative'
-                  : 'border-[#8A8F98]/40 bg-[#F7F8F0]/40 hover:bg-white hover:border-[#8A8F98] hover:shadow-md'
+                  ? 'border-[#070707] bg-white ring-2 ring-[#B9E86A] shadow-xl relative'
+                  : 'border-[#E2E5DA] bg-[#F7F8F0]/40 hover:bg-white hover:border-[#070707] hover:shadow-md'
               }`}
             >
               <div>
-                <div className="inline-block bg-[#B8F23A] text-[#070707] text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full mb-3">
+                <div className="inline-block bg-[#B9E86A] text-[#070707] text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full mb-3">
                   {suite.badge}
                 </div>
                 <h3 className="text-2xl font-black text-[#070707]">{suite.name}</h3>
@@ -173,16 +168,16 @@ export default function EmailLanding() {
                   {suite.tagline}
                 </p>
 
-                <div className="my-5 p-3 rounded-xl bg-white border border-[#8A8F98]/20 text-center">
-                  <span className="text-xs font-bold text-[#555A52] block">
-                    {language === 'en' ? 'SuperSite 2 Commercial Catalog' : 'Catálogo Comercial SuperSite'}
+                <div className="my-5 p-3 rounded-xl bg-white border border-[#E2E5DA] text-center">
+                  <span className="text-xs font-bold text-[#070707] block">
+                    {language === 'en' ? 'Banelio Commercial Catalog' : 'Catálogo Comercial Banelio'}
                   </span>
-                  <span className="text-xs text-[#858A82]">
+                  <span className="text-xs text-[#555A52]">
                     {language === 'en' ? 'Official pricing & account setup' : 'Precios oficiales y configuración'}
                   </span>
                 </div>
 
-                <ul className="space-y-3 text-xs text-[#070707] pt-2 border-t border-[#8A8F98]/20">
+                <ul className="space-y-3 text-xs text-[#070707] pt-2 border-t border-[#E2E5DA]">
                   {suite.features.map((feat, idx) => (
                     <li key={idx} className="flex items-start gap-2.5">
                       <CheckCircle2 size={15} className="text-[#070707] shrink-0 mt-0.5" />
@@ -192,16 +187,16 @@ export default function EmailLanding() {
                 </ul>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#8A8F98]/20">
+              <div className="pt-6 mt-6 border-t border-[#E2E5DA]">
                 <button
                   onClick={() => openEmailStore('_blank')}
-                  className={`w-full py-3.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer ${
+                  className={`w-full py-3.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                     suite.recommended
-                      ? 'bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] shadow-xs'
-                      : 'bg-[#070707] hover:bg-[#202020] text-white'
+                      ? 'bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] shadow-xs'
+                      : 'bg-[#070707] hover:bg-[#202020] text-[#FCFCF8]'
                   }`}
                 >
-                  <span>{language === 'en' ? 'Check & Order on SuperSite' : 'Ver y Contratar en SuperSite'}</span>
+                  <span>{language === 'en' ? 'Order Plan' : 'Contratar Plan'}</span>
                   <ExternalLink size={13} />
                 </button>
               </div>
@@ -211,7 +206,7 @@ export default function EmailLanding() {
       </section>
 
       {/* Security & Features */}
-      <section className="py-20 bg-[#F7F8F0] border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <h2 className="text-2xl sm:text-4xl font-black text-[#070707] tracking-tight">
@@ -230,9 +225,9 @@ export default function EmailLanding() {
             {emailAdvantages.map((adv, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-2xl border border-[#8A8F98]/30 shadow-2xs hover:shadow-md transition-shadow"
+                className="bg-white p-6 rounded-2xl border border-[#E2E5DA] shadow-2xs hover:shadow-md transition-shadow"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-xl bg-[#DFF5B5] flex items-center justify-center mb-4">
                   {adv.icon}
                 </div>
                 <h3 className="text-base font-black text-[#070707] mb-2">{adv.title}</h3>

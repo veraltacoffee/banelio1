@@ -58,9 +58,9 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
   });
 
   return (
-    <section id="faq" className="relative py-20 bg-[#F4F6EC] border-t border-[#8A8F98] overflow-hidden">
+    <section id="faq" className="relative py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] overflow-hidden">
       {/* Oversized Banelio Favicon Watermark (Bottom-Right overflowing) */}
-      <div className="absolute -bottom-64 -right-64 w-[850px] h-[850px] sm:w-[1150px] sm:h-[1150px] lg:w-[1350px] lg:h-[1350px] pointer-events-none select-none z-0 opacity-[0.05] -rotate-15 overflow-hidden">
+      <div className="absolute -bottom-64 -right-64 w-[850px] h-[850px] sm:w-[1150px] sm:h-[1150px] lg:w-[1350px] lg:h-[1350px] pointer-events-none select-none z-0 opacity-[0.04] -rotate-15 overflow-hidden">
         <img
           src="https://res.cloudinary.com/hxbmhqiq/image/upload/v1787810546/Untitled_design_5_1.png"
           alt=""
@@ -71,11 +71,11 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Section Header - Clean headline without small eyebrow */}
+        {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#070707] tracking-tight leading-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-[#070707] tracking-tight leading-tight">
             {t('faq_title')}{' '}
-            <span className="text-[#B8F23A]">
+            <span className="text-[#49652A]">
               {t('faq_title_gradient')}
             </span>
           </h2>
@@ -94,7 +94,7 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t('faq_search_placeholder')}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-[#8A8F98] rounded-2xl text-[#070707] placeholder-[#858A82] focus:outline-none focus:ring-2 focus:ring-[#B8F23A] focus:border-transparent transition-all shadow-xs text-sm sm:text-base"
+              className="w-full pl-12 pr-4 py-3 bg-white border border-[#E2E5DA] rounded-2xl text-[#070707] placeholder-[#858A82] focus:outline-none focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] transition-all shadow-xs text-sm sm:text-base"
             />
           </div>
 
@@ -106,10 +106,10 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
                   key={cat}
                   id={`faq-cat-btn-${cat.toLowerCase()}`}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                     isSelected
-                      ? 'bg-[#B8F23A] text-[#070707] shadow-xs scale-105'
-                      : 'bg-[#F7F8F0] text-[#555A52] hover:bg-[#8A8F98]'
+                      ? 'bg-[#070707] text-[#FCFCF8] shadow-xs scale-105'
+                      : 'bg-white text-[#555A52] hover:text-[#070707] border border-[#E2E5DA]'
                   }`}
                 >
                   {cat}
@@ -131,28 +131,28 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
                 id={`faq-item-${faq.id}`}
                 className={`border rounded-2xl transition-all duration-200 overflow-hidden ${
                   isOpen
-                    ? 'bg-[#FDFDFD] border-[#B8F23A] shadow-md ring-1 ring-[#B8F23A]/30'
-                    : 'bg-[#FDFDFD] border-[#8A8F98] hover:border-[#B8F23A]/50'
+                    ? 'bg-white border-[#070707] shadow-md ring-1 ring-[#070707]/10'
+                    : 'bg-white border-[#E2E5DA] hover:border-[#858A82]'
                 }`}
               >
                 <button
                   id={`faq-toggle-${faq.id}`}
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="w-full flex items-start justify-between gap-4 p-5 sm:p-6 text-left cursor-pointer select-none"
+                  className="w-full flex items-start justify-between gap-4 p-5 sm:p-6 text-left cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
                   aria-expanded={isOpen}
                 >
                   <div className="flex items-start gap-3.5">
                     <div className={`mt-0.5 p-2 rounded-xl flex-shrink-0 transition-colors ${
-                      isOpen ? 'bg-[#B8F23A] text-[#070707]' : 'bg-[#F7F8F0] text-[#B8F23A]'
+                      isOpen ? 'bg-[#B9E86A] text-[#070707]' : 'bg-[#F1F3E8] text-[#49652A]'
                     }`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#F7F8F0] text-[#B8F23A]">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#DFF5B5] text-[#070707]">
                           {faq.category}
                         </span>
-                        <span className="text-[11px] text-[#858A82] italic">
+                        <span className="text-[11px] text-[#555A52] italic font-medium">
                           {t('faq_google_trend')} "{faq.popularSearchQuery}"
                         </span>
                       </div>
@@ -162,14 +162,14 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
                     </div>
                   </div>
                   <div className={`p-1.5 rounded-lg transition-transform duration-200 flex-shrink-0 ${
-                    isOpen ? 'rotate-180 bg-[#B8F23A]/20 text-[#B8F23A]' : 'text-[#858A82]'
+                    isOpen ? 'rotate-180 bg-[#DFF5B5] text-[#070707]' : 'text-[#858A82]'
                   }`}>
                     <ChevronDown className="w-5 h-5" />
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="px-6 pb-6 pt-2 text-sm sm:text-base text-[#555A52] leading-relaxed border-t border-[#8A8F98]/60 mt-1">
+                  <div className="px-6 pb-6 pt-2 text-sm sm:text-base text-[#555A52] leading-relaxed border-t border-[#E2E5DA] mt-1">
                     <p className="mt-3">{faq.answer}</p>
                   </div>
                 )}
@@ -178,7 +178,7 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
           })}
 
           {filteredFaqs.length === 0 && (
-            <div className="text-center py-12 bg-[#F7F8F0] rounded-2xl border border-dashed border-[#8A8F98]">
+            <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-[#E2E5DA]">
               <HelpCircle className="w-10 h-10 text-[#858A82] mx-auto mb-3" />
               <p className="text-[#070707] font-medium">{t('faq_empty_title')} "{searchTerm}"</p>
               <p className="text-xs text-[#858A82] mt-1">{t('faq_empty_desc')}</p>
@@ -187,12 +187,12 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
         </div>
 
         {/* Technical Support Block */}
-        <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#070707] text-white border border-[#242424] shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#070707] text-[#FCFCF8] border border-[#242424] shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="space-y-1.5 text-center sm:text-left">
-            <h4 className="text-lg sm:text-xl font-bold text-white">
+            <h4 className="text-lg sm:text-xl font-bold text-[#FCFCF8]">
               {t('faq_doubt_title')}
             </h4>
-            <p className="text-xs sm:text-sm text-[#A0A69D] max-w-lg">
+            <p className="text-xs sm:text-sm text-[#D5D9CE] max-w-lg">
               {t('faq_doubt_desc')}
             </p>
           </div>
@@ -201,10 +201,10 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
               <button
                 id="faq-goto-blog-btn"
                 onClick={onNavigateToBlog}
-                className="px-5 py-2.5 rounded-xl bg-[#111111] hover:bg-[#242424] text-white text-xs sm:text-sm font-semibold transition-all border border-[#242424] flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#141414] hover:bg-[#202020] text-[#FCFCF8] text-xs sm:text-sm font-semibold transition-all border border-[#555A52] flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
               >
                 <span>{t('faq_blog_btn')}</span>
-                <ArrowRight className="w-4 h-4 text-[#B8F23A]" />
+                <ArrowRight className="w-4 h-4 text-[#B9E86A]" />
               </button>
             )}
             <a
@@ -212,7 +212,7 @@ export const FaqSection: React.FC<{ onNavigateToBlog?: () => void }> = ({ onNavi
               href={`https://wa.me/526601254107?text=${encodeURIComponent(t('wa_default_msg'))}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <WhatsAppIcon className="w-4 h-4 text-white fill-white" />
               <span>{t('faq_whatsapp_btn')}</span>

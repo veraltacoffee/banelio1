@@ -2,13 +2,9 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   TrendingUp,
-  Search,
   Target,
-  BarChart3,
   Check,
   ArrowRight,
-  ExternalLink,
-  Sparkles,
   MapPin,
   FileSearch,
   Layers,
@@ -59,10 +55,10 @@ export default function SeoLanding() {
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <TrendingUp size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Organic Search Engine Optimization' : 'Posicionamiento Orgánico en Google (SEO)'}</span>
           </div>
@@ -84,14 +80,14 @@ export default function SeoLanding() {
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20solicito%20una%20auditoria%20SEO%20para%20mi%20sitio%20web"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <MessageSquare size={16} />
               <span>{language === 'en' ? 'Request Free SEO Audit on WhatsApp' : 'Solicitar Auditoría SEO Gratuita'}</span>
             </a>
             <a
               href="mailto:try@banelio.com?subject=Solicitud%20Auditoria%20SEO%20Banelio"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#eaede0] border border-[#8A8F98] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Email Brief to try@banelio.com' : 'Consultar por Email'}</span>
             </a>
@@ -116,9 +112,9 @@ export default function SeoLanding() {
           {seoPillars.map((pillar, idx) => (
             <div
               key={idx}
-              className="bg-white p-7 rounded-2xl border border-[#8A8F98]/40 shadow-xs hover:border-[#070707] hover:shadow-lg transition-all"
+              className="bg-white p-7 rounded-2xl border border-[#E2E5DA] shadow-xs hover:border-[#070707] hover:shadow-lg transition-all"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-[#DFF5B5] flex items-center justify-center mb-4">
                 {pillar.icon}
               </div>
               <h3 className="text-lg font-black text-[#070707] mb-2">{pillar.title}</h3>
@@ -129,7 +125,7 @@ export default function SeoLanding() {
       </section>
 
       {/* Benefits */}
-      <section className="py-20 bg-[#F7F8F0] border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-black text-[#070707]">
@@ -139,7 +135,7 @@ export default function SeoLanding() {
 
           <div className="space-y-4">
             {benefits.map((b, i) => (
-              <div key={i} className="bg-white p-5 rounded-xl border border-[#8A8F98]/30 flex items-start gap-3">
+              <div key={i} className="bg-white p-5 rounded-xl border border-[#E2E5DA] flex items-start gap-3 shadow-2xs">
                 <Check size={18} className="text-[#070707] shrink-0 mt-0.5" />
                 <span className="text-sm font-semibold text-[#070707]">{b}</span>
               </div>
@@ -151,7 +147,7 @@ export default function SeoLanding() {
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20asesoria%20sobre%20el%20servicio%20de%20SEO"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#070707] hover:bg-[#202020] text-white font-black text-sm px-8 py-3.5 rounded-xl transition-transform hover:scale-[1.02] cursor-pointer"
+              className="inline-flex items-center gap-2 bg-[#070707] hover:bg-[#202020] text-[#FCFCF8] font-black text-sm px-8 py-3.5 rounded-xl transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
             >
               <span>{language === 'en' ? 'Talk to an SEO Specialist' : 'Hablar con un Especialista SEO'}</span>
               <ArrowRight size={15} />

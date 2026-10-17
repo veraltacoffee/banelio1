@@ -56,7 +56,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
   const isMoreServiceActive = moreServices.some((s) => currentRoute === s.route);
 
   return (
-    <nav className="bg-white/95 border-b border-[#8A8F98]/30 sticky top-0 z-40 backdrop-blur-md">
+    <nav className="bg-white/95 border-b border-[#E2E5DA] sticky top-0 z-40 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -90,9 +90,9 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                     onNavigate(item.route);
                     setIsServicesDropdownOpen(false);
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                     isActive
-                      ? 'text-[#070707] bg-[#B8F23A] font-black shadow-2xs'
+                      ? 'text-[#070707] bg-[#B9E86A] font-black shadow-2xs'
                       : 'text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0]'
                   }`}
                 >
@@ -107,9 +107,9 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               <button
                 id="services-dropdown-toggle"
                 onClick={() => setIsServicesDropdownOpen(!isServicesDropdownOpen)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                   isMoreServiceActive
-                    ? 'text-[#070707] bg-[#B8F23A] font-black shadow-2xs'
+                    ? 'text-[#070707] bg-[#B9E86A] font-black shadow-2xs'
                     : 'text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0]'
                 }`}
               >
@@ -118,8 +118,8 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               </button>
 
               {isServicesDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-56 bg-white border border-[#8A8F98] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="text-[10px] font-bold text-[#858A82] uppercase px-3 py-1 border-b border-[#8A8F98]/30">
+                <div className="absolute left-0 mt-2 w-56 bg-white border border-[#E2E5DA] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="text-[10px] font-bold text-[#858A82] uppercase px-3 py-1 border-b border-[#E2E5DA]">
                     {language === 'en' ? 'Solutions & Partner Services' : 'Soluciones & Socios'}
                   </div>
                   <div className="py-1 space-y-0.5">
@@ -132,7 +132,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                         }}
                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
                           currentRoute === svc.route
-                            ? 'bg-[#B8F23A]/20 text-[#070707] font-bold'
+                            ? 'bg-[#DFF5B5] text-[#070707] font-bold'
                             : 'text-[#070707] hover:bg-[#F7F8F0]'
                         }`}
                       >
@@ -151,9 +151,9 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                 onNavigate('/blog');
                 setIsServicesDropdownOpen(false);
               }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                 currentRoute === '/blog'
-                  ? 'text-[#070707] bg-[#B8F23A] font-black shadow-2xs'
+                  ? 'text-[#070707] bg-[#B9E86A] font-black shadow-2xs'
                   : 'text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0]'
               }`}
             >
@@ -162,7 +162,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
             </button>
           </div>
 
-          {/* Right Actions: Language, Currency, SuperSite Store & Customer Portal */}
+          {/* Right Actions: Language, Currency, Store & Customer Portal */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             
             {/* Language Selector (ES / EN) */}
@@ -174,7 +174,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   setIsCurrencySelectorOpen(false);
                   setIsServicesDropdownOpen(false);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#8A8F98]/40 bg-white hover:bg-[#F7F8F0] text-xs font-bold text-[#070707] transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#E2E5DA] bg-white hover:bg-[#F7F8F0] text-xs font-bold text-[#070707] transition-all cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
                 title={language === 'en' ? 'Select Language' : 'Seleccionar Idioma'}
               >
                 <span>{language === 'es' ? '🇲🇽' : '🇺🇸'}</span>
@@ -182,8 +182,8 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               </button>
 
               {isLangSelectorOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white border border-[#8A8F98] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="text-[10px] font-bold text-[#858A82] uppercase px-3 py-1 border-b border-[#8A8F98]/30">
+                <div className="absolute right-0 mt-2 w-44 bg-white border border-[#E2E5DA] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="text-[10px] font-bold text-[#858A82] uppercase px-3 py-1 border-b border-[#E2E5DA]">
                     {language === 'en' ? 'Language' : 'Idioma'}
                   </div>
                   <div className="py-1 space-y-1">
@@ -195,7 +195,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
                         language === 'es'
-                          ? 'bg-[#B8F23A]/20 text-[#070707] font-bold'
+                          ? 'bg-[#DFF5B5] text-[#070707] font-bold'
                           : 'text-[#070707] hover:bg-[#F7F8F0]'
                       }`}
                     >
@@ -214,7 +214,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
                         language === 'en'
-                          ? 'bg-[#B8F23A]/20 text-[#070707] font-bold'
+                          ? 'bg-[#DFF5B5] text-[#070707] font-bold'
                           : 'text-[#070707] hover:bg-[#F7F8F0]'
                       }`}
                     >
@@ -238,7 +238,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                   setIsLangSelectorOpen(false);
                   setIsServicesDropdownOpen(false);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#8A8F98]/40 bg-white hover:bg-[#F7F8F0] text-xs font-bold text-[#070707] transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[#E2E5DA] bg-white hover:bg-[#F7F8F0] text-xs font-bold text-[#070707] transition-all cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
                 title={t('nav_currency')}
               >
                 <span>{CURRENCIES[currency]?.flag || '🌐'}</span>
@@ -246,8 +246,8 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               </button>
 
               {isCurrencySelectorOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-[#8A8F98] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="text-[11px] font-bold text-[#858A82] uppercase px-3 py-1.5 border-b border-[#8A8F98]/30">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-[#E2E5DA] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="text-[11px] font-bold text-[#858A82] uppercase px-3 py-1.5 border-b border-[#E2E5DA]">
                     {t('nav_currency')}
                   </div>
                   <div className="max-h-60 overflow-y-auto py-1 space-y-0.5">
@@ -263,7 +263,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
                             isSelected
-                              ? 'bg-[#B8F23A]/20 text-[#070707] font-bold'
+                              ? 'bg-[#DFF5B5] text-[#070707] font-bold'
                               : 'text-[#070707] hover:bg-[#F7F8F0]'
                           }`}
                         >
@@ -271,7 +271,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
                             <span>{c.flag}</span>
                             <span>{c.name}</span>
                           </span>
-                          <span className="font-mono text-[10px] text-[#858A82]">{c.symbol}</span>
+                          <span className="font-mono text-[10px] text-[#555A52] font-semibold">{c.symbol}</span>
                         </button>
                       );
                     })}
@@ -280,23 +280,23 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               )}
             </div>
 
-            {/* SuperSite Store / Cart Button */}
+            {/* Commercial Store / Cart Button */}
             <button
               id="navbar-cart-btn"
               onClick={() => openSuperSiteStore('_blank')}
-              className="p-2 text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] border border-[#8A8F98]/40 rounded-xl transition-all cursor-pointer bg-white shadow-2xs flex items-center gap-1.5"
-              title={language === 'en' ? 'Open SuperSite 2 Store' : 'Ir a la Tienda SuperSite 2'}
+              className="p-2 text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] border border-[#E2E5DA] rounded-xl transition-all cursor-pointer bg-white shadow-2xs flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
+              title={language === 'en' ? 'Open Banelio Store' : 'Ir a la Tienda Banelio'}
             >
               <ShoppingBag size={17} />
               <span className="hidden md:inline text-xs font-bold text-[#070707]">{t('nav_store')}</span>
             </button>
 
-            {/* ResellerClub Customer Portal Access Button */}
+            {/* Customer Portal Access Button */}
             <button
               id="navbar-panel-btn"
               onClick={() => openCustomerPanel('_blank')}
-              className="flex items-center gap-1.5 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] text-xs font-black px-3 sm:px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
-              title={language === 'en' ? 'Access ResellerClub Customer Panel' : 'Ingresar al Panel de Clientes de ResellerClub'}
+              className="flex items-center gap-1.5 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] text-xs font-black px-3 sm:px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
+              title={language === 'en' ? 'Access Customer Panel' : 'Ingresar al Panel de Clientes'}
             >
               <span>{t('nav_panel')}</span>
               <ExternalLink size={13} />
@@ -306,7 +306,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
             <button
               id="navbar-mobile-toggle"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="xl:hidden p-2 text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] border border-[#8A8F98]/40 rounded-xl transition-colors cursor-pointer"
+              className="xl:hidden p-2 text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] border border-[#E2E5DA] rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               aria-label="Abrir Menú de Navegación"
             >
               {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -317,7 +317,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
 
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
-        <div className="xl:hidden bg-white border-b border-[#8A8F98]/30 px-4 py-4 space-y-1 shadow-2xl animate-in slide-in-from-top-2 max-h-[80vh] overflow-y-auto">
+        <div className="xl:hidden bg-white border-b border-[#E2E5DA] px-4 py-4 space-y-1 shadow-2xl animate-in slide-in-from-top-2 max-h-[80vh] overflow-y-auto">
           <div className="text-[10px] font-bold text-[#858A82] uppercase px-3 py-1">
             {language === 'en' ? 'Commercial Catalog' : 'Catálogo Comercial'}
           </div>
@@ -331,7 +331,7 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
               }}
               className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer ${
                 currentRoute === item.route
-                  ? 'bg-[#B8F23A] text-[#070707] font-black'
+                  ? 'bg-[#B9E86A] text-[#070707] font-black'
                   : 'text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0]'
               }`}
             >
@@ -340,23 +340,23 @@ export default function Navbar({ currentRoute, onNavigate }: NavbarProps) {
             </button>
           ))}
 
-          <div className="pt-3 border-t border-[#8A8F98]/30 space-y-2">
+          <div className="pt-3 border-t border-[#E2E5DA] space-y-2">
             <button
               onClick={() => {
                 openSuperSiteStore('_blank');
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-2 bg-[#F7F8F0] border border-[#8A8F98]/40 text-[#070707] font-bold py-2.5 rounded-xl text-xs shadow-2xs"
+              className="w-full flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold py-2.5 rounded-xl text-xs shadow-2xs cursor-pointer"
             >
               <ShoppingBag size={15} />
-              <span>{language === 'en' ? 'SuperSite 2 Store' : 'Tienda SuperSite 2'}</span>
+              <span>{language === 'en' ? 'Banelio Store' : 'Tienda Banelio'}</span>
             </button>
             <button
               onClick={() => {
                 openCustomerPanel('_blank');
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-2 bg-[#B8F23A] text-[#070707] font-black py-2.5 rounded-xl text-xs shadow-xs"
+              className="w-full flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black py-2.5 rounded-xl text-xs shadow-xs cursor-pointer"
             >
               <span>{t('nav_customer_panel')}</span>
               <ExternalLink size={14} />

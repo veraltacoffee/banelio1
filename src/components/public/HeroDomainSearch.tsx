@@ -42,7 +42,7 @@ export default function HeroDomainSearch() {
 
     setIsSearching(true);
     try {
-      // Envío POST oficial directo a SuperSite 2
+      // Envío POST oficial directo a la plataforma de búsqueda
       submitDomainSearchToSuperSite(parsed.domainName, parsed.tld, '_blank');
       setTimeout(() => {
         setIsSearching(false);
@@ -51,8 +51,8 @@ export default function HeroDomainSearch() {
       setIsSearching(false);
       setSearchError(
         language === 'en'
-          ? 'Could not connect with SuperSite 2. Please try again.'
-          : 'No se pudo conectar con SuperSite 2. Por favor intenta de nuevo.'
+          ? 'Could not connect to domain search. Please try again.'
+          : 'No se pudo conectar con el sistema de búsqueda. Por favor intenta de nuevo.'
       );
     }
   };
@@ -71,7 +71,7 @@ export default function HeroDomainSearch() {
   return (
     <section className="relative overflow-hidden pt-14 pb-24 px-4 sm:px-6 lg:px-8 bg-white text-[#070707]">
       {/* Oversized Banelio Favicon Watermark (Bottom-Left overflowing) */}
-      <div className="absolute -bottom-64 -left-64 w-[850px] h-[850px] sm:w-[1150px] sm:h-[1150px] lg:w-[1350px] lg:h-[1350px] pointer-events-none select-none z-0 opacity-[0.045] rotate-12 overflow-hidden">
+      <div className="absolute -bottom-64 -left-64 w-[850px] h-[850px] sm:w-[1150px] sm:h-[1150px] lg:w-[1350px] lg:h-[1350px] pointer-events-none select-none z-0 opacity-[0.04] rotate-12 overflow-hidden">
         <img
           src="https://res.cloudinary.com/hxbmhqiq/image/upload/v1787810546/Untitled_design_5_1.png"
           alt=""
@@ -80,28 +80,30 @@ export default function HeroDomainSearch() {
         />
       </div>
 
-      {/* Intro Background Image with fixed height container */}
+      {/* Intro Background Image with 100% pure white background, no drop shadows */}
       <div className="absolute top-0 right-0 w-full sm:w-4/5 lg:w-3/5 h-[580px] sm:h-[620px] lg:h-[660px] pointer-events-none overflow-hidden z-0 flex justify-end">
-        <img
-          src="https://res.cloudinary.com/hxbmhqiq/image/upload/v1787809567/Person_posing_for_corporate_website_202608262225ry.jpg"
-          alt="Banelio Infraestructura Corporativa"
-          referrerPolicy="no-referrer"
-          className="w-full h-full object-cover sm:object-contain object-top lg:object-right-top"
-        />
+        <picture>
+          <source srcSet="/hero_clean.webp" type="image/webp" />
+          <img
+            src="/hero_clean.png"
+            alt="Banelio Infraestructura y Servicios Digitales"
+            className="w-full h-full object-contain object-top lg:object-right-top"
+          />
+        </picture>
       </div>
 
-      {/* Soft edge gradients ensuring 100% legibility */}
+      {/* Soft edge gradients ensuring 100% legibility and seamless white background integration */}
       <div className="absolute top-0 left-0 right-0 h-[660px] pointer-events-none z-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 sm:via-white/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 sm:via-white/70 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-[#B8F23A]/20 blur-[140px]"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-[#DFF5B5]/25 blur-[140px]"></div>
       </div>
 
       <div className="max-w-5xl mx-auto text-center relative z-10 pt-4">
         {/* Main Headline */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#070707] mb-6 leading-tight">
           {t('hero_title_line1')} <br className="hidden sm:inline" />
-          <span className="bg-[#B8F23A] text-[#070707] px-4 py-1.5 rounded-2xl inline-block mt-1.5 font-black shadow-xs">
+          <span className="bg-[#B9E86A] text-[#070707] px-4 py-1.5 rounded-2xl inline-block mt-1.5 font-black shadow-xs">
             {t('hero_title_line2')}
           </span>
         </h1>
@@ -111,13 +113,13 @@ export default function HeroDomainSearch() {
         </p>
 
         {/* Search / Transfer Switcher */}
-        <div className="inline-flex p-1.5 bg-[#F7F8F0] backdrop-blur-md rounded-2xl border border-[#8A8F98] mb-6 shadow-2xs">
+        <div className="inline-flex p-1.5 bg-[#F7F8F0] backdrop-blur-md rounded-2xl border border-[#E2E5DA] mb-6 shadow-2xs">
           <button
             id="hero-tab-register-btn"
             onClick={() => setActiveTab('REGISTER')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
               activeTab === 'REGISTER'
-                ? 'bg-[#B8F23A] text-[#070707] shadow-xs'
+                ? 'bg-[#B9E86A] text-[#070707] shadow-xs'
                 : 'text-[#555A52] hover:text-[#070707]'
             }`}
           >
@@ -126,9 +128,9 @@ export default function HeroDomainSearch() {
           <button
             id="hero-tab-transfer-btn"
             onClick={() => setActiveTab('TRANSFER')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
               activeTab === 'TRANSFER'
-                ? 'bg-[#B8F23A] text-[#070707] shadow-xs'
+                ? 'bg-[#B9E86A] text-[#070707] shadow-xs'
                 : 'text-[#555A52] hover:text-[#070707]'
             }`}
           >
@@ -150,14 +152,14 @@ export default function HeroDomainSearch() {
               }}
               aria-label={language === 'en' ? 'Domain name search input' : 'Buscador de nombres de dominio'}
               placeholder={activeTab === 'REGISTER' ? t('hero_search_placeholder') : t('hero_transfer_placeholder')}
-              className="w-full pl-6 pr-36 sm:pr-48 py-5 rounded-2xl bg-white text-[#070707] placeholder-[#858A82] text-base sm:text-lg font-bold shadow-xl border-2 border-[#8A8F98] focus:border-[#B8F23A] outline-none transition-all"
+              className="w-full pl-6 pr-36 sm:pr-48 py-5 rounded-2xl bg-white text-[#070707] placeholder-[#858A82] text-base sm:text-lg font-bold shadow-xl border-2 border-[#E2E5DA] focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] outline-none transition-all"
             />
             <button
               id="hero-search-submit-btn"
               type="submit"
               disabled={isSearching || !query.trim()}
               aria-busy={isSearching}
-              className="absolute right-2.5 top-2.5 bottom-2.5 bg-[#B8F23A] hover:bg-[#B8F23A] disabled:bg-[#8A8F98] disabled:text-[#858A82] text-[#070707] px-6 sm:px-8 rounded-xl font-black text-sm sm:text-base flex items-center gap-2 shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:transform-none"
+              className="absolute right-2.5 top-2.5 bottom-2.5 bg-[#B9E86A] hover:bg-[#CBEF8A] active:scale-95 disabled:bg-[#E2E5DA] disabled:text-[#858A82] text-[#070707] px-6 sm:px-8 rounded-xl font-black text-sm sm:text-base flex items-center gap-2 shadow-md transition-all cursor-pointer hover:scale-[1.02] disabled:cursor-not-allowed disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               {isSearching ? (
                 <>
@@ -185,7 +187,7 @@ export default function HeroDomainSearch() {
           )}
         </form>
 
-        {/* Quick TLD Badges: send direct search to SuperSite 2 */}
+        {/* Quick TLD Badges: send direct search to official store */}
         <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 text-xs">
           <span className="text-[#555A52] font-semibold mr-1">{t('hero_featured_ext')}:</span>
           {POPULAR_TLDS.map((tld) => (
@@ -194,10 +196,10 @@ export default function HeroDomainSearch() {
               id={`hero-quick-tld-${tld}`}
               disabled={isSearching}
               onClick={() => handleQuickTldClick(tld)}
-              className="bg-white hover:bg-[#F7F8F0] border border-[#8A8F98] hover:border-[#B8F23A] px-4 py-1.5 rounded-xl text-[#555A52] hover:text-[#070707] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-white hover:bg-[#F7F8F0] border border-[#E2E5DA] hover:border-[#070707] px-4 py-1.5 rounded-xl text-[#070707] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               title={`${language === 'en' ? 'Search domain in' : 'Buscar dominio en'} .${tld}`}
             >
-              <span className="font-black text-[#B8F23A]">.{tld}</span>
+              <span className="font-black text-[#49652A]">.{tld}</span>
               <ArrowRight size={12} className="text-[#555A52]" />
             </button>
           ))}

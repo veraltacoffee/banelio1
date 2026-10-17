@@ -1,29 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  Server,
   Zap,
   ShieldCheck,
   Check,
-  ArrowRight,
   ExternalLink,
   Cpu,
-  HardDrive,
   RefreshCw,
   Clock,
   Layers,
   Sparkles
 } from 'lucide-react';
-import { openHostingStore, getHostingStoreUrl } from '../../services/supersiteService';
+import { openHostingStore } from '../../services/supersiteService';
 
 export default function HostingLanding() {
   const { language } = useApp();
-  const [billingPeriod, setBillingPeriod] = useState<'ANNUAL' | 'MONTHLY'>('ANNUAL');
 
   const plans = [
     {
       id: 'starter',
-      name: language === 'en' ? 'Cloud Starter' : 'Cloud Starter',
+      name: 'Cloud Starter',
       subtitle: language === 'en' ? 'For personal blogs & startups' : 'Para sitios personales, blogs y primeros proyectos',
       popular: false,
       specs: [
@@ -58,14 +54,14 @@ export default function HostingLanding() {
     },
     {
       id: 'elite',
-      name: language === 'en' ? 'Cloud Elite Turbo' : 'Cloud Elite Turbo',
+      name: 'Cloud Elite Turbo',
       subtitle: language === 'en' ? 'Dedicated resources for heavy traffic & eCommerce' : 'Máxima potencia para e-commerce de alto tráfico y agencias',
       popular: false,
       specs: [
         language === 'en' ? 'Unlimited Hosted Websites' : 'Sitios Web Ilimitados',
         language === 'en' ? '150 GB Ultra NVMe PCIe 4.0 Storage' : '150 GB Almacenamiento Ultra NVMe',
         language === 'en' ? '4 Dedicated CPU Cores & 8 GB RAM' : '4 Cores de CPU & 8 GB RAM Dedicada',
-        language === 'en' ? 'Dedicated Dedicated Dedicated IPv4 included' : 'Dirección IP Dedicada incluida',
+        language === 'en' ? 'Dedicated IPv4 Address included' : 'Dirección IP Dedicada incluida',
         language === 'en' ? 'Unlimited High-Speed Inboxes' : 'Buzones de Correo Ilimitados',
         language === 'en' ? 'LiteSpeed Enterprise Turbo Caching' : 'Caché LiteSpeed Enterprise optimizado',
         language === 'en' ? 'Acronis Cloud Real-Time Backups' : 'Copias Acronis Cloud en tiempo real',
@@ -75,7 +71,7 @@ export default function HostingLanding() {
     },
     {
       id: 'reseller',
-      name: language === 'en' ? 'Reseller Hosting WHM' : 'Hosting Reseller WHM',
+      name: 'Hosting Reseller WHM',
       subtitle: language === 'en' ? 'Launch your own hosting brand with cPanel & WHM' : 'Crea tu propia empresa de hosting con marca blanca',
       popular: false,
       specs: [
@@ -139,10 +135,10 @@ export default function HostingLanding() {
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <Sparkles size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Ultra NVMe PCIe 4.0 Cloud Hosting' : 'Cloud Hosting NVMe de Alta Velocidad'}</span>
           </div>
@@ -155,41 +151,41 @@ export default function HostingLanding() {
 
           <p className="mt-5 text-base sm:text-lg text-[#555A52] max-w-2xl mx-auto font-normal leading-relaxed">
             {language === 'en'
-              ? 'Powered by 100% NVMe PCIe 4.0 storage, LiteSpeed Web Server, cPanel in Spanish, and automatic SSL certificates. View plans and order directly via SuperSite 2.'
-              : 'Servidores optimizados con LiteSpeed Web Server, almacenamiento 100% NVMe PCIe 4.0, cPanel en español y certificados SSL automáticos. Consulta planes y contrata en SuperSite 2.'}
+              ? 'Powered by 100% NVMe PCIe 4.0 storage, LiteSpeed Web Server, cPanel in Spanish, and automatic SSL certificates. View plans and order directly in the Banelio Store.'
+              : 'Servidores optimizados con LiteSpeed Web Server, almacenamiento 100% NVMe PCIe 4.0, cPanel en español y certificados SSL automáticos. Consulta planes y contrata en la Tienda Banelio.'}
           </p>
 
-          {/* Direct CTA to SuperSite */}
+          {/* Direct CTA */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={() => openHostingStore('_blank')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
-              <span>{language === 'en' ? 'View Hosting Plans in SuperSite' : 'Ver Planes de Hosting en SuperSite'}</span>
+              <span>{language === 'en' ? 'View Hosting Plans' : 'Ver Planes de Hosting'}</span>
               <ExternalLink size={16} />
             </button>
             <a
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20asesoria%20sobre%20planes%20de%20Hosting%20Web%20NVMe"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#eaede0] border border-[#8A8F98] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Chat with Infrastructure Advisor' : 'Consultar por WhatsApp'}</span>
             </a>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-[#858A82]">
-            <span className="flex items-center gap-1.5">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-[#555A52]">
+            <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
               {language === 'en' ? '99.9% Uptime SLA' : 'SLA de 99.9% de Uptime'}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
               {language === 'en' ? 'Free Zero-Downtime Migration' : 'Migración 100% Gratuita'}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
-              {language === 'en' ? '30-Day Money Back Guarantee' : 'Garantía de Satisfacción 30 Días'}
+              {language === 'en' ? '30-Day Satisfaction Guarantee' : 'Garantía de Satisfacción 30 Días'}
             </span>
           </div>
         </div>
@@ -203,8 +199,8 @@ export default function HostingLanding() {
           </h2>
           <p className="mt-3 text-[#555A52] text-sm sm:text-base">
             {language === 'en'
-              ? 'Authoritative pricing, instant provisioning, and order fulfillment are processed securely through ResellerClub SuperSite 2.'
-              : 'Los precios finales autoritativos, la selección de ciclo y la contratación se completan de manera segura a través de SuperSite 2.'}
+              ? 'Final authoritative pricing, billing cycle selection, and order fulfillment are processed securely through our official commercial store.'
+              : 'Los precios finales, la selección de ciclo y la contratación se completan de manera segura a través de nuestra plataforma comercial oficial.'}
           </p>
         </div>
 
@@ -214,13 +210,13 @@ export default function HostingLanding() {
               key={plan.id}
               className={`rounded-2xl p-6 flex flex-col justify-between transition-all border ${
                 plan.popular
-                  ? 'border-[#070707] bg-white ring-2 ring-[#B8F23A] shadow-xl relative'
-                  : 'border-[#8A8F98]/40 bg-[#F7F8F0]/50 hover:bg-white hover:border-[#8A8F98] hover:shadow-md'
+                  ? 'border-[#070707] bg-white ring-2 ring-[#B9E86A] shadow-xl relative'
+                  : 'border-[#E2E5DA] bg-[#F7F8F0]/40 hover:bg-white hover:border-[#070707] hover:shadow-md'
               }`}
             >
               <div>
                 {plan.badge && (
-                  <div className="inline-block bg-[#B8F23A] text-[#070707] text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full mb-3">
+                  <div className="inline-block bg-[#B9E86A] text-[#070707] text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full mb-3">
                     {plan.badge}
                   </div>
                 )}
@@ -229,16 +225,16 @@ export default function HostingLanding() {
                   {plan.subtitle}
                 </p>
 
-                <div className="my-5 p-3 rounded-xl bg-white border border-[#8A8F98]/20 text-center">
-                  <span className="text-xs font-bold text-[#555A52] block">
-                    {language === 'en' ? 'SuperSite 2 Commercial Catalog' : 'Catálogo Comercial SuperSite'}
+                <div className="my-5 p-3 rounded-xl bg-white border border-[#E2E5DA] text-center">
+                  <span className="text-xs font-bold text-[#070707] block">
+                    {language === 'en' ? 'Banelio Commercial Catalog' : 'Catálogo Comercial Banelio'}
                   </span>
-                  <span className="text-xs text-[#858A82]">
-                    {language === 'en' ? 'Check real-time pricing & discounts' : 'Consulta precios reales y descuentos'}
+                  <span className="text-xs text-[#555A52]">
+                    {language === 'en' ? 'Check real-time pricing & discounts' : 'Consulta precios y promociones'}
                   </span>
                 </div>
 
-                <ul className="space-y-2.5 text-xs text-[#070707] pt-2 border-t border-[#8A8F98]/20">
+                <ul className="space-y-2.5 text-xs text-[#070707] pt-2 border-t border-[#E2E5DA]">
                   {plan.specs.map((spec, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <Check size={14} className="text-[#070707] shrink-0 mt-0.5" />
@@ -248,16 +244,16 @@ export default function HostingLanding() {
                 </ul>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#8A8F98]/20">
+              <div className="pt-6 mt-6 border-t border-[#E2E5DA]">
                 <button
                   onClick={() => openHostingStore('_blank')}
-                  className={`w-full py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer ${
+                  className={`w-full py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                     plan.popular
-                      ? 'bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] shadow-xs'
-                      : 'bg-[#070707] hover:bg-[#202020] text-white'
+                      ? 'bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] shadow-xs'
+                      : 'bg-[#070707] hover:bg-[#202020] text-[#FCFCF8]'
                   }`}
                 >
-                  <span>{language === 'en' ? 'Order on SuperSite' : 'Contratar en SuperSite'}</span>
+                  <span>{language === 'en' ? 'Order Plan' : 'Contratar Plan'}</span>
                   <ExternalLink size={13} />
                 </button>
               </div>
@@ -267,7 +263,7 @@ export default function HostingLanding() {
       </section>
 
       {/* Technical Features */}
-      <section className="py-20 bg-[#F7F8F0] border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <h2 className="text-2xl sm:text-4xl font-black text-[#070707] tracking-tight">
@@ -286,9 +282,9 @@ export default function HostingLanding() {
             {features.map((feat, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-2xl border border-[#8A8F98]/30 shadow-2xs hover:shadow-md transition-shadow"
+                className="bg-white p-6 rounded-2xl border border-[#E2E5DA] shadow-2xs hover:shadow-md transition-shadow"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-xl bg-[#DFF5B5] flex items-center justify-center mb-4">
                   {feat.icon}
                 </div>
                 <h3 className="text-lg font-black text-[#070707] mb-2">{feat.title}</h3>
@@ -298,14 +294,14 @@ export default function HostingLanding() {
           </div>
 
           {/* Bottom Banner */}
-          <div className="mt-16 bg-[#070707] text-white rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-[#B8F23A]/10 rounded-full blur-3xl pointer-events-none" />
-            <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <div className="mt-16 bg-[#070707] text-[#FCFCF8] rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#B9E86A]/10 rounded-full blur-3xl pointer-events-none" />
+            <h3 className="text-2xl sm:text-3xl font-black text-[#FCFCF8] tracking-tight">
               {language === 'en'
                 ? 'Need a custom server or high-capacity deployment?'
                 : '¿Necesitas un servidor dedicado o una configuración a medida?'}
             </h3>
-            <p className="mt-3 text-sm text-[#959A92] max-w-2xl mx-auto">
+            <p className="mt-3 text-sm text-[#D5D9CE] max-w-2xl mx-auto">
               {language === 'en'
                 ? 'Talk to our infrastructure architects for enterprise clusters, private cloud, or migration assistance.'
                 : 'Habla con nuestros arquitectos de infraestructura para clusters empresariales, nube privada o asistencia de migración.'}
@@ -313,14 +309,14 @@ export default function HostingLanding() {
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => openHostingStore('_blank')}
-                className="bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-xs sm:text-sm px-6 py-3 rounded-xl transition-transform hover:scale-[1.02] cursor-pointer flex items-center gap-2"
+                className="bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-xs sm:text-sm px-6 py-3 rounded-xl transition-transform hover:scale-[1.02] cursor-pointer flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               >
-                <span>{language === 'en' ? 'Go to SuperSite Store' : 'Ir a la Tienda SuperSite'}</span>
+                <span>{language === 'en' ? 'Go to Banelio Store' : 'Ir a la Tienda Banelio'}</span>
                 <ExternalLink size={14} />
               </button>
               <a
                 href="mailto:try@banelio.com?subject=Consulta%20Servidor%20Personalizado%20Banelio"
-                className="bg-[#202020] hover:bg-[#303030] border border-[#555A52] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-colors cursor-pointer"
+                className="bg-[#141414] hover:bg-[#202020] border border-[#555A52] text-[#FCFCF8] font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
               >
                 try@banelio.com
               </a>

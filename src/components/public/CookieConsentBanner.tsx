@@ -23,7 +23,7 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
     const storedConsent = localStorage.getItem('banelio_cookies_consent');
     if (storedConsent) return;
 
-    // Show banner after 15 seconds (15000 ms)
+    // Show banner after 15 seconds
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 15000);
@@ -60,21 +60,21 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
         id="cookie-consent-banner"
         className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-xl z-50 animate-in slide-in-from-bottom-5 duration-500"
       >
-        <div className="bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md text-white border border-slate-700/80 rounded-2xl p-5 sm:p-6 shadow-2xl ring-1 ring-white/10">
+        <div className="bg-[#070707] text-[#FCFCF8] border border-[#555A52]/50 rounded-2xl p-5 sm:p-6 shadow-2xl ring-1 ring-white/10">
           <div className="flex items-start gap-4">
-            <div className="p-2.5 rounded-xl bg-[#B8F23A]/20 text-[#070707] flex-shrink-0 mt-0.5">
+            <div className="p-2.5 rounded-xl bg-[#DFF5B5] text-[#070707] shrink-0 mt-0.5">
               <Cookie className="w-5 h-5" />
             </div>
 
             <div className="space-y-3 flex-1">
               <div>
-                <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <h4 className="text-sm sm:text-base font-bold text-[#FCFCF8] flex items-center gap-2">
                   <span>Gestión de Cookies y Privacidad</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#B8F23A]/20 text-[#070707] font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#DFF5B5] text-[#070707] font-black">
                     LFPDPPP
                   </span>
                 </h4>
-                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                <p className="text-xs text-[#D5D9CE] mt-1.5 leading-relaxed">
                   Utilizamos cookies esenciales para garantizar el funcionamiento del carrito de compras y la seguridad de tu sesión, así como cookies analíticas para mejorar la velocidad de nuestra infraestructura Cloud.
                 </p>
               </div>
@@ -83,7 +83,7 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                 <button
                   id="cookie-accept-all-btn"
                   onClick={handleAcceptAll}
-                  className="px-4 py-2 rounded-xl bg-[#B8F23A] hover:bg-[#B8F23A] text-slate-950 text-xs font-bold transition-all shadow-md active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] text-xs font-black transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FCFCF8]"
                 >
                   Aceptar todas
                 </button>
@@ -91,7 +91,7 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                 <button
                   id="cookie-reject-btn"
                   onClick={handleRejectNonEssential}
-                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all border border-slate-700 active:scale-95"
+                  className="px-3.5 py-2 rounded-xl bg-[#141414] hover:bg-[#202020] text-[#FCFCF8] text-xs font-bold transition-all border border-[#555A52] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
                 >
                   Rechazar no esenciales
                 </button>
@@ -99,7 +99,7 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                 <button
                   id="cookie-customize-btn"
                   onClick={() => setIsCustomizeOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-transparent hover:bg-white/10 text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 active:scale-95"
+                  className="px-3.5 py-2 rounded-xl bg-transparent hover:bg-white/10 text-[#D5D9CE] text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
                 >
                   <Settings2 className="w-3.5 h-3.5" />
                   <span>Personalizar</span>
@@ -107,18 +107,18 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
               </div>
 
               {onOpenLegalModal && (
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[#858A82]">
                   Consulta nuestro{' '}
                   <button
                     onClick={() => onOpenLegalModal('COOKIES')}
-                    className="underline hover:text-[#B8F23A] transition-colors"
+                    className="underline text-[#B9E86A] hover:text-[#CBEF8A] transition-colors cursor-pointer"
                   >
                     Aviso de Cookies
                   </button>{' '}
                   y{' '}
                   <button
                     onClick={() => onOpenLegalModal('PRIVACY')}
-                    className="underline hover:text-[#B8F23A] transition-colors"
+                    className="underline text-[#B9E86A] hover:text-[#CBEF8A] transition-colors cursor-pointer"
                   >
                     Aviso de Privacidad
                   </button>.
@@ -131,18 +131,18 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
 
       {/* Customize Cookies Modal */}
       {isCustomizeOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border-2 border-[#E2E5DA] rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#E2E5DA] pb-4 mb-4">
               <div className="flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-[#B8F23A]" />
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <Sliders className="w-5 h-5 text-[#49652A]" />
+                <h3 className="text-base font-black text-[#070707]">
                   Centro de Preferencias de Cookies
                 </h3>
               </div>
               <button
                 onClick={() => setIsCustomizeOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1.5 rounded-lg text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -150,17 +150,17 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
 
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {/* Essential Cookies */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3">
+              <div className="p-3.5 rounded-xl bg-[#F7F8F0] border border-[#E2E5DA] flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    <span className="text-xs font-black text-[#070707]">
                       Cookies Estrictamente Necesarias
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#DFF5B5] text-[#070707] font-black">
                       Siempre activas
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs text-[#555A52] mt-1 leading-relaxed">
                     Garantizan el carrito de compra, moneda seleccionada, checkout seguro y protección contra fraudes.
                   </p>
                 </div>
@@ -168,17 +168,17 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                   type="checkbox"
                   checked={true}
                   disabled={true}
-                  className="rounded border-slate-300 text-[#B8F23A] focus:ring-[#B8F23A] mt-1 cursor-not-allowed"
+                  className="rounded border-[#E2E5DA] text-[#49652A] mt-1 cursor-not-allowed"
                 />
               </div>
 
               {/* Analytics Cookies */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3">
+              <div className="p-3.5 rounded-xl bg-[#F7F8F0] border border-[#E2E5DA] flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  <span className="text-xs font-black text-[#070707]">
                     Cookies de Rendimiento y Analítica
                   </span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs text-[#555A52] mt-1 leading-relaxed">
                     Nos permiten analizar el tráfico de forma anónima para optimizar la velocidad y latencia de nuestros centros de datos NVMe.
                   </p>
                 </div>
@@ -186,17 +186,17 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                   type="checkbox"
                   checked={preferences.analytics}
                   onChange={(e) => setPreferences({ ...preferences, analytics: e.target.checked })}
-                  className="rounded border-slate-300 text-[#B8F23A] focus:ring-[#B8F23A] mt-1 cursor-pointer w-4 h-4"
+                  className="rounded border-[#E2E5DA] text-[#49652A] focus:ring-[#B9E86A] mt-1 cursor-pointer w-4 h-4"
                 />
               </div>
 
               {/* Marketing Cookies */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3">
+              <div className="p-3.5 rounded-xl bg-[#F7F8F0] border border-[#E2E5DA] flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  <span className="text-xs font-black text-[#070707]">
                     Cookies de Personalización y Ofertas
                   </span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs text-[#555A52] mt-1 leading-relaxed">
                     Permiten recordar ofertas de dominios y promociones personalizadas acordes a tu país o región.
                   </p>
                 </div>
@@ -204,21 +204,21 @@ export const CookieConsentBanner: React.FC<{ onOpenLegalModal?: (doc: 'COOKIES' 
                   type="checkbox"
                   checked={preferences.marketing}
                   onChange={(e) => setPreferences({ ...preferences, marketing: e.target.checked })}
-                  className="rounded border-slate-300 text-[#B8F23A] focus:ring-[#B8F23A] mt-1 cursor-pointer w-4 h-4"
+                  className="rounded border-[#E2E5DA] text-[#49652A] focus:ring-[#B9E86A] mt-1 cursor-pointer w-4 h-4"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-[#E2E5DA]">
               <button
                 onClick={() => setIsCustomizeOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveCustom}
-                className="px-5 py-2 rounded-xl bg-[#B8F23A] hover:bg-[#B8F23A] text-slate-950 text-xs font-bold transition-all shadow-sm"
+                className="px-5 py-2 rounded-xl bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] text-xs font-black transition-all shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               >
                 Guardar Preferencias
               </button>

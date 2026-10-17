@@ -18,7 +18,7 @@ export const WhatsAppFloatingButton: React.FC = () => {
     <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
       {/* Friendly Tooltip Bubble */}
       {showTooltip && (
-        <div className="relative bg-white text-[#070707] px-3.5 py-2 rounded-2xl shadow-xl border border-[#8A8F98] text-xs flex items-center gap-2 max-w-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="relative bg-[#FCFCF8] text-[#070707] px-3.5 py-2 rounded-2xl shadow-xl border border-[#E2E5DA] text-xs flex items-center gap-2 max-w-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse flex-shrink-0" />
           <div className="flex flex-col">
             <span className="font-bold leading-tight text-[#070707]">
@@ -31,14 +31,14 @@ export const WhatsAppFloatingButton: React.FC = () => {
           <button
             id="wa-tooltip-close"
             onClick={() => setShowTooltip(false)}
-            className="p-1 text-[#858A82] hover:text-[#070707] rounded-full cursor-pointer ml-1"
+            className="p-1 text-[#858A82] hover:text-[#070707] rounded-full cursor-pointer ml-1 transition-colors"
             aria-label="Cerrar tooltip de WhatsApp"
           >
             <X className="w-3 h-3" />
           </button>
           
           {/* Tooltip Arrow */}
-          <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-b border-r border-[#8A8F98] transform rotate-45" />
+          <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-[#FCFCF8] border-b border-r border-[#E2E5DA] transform rotate-45" />
         </div>
       )}
 

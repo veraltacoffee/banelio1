@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   X,
-  KeyRound,
   AlertCircle,
   Lock,
   ArrowRight,
@@ -76,7 +75,7 @@ export default function DomainTransferModal({
     setIsSubmitting(true);
 
     try {
-      // Envío POST oficial directo a SuperSite 2
+      // Envío POST oficial directo a la pasarela de transferencia
       submitDomainTransferToSuperSite({
         domainName: parsed.domainName,
         tld: parsed.tld,
@@ -94,8 +93,8 @@ export default function DomainTransferModal({
       setIsSubmitting(false);
       setValidationError(
         language === 'en'
-          ? 'Could not connect with SuperSite 2 transfer gateway. Please try again.'
-          : 'No se pudo conectar con la pasarela de transferencia de SuperSite 2. Por favor intenta de nuevo.'
+          ? 'Could not connect with domain transfer gateway. Please try again.'
+          : 'No se pudo conectar con la pasarela de transferencia. Por favor intenta de nuevo.'
       );
     }
   };
@@ -107,30 +106,30 @@ export default function DomainTransferModal({
       aria-labelledby="transfer-modal-title"
       className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
     >
-      <div className="relative bg-white text-[#070707] rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border-2 border-[#8A8F98] overflow-hidden my-6">
+      <div className="relative bg-white text-[#070707] rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border-2 border-[#E2E5DA] overflow-hidden my-6">
         {/* Close Button */}
         <button
           id="close-transfer-modal-btn"
           onClick={onClose}
           aria-label={language === 'en' ? 'Close modal' : 'Cerrar modal'}
-          className="absolute top-5 right-5 p-2 rounded-xl text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-2 rounded-xl text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
         >
           <X size={20} />
         </button>
 
         {/* Modal Header */}
         <div className="mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#B8F23A] border border-[#B8F23A] text-[#070707] rounded-full text-xs font-black mb-2 shadow-2xs">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#DFF5B5] border border-[#B9E86A] text-[#070707] rounded-full text-xs font-black mb-2 shadow-2xs">
             <RefreshCw size={13} />
             <span>{language === 'en' ? 'Domain Transfer' : 'Transferencia de Dominio'}</span>
           </div>
           <h2 id="transfer-modal-title" className="text-2xl sm:text-3xl font-black text-[#070707] tracking-tight">
-            {language === 'en' ? 'Transfer to SuperSite 2' : 'Transfiere tu Dominio a Banelio'}
+            {language === 'en' ? 'Transfer your Domain to Banelio' : 'Transfiere tu Dominio a Banelio'}
           </h2>
           <p className="text-xs text-[#555A52] mt-1 font-medium leading-relaxed">
             {language === 'en'
-              ? 'Transfer your domain to Banelio powered by ResellerClub SuperSite 2 with official ICANN registry processing.'
-              : 'Transfiere la administración de tu dominio hacia la plataforma Banelio respaldada por SuperSite 2 con gestión oficial ante el Registry.'}
+              ? 'Transfer your domain management to Banelio with accredited ICANN registry processing.'
+              : 'Transfiere la administración de tu dominio hacia la plataforma Banelio con gestión oficial ante el Registry.'}
           </p>
         </div>
 
@@ -149,7 +148,7 @@ export default function DomainTransferModal({
                 if (validationError) setValidationError(null);
               }}
               placeholder="ejemplo.com"
-              className="w-full px-4 py-3 bg-[#F7F8F0] border-2 border-[#8A8F98] focus:border-[#B8F23A] rounded-xl text-sm font-mono font-bold text-[#070707] outline-none transition-all"
+              className="w-full px-4 py-3 bg-[#F7F8F0] border-2 border-[#E2E5DA] focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] rounded-xl text-sm font-mono font-bold text-[#070707] outline-none transition-all"
             />
           </div>
 
@@ -174,13 +173,13 @@ export default function DomainTransferModal({
                   if (validationError) setValidationError(null);
                 }}
                 placeholder={language === 'en' ? 'Enter Auth/EPP code if available' : 'Ingresa el código Auth/EPP si ya lo posees'}
-                className="w-full pl-4 pr-12 py-3 text-sm font-mono font-bold rounded-xl bg-white border-2 border-[#8A8F98] focus:border-[#B8F23A] outline-none transition-all"
+                className="w-full pl-4 pr-12 py-3 text-sm font-mono font-bold rounded-xl bg-white border-2 border-[#E2E5DA] focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowAuthCode(!showAuthCode)}
                 aria-label={showAuthCode ? 'Hide Auth Code' : 'Show Auth Code'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#858A82] hover:text-[#070707] p-1 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#858A82] hover:text-[#070707] p-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#070707]"
               >
                 {showAuthCode ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -188,28 +187,28 @@ export default function DomainTransferModal({
           </div>
 
           {/* Security & Confidentiality Notice */}
-          <div className="p-3.5 bg-[#F7F8F0] border border-[#8A8F98] rounded-2xl text-xs space-y-1.5">
+          <div className="p-3.5 bg-[#F7F8F0] border border-[#E2E5DA] rounded-2xl text-xs space-y-1.5">
             <div className="font-bold text-[#070707] flex items-center gap-1.5">
-              <Lock size={13} className="text-[#B8F23A]" />
+              <Lock size={13} className="text-[#49652A]" />
               <span>{language === 'en' ? 'Security & In-Memory Confidentiality' : 'Seguridad y Privacidad Estricta'}</span>
             </div>
             <p className="text-[11px] text-[#555A52] leading-relaxed">
               {language === 'en'
-                ? 'Your Auth/EPP code is kept solely in browser memory and transmitted directly via POST to SuperSite 2. It is never stored in cookies, storage, or local logs.'
-                : 'Tu código Auth/EPP se conserva únicamente en la memoria volátil del navegador y se envía directamente por POST a SuperSite 2. No se almacena en cookies, bases de datos ni registros locales.'}
+                ? 'Your Auth/EPP code is kept solely in browser memory and transmitted directly via POST to the official domain registry gateway. It is never stored in cookies, storage, or local logs.'
+                : 'Tu código Auth/EPP se conserva únicamente en la memoria volátil del navegador y se envía directamente por POST a la pasarela de registro. No se almacena en cookies, bases de datos ni registros locales.'}
             </p>
           </div>
 
           {/* Transfer Checklist */}
-          <div className="p-3.5 bg-white border border-[#8A8F98] rounded-2xl space-y-1.5 text-xs text-[#555A52]">
+          <div className="p-3.5 bg-white border border-[#E2E5DA] rounded-2xl space-y-1.5 text-xs text-[#555A52]">
             <div className="font-bold text-[#070707] flex items-center gap-1.5">
-              <Info size={13} className="text-[#B8F23A]" />
+              <Info size={13} className="text-[#49652A]" />
               <span>{language === 'en' ? 'Pre-transfer checklist:' : 'Requisitos previos a la transferencia:'}</span>
             </div>
             <ul className="list-disc list-inside space-y-1 text-[11px] text-[#555A52] pl-1 font-medium">
               <li>{language === 'en' ? 'Domain unlocked at current registrar (Transfer Lock OFF).' : 'El dominio debe estar desbloqueado en tu proveedor actual (Transfer Lock desactivado).'}</li>
               <li>{language === 'en' ? 'More than 60 days since registration or previous transfer.' : 'Tener más de 60 días desde su registro o transferencia previa.'}</li>
-              <li>{language === 'en' ? 'SuperSite 2 will check registry status and confirm effective pricing.' : 'SuperSite 2 verificará el estado del Registry y mostrará el precio efectivo.'}</li>
+              <li>{language === 'en' ? 'Registry status and final pricing will be confirmed in the checkout step.' : 'El estado del Registry y el costo final se confirmarán en el proceso de transferencia.'}</li>
             </ul>
           </div>
 
@@ -229,7 +228,7 @@ export default function DomainTransferModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-[#8A8F98] text-xs font-bold text-[#555A52] hover:text-[#070707] hover:bg-[#F7F8F0] cursor-pointer"
+              className="px-5 py-2.5 rounded-xl border border-[#E2E5DA] text-xs font-bold text-[#070707] hover:bg-[#F7F8F0] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               {language === 'en' ? 'Cancel' : 'Cancelar'}
             </button>
@@ -237,16 +236,16 @@ export default function DomainTransferModal({
               type="submit"
               disabled={isSubmitting || !inputDomain.trim()}
               id="transfer-submit-to-supersite-btn"
-              className="px-6 py-2.5 bg-[#B8F23A] hover:bg-[#B8F23A] disabled:bg-[#8A8F98] disabled:text-[#858A82] text-[#070707] font-black text-xs rounded-xl shadow-md cursor-pointer flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:transform-none"
+              className="px-6 py-2.5 bg-[#B9E86A] hover:bg-[#CBEF8A] disabled:bg-[#E2E5DA] disabled:text-[#858A82] text-[#070707] font-black text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw size={14} className="animate-spin text-[#070707]" />
-                  <span>{language === 'en' ? 'Redirecting to SuperSite...' : 'Enviando a SuperSite...'}</span>
+                  <span>{language === 'en' ? 'Processing transfer...' : 'Procesando transferencia...'}</span>
                 </>
               ) : (
                 <>
-                  <span>{language === 'en' ? 'Continue on SuperSite 2' : 'Continuar en SuperSite 2'}</span>
+                  <span>{language === 'en' ? 'Continue Transfer' : 'Continuar Transferencia'}</span>
                   <ArrowRight size={14} />
                 </>
               )}

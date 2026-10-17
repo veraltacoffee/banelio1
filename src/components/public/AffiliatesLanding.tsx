@@ -3,13 +3,8 @@ import { useApp } from '../../context/AppContext';
 import {
   Users,
   DollarSign,
-  TrendingUp,
   Percent,
-  Check,
   ArrowRight,
-  ExternalLink,
-  Sparkles,
-  ShieldCheck,
   Zap,
   Gift
 } from 'lucide-react';
@@ -20,31 +15,31 @@ export default function AffiliatesLanding() {
   const affiliateBenefits = [
     {
       icon: <Percent className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'Up to 30% Recurring Commissions' : 'Hasta 30% de Comisión Recurrente',
+      title: language === 'en' ? '10% Referral Commission' : '10% de Comisión por Referido',
       desc: language === 'en'
-        ? 'Earn every time a client orders or renews their NVMe cloud hosting, domain, or corporate email services.'
-        : 'Recibe comisiones atractivas por cada cliente que contrate o renueve planes de hosting cloud, dominios y correos.'
+        ? 'Earn 10% commission when a client signs up for cloud hosting, domain registration, or digital services using your referral code or link.'
+        : 'Gana el 10% de comisión por cada cliente que contrate hosting, dominios o servicios digitales mediante tu código o enlace de referencia.'
     },
     {
       icon: <Zap className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? '60-Day Cookie Tracking' : 'Cookies de Rastreo de 60 Días',
+      title: language === 'en' ? 'Custom Referral Links & Codes' : 'Enlaces y Códigos Exclusivos',
       desc: language === 'en'
-        ? 'Your referral link keeps attribution active for 60 days, ensuring you get credited even if the user buys later.'
-        : 'Tu enlace de referido mantiene el rastreo activo por 60 días para que no pierdas ninguna venta.'
+        ? 'Share your assigned custom referral link or promo code with your clients, community, or audience.'
+        : 'Comparte tu enlace de recomendación o código promocional personalizado con tus clientes o en tu plataforma digital.'
     },
     {
       icon: <DollarSign className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'Punctual Monthly Payouts' : 'Liquidaciones Mensuales Puntuales',
+      title: language === 'en' ? 'Direct Payouts' : 'Liquidaciones Directas',
       desc: language === 'en'
-        ? 'Request automated payouts via PayPal or direct bank transfer (SPEI in Mexico) with low withdrawal thresholds.'
-        : 'Cobros puntuales mes con mes a través de PayPal o transferencia bancaria directa (SPEI en México).'
+        ? 'Request commission payouts via PayPal or direct bank transfer (SPEI in Mexico) with low withdrawal thresholds.'
+        : 'Recibe tus comisiones acumuladas de forma clara vía PayPal o transferencia bancaria directa (SPEI en México).'
     },
     {
       icon: <Gift className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'Marketing Kit & Banners' : 'Material Publicitario & Banners',
+      title: language === 'en' ? 'Promotional Assets' : 'Material Promocional',
       desc: language === 'en'
-        ? 'Ready-to-use creative banners, coupon codes, and text links for your blog, YouTube channel, or agency.'
-        : 'Banners profesionales, enlaces de texto y códigos de descuento para compartir con tu comunidad.'
+        ? 'Official banners, brand logos, and commercial copy ready to share with your clients and network.'
+        : 'Banners oficiales, logotipos autorizados y textos comerciales listos para compartir con tus contactos.'
     }
   ];
 
@@ -52,27 +47,27 @@ export default function AffiliatesLanding() {
     {
       num: '1',
       title: language === 'en' ? 'Sign Up for Free' : 'Regístrate Gratis',
-      desc: language === 'en' ? 'Submit your partner application in under 2 minutes.' : 'Completa tu solicitud de afiliado en menos de 2 minutos.'
+      desc: language === 'en' ? 'Submit your partner request in under 2 minutes.' : 'Completa tu solicitud de afiliado en menos de 2 minutos.'
     },
     {
       num: '2',
-      title: language === 'en' ? 'Share Your Link' : 'Comparte tu Enlace',
-      desc: language === 'en' ? 'Recommend Banelio on your blog, social media, or to clients.' : 'Recomienda Banelio en tu sitio web, canal o a tus clientes.'
+      title: language === 'en' ? 'Share Your Link or Code' : 'Comparte tu Enlace o Código',
+      desc: language === 'en' ? 'Recommend Banelio on your website, social media, or directly to clients.' : 'Recomienda Banelio en tu sitio web, canal o a tus clientes.'
     },
     {
       num: '3',
-      title: language === 'en' ? 'Earn Recurring Income' : 'Genera Ingresos Recurrentes',
-      desc: language === 'en' ? 'Watch your commissions grow with every sale and renewal.' : 'Recibe tus comisiones acumuladas directamente en tu cuenta.'
+      title: language === 'en' ? 'Earn 10% Commission' : 'Gana tu 10% de Comisión',
+      desc: language === 'en' ? 'Collect 10% on every service contracted by your referred customers.' : 'Recibe el 10% de comisión por cada servicio contratado por tus referidos.'
     }
   ];
 
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <Users size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Partner & Affiliate Program' : 'Programa de Afiliados & Partners'}</span>
           </div>
@@ -85,8 +80,8 @@ export default function AffiliatesLanding() {
 
           <p className="mt-5 text-base sm:text-lg text-[#555A52] max-w-2xl mx-auto font-normal leading-relaxed">
             {language === 'en'
-              ? 'Ideal for developers, design agencies, YouTubers, bloggers, and tech content creators. Earn passive monthly revenue for every referred client.'
-              : 'Ideal para agencias de diseño, desarrolladores, creadores de contenido y consultores. Genera ingresos pasivos mensuales por cada cliente que refieras.'}
+              ? 'Ideal for developers, design agencies, tech consultants, and content creators. Earn 10% commission for every referred client through custom links or promo codes.'
+              : 'Ideal para agencias de diseño, desarrolladores, consultores y creadores de contenido. Gana el 10% de comisión por cada cliente que refieras con tu enlace o código.'}
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -94,14 +89,14 @@ export default function AffiliatesLanding() {
               href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20unirme%20al%20Programa%20de%20Afiliados"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B8F23A] hover:bg-[#a6dc32] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Join Affiliate Program via WhatsApp' : 'Unirme al Programa por WhatsApp'}</span>
               <ArrowRight size={16} />
             </a>
             <a
               href="mailto:try@banelio.com?subject=Solicitud%20Afiliado%20Banelio"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#eaede0] border border-[#8A8F98] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
               <span>{language === 'en' ? 'Contact Affiliates Team' : 'Contactar por Email'}</span>
             </a>
@@ -115,9 +110,9 @@ export default function AffiliatesLanding() {
           {affiliateBenefits.map((ben, idx) => (
             <div
               key={idx}
-              className="bg-white p-7 rounded-2xl border border-[#8A8F98]/40 shadow-xs hover:border-[#070707] hover:shadow-lg transition-all"
+              className="bg-white p-7 rounded-2xl border border-[#E2E5DA] shadow-xs hover:border-[#070707] hover:shadow-lg transition-all"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#B8F23A] flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-xl bg-[#DFF5B5] flex items-center justify-center mb-4">
                 {ben.icon}
               </div>
               <h3 className="text-lg font-black text-[#070707] mb-2">{ben.title}</h3>
@@ -128,7 +123,7 @@ export default function AffiliatesLanding() {
       </section>
 
       {/* How it works */}
-      <section className="py-20 bg-[#F7F8F0] border-t border-[#8A8F98]/20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-[#F7F8F0] border-t border-[#E2E5DA] px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl sm:text-4xl font-black text-[#070707] tracking-tight mb-12">
             {language === 'en' ? 'How the Program Works' : '¿Cómo Funciona el Programa?'}
@@ -136,12 +131,12 @@ export default function AffiliatesLanding() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {steps.map((s) => (
-              <div key={s.num} className="bg-white p-6 rounded-2xl border border-[#8A8F98]/30 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#070707] text-[#B8F23A] font-black text-xl flex items-center justify-center mx-auto mb-4">
+              <div key={s.num} className="bg-white p-6 rounded-2xl border border-[#E2E5DA] text-center shadow-2xs">
+                <div className="w-12 h-12 rounded-full bg-[#070707] text-[#B9E86A] font-black text-xl flex items-center justify-center mx-auto mb-4">
                   {s.num}
                 </div>
                 <h3 className="text-base font-black text-[#070707] mb-2">{s.title}</h3>
-                <p className="text-xs text-[#555A52]">{s.desc}</p>
+                <p className="text-xs text-[#555A52] leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>

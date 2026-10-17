@@ -1,21 +1,45 @@
 @import "tailwindcss";
 
 @theme {
+  --color-black-main: #070707;
+  --color-white-warm: #FCFCF8;
+  --color-bg-light: #F7F8F0;
+  --color-bg-alt: #F1F3E8;
+  --color-lime-light: #DFF5B5;
+  --color-lime-main: #CBEF8A;
+  --color-lime-accent: #B9E86A;
+  --color-green-dark: #49652A;
+  --color-gray-text: #555A52;
+  --color-gray-secondary: #858A82;
+  --color-border-main: #E2E5DA;
+
+  /* Palette compatibility mappings */
   --color-black: #070707;
   --color-offwhite: #FCFCF8;
   --color-ivory: #F7F8F0;
-  --color-cream: #F7F8F0;
-  --color-lime-1: #B8F23A;
-  --color-lime-2: #B8F23A;
-  --color-lime-3: #B8F23A;
-  --color-green: #B8F23A;
+  --color-cream: #F1F3E8;
+  --color-lime-1: #DFF5B5;
+  --color-lime-2: #CBEF8A;
+  --color-lime-3: #B9E86A;
+  --color-green: #49652A;
   --color-gray-1: #555A52;
   --color-gray-2: #858A82;
-  --color-border-custom: #8A8F98;
+  --color-border-custom: #E2E5DA;
 }
 
 :root {
   color-scheme: light;
+  --banelio-black: #070707;
+  --banelio-white-warm: #FCFCF8;
+  --banelio-bg-light: #F7F8F0;
+  --banelio-bg-alt: #F1F3E8;
+  --banelio-lime-light: #DFF5B5;
+  --banelio-lime-main: #CBEF8A;
+  --banelio-lime-accent: #B9E86A;
+  --banelio-green-dark: #49652A;
+  --banelio-gray-text: #555A52;
+  --banelio-gray-sec: #858A82;
+  --banelio-border: #E2E5DA;
 }
 
 body {
@@ -26,7 +50,7 @@ body {
 }
 
 ::selection {
-  background-color: #B8F23A;
+  background-color: #B9E86A;
   color: #070707;
 }
 
@@ -41,11 +65,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #8A8F98;
+  background: #E2E5DA;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #858A82;
 }
-

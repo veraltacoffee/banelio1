@@ -62,7 +62,7 @@ function MainAppContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-[#070707] selection:bg-[#B8F23A] selection:text-[#070707] font-sans antialiased">
+    <div className="min-h-screen flex flex-col bg-white text-[#070707] selection:bg-[#B9E86A] selection:text-[#070707] font-sans antialiased">
       {/* Main Navigation Bar with full commercial portfolio */}
       <Navbar currentRoute={currentRoute} onNavigate={navigateTo} />
 

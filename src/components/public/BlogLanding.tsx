@@ -7,10 +7,7 @@ import {
   ArrowRight,
   X,
   Share2,
-  Check,
-  Tag,
-  ExternalLink,
-  Sparkles
+  Check
 } from 'lucide-react';
 
 interface Article {
@@ -169,10 +166,10 @@ export default function BlogLanding() {
   return (
     <div className="bg-white text-[#070707] min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#8A8F98]/20">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#B8F23A]/15 rounded-full blur-[120px] pointer-events-none" />
+      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-white border-b border-[#E2E5DA]">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#DFF5B5]/25 rounded-full blur-[120px] pointer-events-none" />
         <div className="max-w-6xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#B8F23A]/25 border border-[#B8F23A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <BookOpen size={14} className="text-[#070707]" />
             <span>{language === 'en' ? 'Banelio Knowledge Base & Tech Articles' : 'Blog Oficial & Recursos Técnicos'}</span>
           </div>
@@ -202,7 +199,7 @@ export default function BlogLanding() {
                     ? 'Search articles by topic (e.g. NVMe, SPF, SSL, Domains)...'
                     : 'Buscar por tema (ej. NVMe, SPF, SSL, Dominios, TTFB)...'
                 }
-                className="w-full pl-11 pr-4 py-3 rounded-xl border border-[#8A8F98] bg-white text-xs sm:text-sm text-[#070707] placeholder-[#858A82] focus:outline-hidden focus:border-[#070707] shadow-2xs"
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-[#E2E5DA] bg-white text-xs sm:text-sm text-[#070707] placeholder-[#858A82] focus:outline-none focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] shadow-2xs"
               />
             </div>
           </div>
@@ -213,10 +210,10 @@ export default function BlogLanding() {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                   selectedCategory === cat.id
-                    ? 'bg-[#070707] text-[#B8F23A] shadow-xs'
-                    : 'bg-[#F7F8F0] text-[#555A52] hover:text-[#070707] border border-[#8A8F98]/40'
+                    ? 'bg-[#070707] text-[#FCFCF8] shadow-xs'
+                    : 'bg-[#F7F8F0] text-[#555A52] hover:text-[#070707] border border-[#E2E5DA]'
                 }`}
               >
                 {cat.label}
@@ -239,11 +236,11 @@ export default function BlogLanding() {
             {filteredArticles.map((art) => (
               <article
                 key={art.id}
-                className="bg-white rounded-2xl p-7 border border-[#8A8F98]/40 shadow-xs hover:border-[#070707] hover:shadow-lg transition-all flex flex-col justify-between"
+                className="bg-white rounded-2xl p-7 border border-[#E2E5DA] shadow-xs hover:border-[#070707] hover:shadow-lg transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between text-xs text-[#858A82] mb-3">
-                    <span className="inline-block bg-[#B8F23A] text-[#070707] font-black text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                    <span className="inline-block bg-[#DFF5B5] text-[#070707] font-black text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                       {language === 'en' ? art.categoryEn : art.category}
                     </span>
                     <span className="flex items-center gap-1 font-mono">
@@ -261,11 +258,11 @@ export default function BlogLanding() {
                   </p>
                 </div>
 
-                <div className="pt-6 mt-6 border-t border-[#8A8F98]/20 flex items-center justify-between">
+                <div className="pt-6 mt-6 border-t border-[#E2E5DA] flex items-center justify-between">
                   <span className="text-[11px] text-[#858A82] font-mono">{art.date}</span>
                   <button
                     onClick={() => setActiveArticle(art)}
-                    className="flex items-center gap-1.5 text-xs font-black text-[#070707] hover:text-[#070707] group cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs font-black text-[#070707] hover:text-[#49652A] group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#070707]"
                   >
                     <span>{language === 'en' ? 'Read Complete Article' : 'Leer Artículo'}</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -280,17 +277,17 @@ export default function BlogLanding() {
       {/* Article Detail Modal */}
       {activeArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-10 relative border border-[#8A8F98] shadow-2xl">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-10 relative border-2 border-[#E2E5DA] shadow-2xl">
             <button
               onClick={() => setActiveArticle(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl bg-[#F7F8F0] hover:bg-[#eaede0] text-[#070707] transition-colors cursor-pointer"
+              className="absolute top-5 right-5 p-2 rounded-xl bg-[#F7F8F0] hover:bg-[#F1F3E8] text-[#070707] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               aria-label="Cerrar artículo"
             >
               <X size={20} />
             </button>
 
             <div className="flex items-center gap-3 text-xs mb-4">
-              <span className="bg-[#B8F23A] text-[#070707] font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full">
+              <span className="bg-[#DFF5B5] text-[#070707] font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full">
                 {language === 'en' ? activeArticle.categoryEn : activeArticle.category}
               </span>
               <span className="text-[#858A82] flex items-center gap-1 font-mono">
@@ -304,16 +301,16 @@ export default function BlogLanding() {
               {language === 'en' ? activeArticle.titleEn : activeArticle.title}
             </h1>
 
-            <div className="my-6 pt-4 border-t border-[#8A8F98]/20 space-y-4 text-xs sm:text-sm text-[#070707] leading-relaxed">
+            <div className="my-6 pt-4 border-t border-[#E2E5DA] space-y-4 text-xs sm:text-sm text-[#070707] leading-relaxed">
               {(language === 'en' ? activeArticle.contentEn : activeArticle.content).map((p, idx) => (
                 <p key={idx}>{p}</p>
               ))}
             </div>
 
-            <div className="pt-6 border-t border-[#8A8F98]/20 flex flex-wrap items-center justify-between gap-3">
+            <div className="pt-6 border-t border-[#E2E5DA] flex flex-wrap items-center justify-between gap-3">
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F7F8F0] hover:bg-[#eaede0] text-xs font-bold text-[#070707] transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-xs font-bold text-[#070707] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
               >
                 {copiedLink ? <Check size={14} className="text-green-600" /> : <Share2 size={14} />}
                 <span>{copiedLink ? (language === 'en' ? 'Link Copied!' : '¡Enlace Copiado!') : (language === 'en' ? 'Share Article' : 'Compartir Artículo')}</span>
@@ -321,7 +318,7 @@ export default function BlogLanding() {
 
               <button
                 onClick={() => setActiveArticle(null)}
-                className="px-5 py-2 rounded-xl bg-[#070707] hover:bg-[#202020] text-white text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[#070707] hover:bg-[#202020] text-[#FCFCF8] text-xs font-bold transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
               >
                 {language === 'en' ? 'Close Article' : 'Cerrar'}
               </button>
