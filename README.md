@@ -1,77 +1,143 @@
-# BANELIO — Infraestructura Cloud & Registro de Dominios
+# BANELIO — Frontend Estático & Integración ResellerClub SuperSite 2
 
-Plataforma integral para búsqueda, registro, transferencia y administración de dominios en México y a nivel internacional, con integración server-side a ResellerClub (vía puente PHP autenticado por HMAC-SHA256), pagos multimoneda (Stripe Card en USD, OXXO en MXN y PayPal), autenticación de clientes con 2FA y deduplicación persistente en base de datos.
-
-## 🚀 Inicio Rápido
-
-### Requisitos Previos
-- Node.js 20+ (recomendado Node.js 22 LTS)
-- npm o bun
-
-### Instalación
-```bash
-# 1. Instalar dependencias
-npm install
-
-# 2. Configurar variables de entorno (copiar desde .env.example)
-cp .env.example .env
-
-# 3. Aplicar migraciones de base de datos Prisma (SQLite)
-npx prisma migrate dev
-
-# 4. Iniciar servidor de desarrollo
-npm run dev
-```
-
-El servidor iniciará en `http://localhost:3000`.
-
----
-
-## 🧪 Pruebas y Validación
-
-```bash
-# Ejecutar suite de pruebas de seguridad, pagos y aprovisionamiento (20 tests)
-npm test
-
-# Verificación de tipado estricto TypeScript
-npm run lint
-
-# Compilación de producción (Vite + Node Express bundle)
-npm run build
-```
+Frontend moderno desarrollado en **React 19, TypeScript, Vite y Tailwind CSS v4** para **Banelio** (`banelio.com`), diseñado para alojarse en el **hosting compartido de IONOS**. La plataforma delega toda la operativa comercial, verificación autoritativa de disponibilidad, precios efectivos, carrito, pasarelas de pago y gestión de clientes en **ResellerClub SuperSite 2** y el **Panel de Clientes MyOrderBox**.
 
 ---
 
 ## 🏛️ Arquitectura del Sistema
 
-- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide React, Vite.
-  - Flujo de storefront optimizado exclusivamente para dominios: búsqueda en tiempo real, validación de disponibilidad vía API, cálculo autoritativo de precios en múltiples divisas, transferencia con código EPP y captura estructurada del titular/registrante.
-  - Modal de carrito con cálculo exacto de impuestos por país y checkout blindado.
-  - Panel de cliente (`Mi Panel`): gestión de dominios, zonas DNS, datos del registrante, pedidos y seguridad de cuenta (2FA TOTP con códigos de respaldo y verificación de email).
-- **Backend:** Node.js 22 + Express, TypeScript (`server.ts`).
-  - Proxies seguros firmados criptográficamente hacia el puente PHP IONOS (`https://banelio.com/api/`).
-  - Idempotencia estricta en webhooks de Stripe con almacenamiento en la tabla `StripeWebhookEvent`.
-  - Ciclo de vida de aprovisionamiento en la tabla `ProvisioningOperation` (`PENDING` -> `IN_PROGRESS` -> `CONFIRMED` / `UNCERTAIN` / `FAILED`), aislando dominios individuales en pedidos múltiples y previniendo reenvíos a ciegas tras fallos de red.
-  - Control autoritativo de divisas e importes: pagos con tarjeta en USD, vouchers OXXO exclusivamente en MXN calculados en servidor, y captura server-side en PayPal.
-- **Base de Datos:** SQLite (`prisma/dev.db`) con Prisma ORM 6.19.3. Todas las migraciones se encuentran versionadas en `prisma/migrations/`.
-- **Puente PHP (ResellerClub):** PHP 8.x en IONOS (`server/php/`).
-  - Autenticación obligatoria servidor a servidor mediante HMAC-SHA256 (`X-Banelio-Signature`, `X-Banelio-Timestamp`) y secreto compartido `PHP_BRIDGE_SECRET`.
-  - Sin datos ficticios: validación de campos obligatorios reales del registrante (nombre, correo, teléfono con código de país internacional, dirección, ciudad, estado, código postal y país ISO).
+```
+                      ┌─────────────────────────────────────────┐
+                      │            IONOS (banelio.com)          │
+                      │  Frontend React 19 + TypeScript (Vite)  │
+                      │  Páginas institucionales, diseño,       │
+                      │  legal, SEO, buscador y transferencia   │
+                      └────────────────────┬────────────────────┘
+                                           │
+                        Formularios POST   │   Redirección directa
+                     de búsqueda/registro  │   al panel de clientes
+                                           ▼
+┌──────────────────────────────────────────┴──────────────────────────────────────────┐
+│                             RESELLERCLUB SUPERSITE 2                                 │
+│  - Tienda comercial: https://banelio.supersite2.myorderbox.com                       │
+│  - Endpoint de búsqueda: .../domain-registration/index.php (POST)                   │
+│  - Endpoint de transferencia: .../domain-registration/transfer/index.php (POST)      │
+│  - Panel de Clientes: https://banelio.myorderbox.com/customer                        │
+│  - Catálogo comercial, checkout seguro, facturación, aprovisionamiento ICANN/Registry│
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **IONOS (`banelio.com`):**
+   - Frontend 100% estático compilado con Vite (`dist/`).
+   - Identidad corporativa de Banelio, diseño responsive de alto contraste y soporte bilingüe (Español / Inglés).
+   - Formularios oficiales que envían directamente a SuperSite 2 mediante POST según especificaciones técnicas de ResellerClub.
+   - Sin backend intermedio Node.js/PHP, sin base de datos local SQLite ni autenticación propia.
+   - Seguridad: el código Auth/EPP se conserva únicamente en la memoria de la sesión mientras se envía por POST a SuperSite 2. No se guarda en cookies, localStorage ni URLs.
+
+2. **ResellerClub SuperSite 2 (`banelio.supersite2.myorderbox.com`):**
+   - Comprobación oficial de disponibilidad en tiempo real ante los Registries.
+   - Precios efectivos, promociones comerciales y tipos de cambio aplicados por ResellerClub.
+   - Gestión integral del carrito de compras y pasarelas de pago.
+
+3. **Panel de Clientes ResellerClub (`banelio.myorderbox.com/customer`):**
+   - Acceso de clientes para administración de dominios, registros DNS Anycast, bloqueo de transferencias (Transfer Lock), autorizaciones EPP y renovaciones.
 
 ---
 
-## 🔒 Variables de Entorno Requeridas
+## ⚙️ Configuración Centralizada
 
-Consulta `.env.example` para los nombres oficiales:
-- `SESSION_SECRET`: Secreto para firma de cookies de sesión segura.
-- `DATABASE_URL`: URI de conexión a la base de datos (por defecto `file:./dev.db`).
-- `PHP_BRIDGE_SECRET` / `RESELLER_BRIDGE_SECRET`: Clave compartida para autenticación HMAC-SHA256 con el puente PHP.
-- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`: Credenciales de Stripe para pagos con tarjeta y OXXO Pay.
-- `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`: Credenciales de PayPal para captura de órdenes.
-- `RESELLERCLUB_API_KEY` / `RESELLERCLUB_AUTH_USER_ID`: Credenciales del reseller en ResellerClub para operaciones en producción.
+Todas las rutas y URLs de SuperSite 2 están centralizadas en:
+[`src/config/supersite.ts`](src/config/supersite.ts)
+
+| Clave | URL Configurada | Propósito |
+|---|---|---|
+| `SUPERSITE_URL` | `https://banelio.supersite2.myorderbox.com` | Tienda comercial SuperSite 2 |
+| `CUSTOMER_PANEL_URL` | `https://banelio.myorderbox.com/customer` | Portal de inicio de sesión y gestión del cliente |
+| `SUPERSITE_DOMAIN_SEARCH_ENDPOINT` | `.../domain-registration/index.php` | Formulario POST de búsqueda y registro |
+| `SUPERSITE_DOMAIN_TRANSFER_ENDPOINT` | `.../domain-registration/transfer/index.php` | Formulario POST de transferencia |
+
+> ⚠️ **Comprobación manual en ResellerClub antes de publicar:**
+> Confirma en tu panel de control de ResellerClub (`Configuración > Ajustes de Marca > SuperSite & PartnerSite`) la URL exacta de tu SuperSite y del panel de clientes. Si configuras un dominio totalmente personalizado (por ejemplo `tienda.banelio.com`), solo debes actualizar `src/config/supersite.ts`.
 
 ---
 
-## 📄 Handoff a Claude
+## 🛠️ Desarrollo Local
 
-Para instrucciones detalladas de exportación, estado de módulos y trabajo pendiente, consulta [`CLAUDE_HANDOFF.md`](./CLAUDE_HANDOFF.md).
+### Requisitos Previos
+- Node.js 20+ (recomendado Node.js 22 LTS)
+- npm
+
+### Comandos
+```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Iniciar servidor de desarrollo en http://localhost:3000
+npm run dev
+
+# 3. Comprobar tipado estricto TypeScript
+npm run lint
+
+# 4. Compilar para producción (archivos estáticos en dist/)
+npm run build
+
+# 5. Vista previa local del build estático
+npm run preview
+```
+
+---
+
+## 🚀 Despliegue en Hosting Compartido de IONOS
+
+Al tratarse de una Single Page Application (SPA) puramente estática, el despliegue en IONOS no requiere Node.js ni bases de datos:
+
+1. Ejecuta la compilación de producción:
+   ```bash
+   npm run build
+   ```
+2. La carpeta de salida es:
+   ```
+   dist/
+   ├── index.html
+   ├── robots.txt
+   ├── sitemap.xml
+   └── assets/
+       ├── index-[hash].css
+       └── index-[hash].js
+   ```
+3. Sube el contenido íntegro de la carpeta `dist/` a la raíz del espacio web de tu dominio `banelio.com` en IONOS (mediante SFTP o el Gestor de Archivos de IONOS).
+4. Asegúrate de que tu archivo `.htaccess` en la raíz de IONOS redirija las rutas al `index.html` para el enrutamiento SPA:
+   ```apache
+   <IfModule mod_rewrite.c>
+     RewriteEngine On
+     RewriteBase /
+     RewriteRule ^index\.html$ - [L]
+     RewriteCond %{REQUEST_FILENAME} !-f
+     RewriteCond %{REQUEST_FILENAME} !-d
+     RewriteRule . /index.html [L]
+   </IfModule>
+   ```
+
+---
+
+## 📋 Integración de Formularios SuperSite 2
+
+### 1. Búsqueda y Disponibilidad de Dominios
+- **Destino:** `https://banelio.supersite2.myorderbox.com/domain-registration/index.php`
+- **Método:** `POST`
+- **Campos:**
+  - `action`: `check_availability`
+  - `showrelated`: `true`
+  - `txtDomainName`: Nombre del dominio sin su extensión (soporta TLDs compuestos como `com.mx`, `co.uk`).
+  - `tld[]`: Extensión seleccionada.
+
+### 2. Transferencia de Dominios
+- **Destino:** `https://banelio.supersite2.myorderbox.com/domain-registration/transfer/index.php`
+- **Método:** `POST`
+- **Campos:**
+  - `action`: `domain_transfer_summary`
+  - `nextstep`: `true`
+  - `dom_action`: `transfer`
+  - `domainname`: Nombre del dominio.
+  - `tlds`: Extensión.
+  - `secretname`: Código Auth/EPP obtenido por el cliente (opcional al inicio).

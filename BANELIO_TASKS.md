@@ -2,6 +2,23 @@
 
 ## COMPLETED
 
+### TASK: RESTORE-COMMERCIAL-PAGES-SUPERSITE2
+- **TASK ID:** RESTORE-COMMERCIAL-PAGES-SUPERSITE2
+- **STATUS:** COMPLETED
+- **PRIORITY:** HIGHEST
+- **OWNER:** Frontend & Architecture Team
+- **OBJECTIVE:** Restaurar íntegramente la oferta comercial de Banelio (Dominios, Hosting Web, Correo Empresarial, Certificados SSL, Diseño Web, SEO, Afiliados, Revendedores y Blog) retirando exclusivamente el backend propio y conectando las operaciones comerciales a ResellerClub SuperSite 2.
+- **DELIVERABLES:**
+  - Restauradas y funcionales las 10 rutas comerciales: `/`, `/dominios`, `/hosting`, `/email`, `/ssl`, `/diseno-web`, `/seo`, `/afiliados`, `/resellers`, `/blog`.
+  - Menús actualizados: Navbar de escritorio con menú desplegable de soluciones, menú móvil y Footer de 5 columnas.
+  - Búsqueda y transferencia de dominios con formularios oficiales POST de ResellerClub.
+  - Módulo central de URLs `src/config/supersite.ts` con fallback seguro.
+  - Botones contextuales en todas las páginas de servicio dirigidos a SuperSite 2 o canales directos.
+  - Configuración estática para IONOS con `public/.htaccess` para enrutamiento limpio SPA.
+  - `sitemap.xml` sincronizado con todas las páginas activas.
+  - 0 errores en `npm run lint` y compilación estática limpia en `npm run build` (`dist/`).
+
+
 ### TASK: CONTINUITY-SYSTEM-INIT
 - **TASK ID:** CONTINUITY-SYSTEM-INIT
 - **STATUS:** COMPLETED

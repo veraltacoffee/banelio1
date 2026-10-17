@@ -1,128 +1,136 @@
 import React, { useState, useEffect } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HeroDomainSearch from './components/public/HeroDomainSearch';
+import HomeServicesGrid from './components/public/HomeServicesGrid';
 import { FaqSection } from './components/public/FaqSection';
 import DomainsLanding from './components/public/DomainsLanding';
+import HostingLanding from './components/public/HostingLanding';
+import EmailLanding from './components/public/EmailLanding';
+import SslLanding from './components/public/SslLanding';
+import WebDesignLanding from './components/public/WebDesignLanding';
+import SeoLanding from './components/public/SeoLanding';
+import AffiliatesLanding from './components/public/AffiliatesLanding';
+import ResellersLanding from './components/public/ResellersLanding';
+import BlogLanding from './components/public/BlogLanding';
 import { LegalModal, LegalDocType } from './components/public/LegalModal';
 import { CookieConsentBanner } from './components/public/CookieConsentBanner';
 import { WhatsAppFloatingButton } from './components/public/WhatsAppFloatingButton';
-import CustomerDashboard from './components/dashboard/CustomerDashboard';
-import CustomerAuthView from './components/auth/CustomerAuthView';
-import CartModal from './components/public/CartModal';
-import CheckoutModal from './components/public/CheckoutModal';
+
+function resolveRoute(pathname: string): string {
+  const path = pathname.toLowerCase().trim();
+  if (path === '/' || path === '') return '/';
+  if (path.startsWith('/dominios') || path.startsWith('/domains')) return '/dominios';
+  if (path.startsWith('/hosting')) return '/hosting';
+  if (path.startsWith('/email') || path.startsWith('/correo')) return '/email';
+  if (path.startsWith('/ssl') || path.startsWith('/seguridad')) return '/ssl';
+  if (path.startsWith('/diseno-web') || path.startsWith('/diseno') || path.startsWith('/web')) return '/diseno-web';
+  if (path.startsWith('/seo')) return '/seo';
+  if (path.startsWith('/afiliados') || path.startsWith('/affiliates')) return '/afiliados';
+  if (path.startsWith('/resellers') || path.startsWith('/revendedores')) return '/resellers';
+  if (path.startsWith('/blog')) return '/blog';
+  return '/';
+}
 
 function MainAppContent() {
-  const { role, setRole, customerUser } = useApp();
-  
-  const getInitialPath = () => {
+  const [currentRoute, setCurrentRoute] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const path = window.location.pathname.toLowerCase();
-      if (path.startsWith('/dominios') || path.startsWith('/domains')) return '/dominios';
-      // Rutas retiradas redirigidas limpiamente al storefront de dominios
-      if (
-        path.startsWith('/hosting') ||
-        path.startsWith('/email') ||
-        path.startsWith('/correo') ||
-        path.startsWith('/ssl') ||
-        path.startsWith('/seguridad') ||
-        path.startsWith('/afiliados') ||
-        path.startsWith('/resellers') ||
-        path.startsWith('/blog')
-      ) {
-        return '/dominios';
-      }
-      return '/';
+      return resolveRoute(window.location.pathname);
     }
     return '/';
-  };
+  });
 
-  const [currentRoute, setCurrentRoute] = useState<string>(getInitialPath());
   const [legalModalDoc, setLegalModalDoc] = useState<LegalDocType | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname.toLowerCase();
-      if (path.startsWith('/dominios') || path.startsWith('/domains')) {
-        setCurrentRoute('/dominios');
-      } else if (
-        path.startsWith('/hosting') ||
-        path.startsWith('/email') ||
-        path.startsWith('/correo') ||
-        path.startsWith('/ssl') ||
-        path.startsWith('/afiliados') ||
-        path.startsWith('/resellers') ||
-        path.startsWith('/blog')
-      ) {
-        setCurrentRoute('/dominios');
-      } else {
-        setCurrentRoute('/');
-      }
+      setCurrentRoute(resolveRoute(window.location.pathname));
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigateTo = (route: string, newTab: boolean = false) => {
-    if (newTab) {
-      window.open(route, '_blank');
-      return;
+  const navigateTo = (route: string) => {
+    const canonicalRoute = resolveRoute(route);
+    if (typeof window !== 'undefined' && window.location.pathname !== canonicalRoute) {
+      window.history.pushState({}, '', canonicalRoute);
     }
-
-    if (window.location.pathname !== route) {
-      window.history.pushState({}, '', route);
-    }
-    setCurrentRoute(route);
+    setCurrentRoute(canonicalRoute);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#070707] selection:bg-[#B8F23A] selection:text-[#070707] font-sans antialiased">
-      
-      {/* Main Navigation Bar */}
-      <Navbar currentRoute={currentRoute} onNavigate={(r) => { navigateTo(r); if (role !== 'PUBLIC') setRole('PUBLIC'); }} />
+      {/* Main Navigation Bar with full commercial portfolio */}
+      <Navbar currentRoute={currentRoute} onNavigate={navigateTo} />
 
-      {/* Screen Routing based on User Role & URL Path */}
+      {/* Main Content Area */}
       <main className="flex-1 bg-white">
-        {role === 'PUBLIC' && (
+        {currentRoute === '/' && (
           <div>
-            {currentRoute === '/' && (
-              <>
-                <HeroDomainSearch />
-                <FaqSection />
-              </>
-            )}
-            {currentRoute === '/dominios' && (
-              <>
-                <DomainsLanding />
-                <FaqSection />
-              </>
-            )}
+            <HeroDomainSearch />
+            <HomeServicesGrid onNavigate={navigateTo} />
+            <FaqSection />
           </div>
         )}
 
-        {role === 'CUSTOMER' && (
-          customerUser ? (
-            <CustomerDashboard />
-          ) : (
-            <CustomerAuthView onCancel={() => setRole('PUBLIC')} />
-          )
+        {currentRoute === '/dominios' && (
+          <div>
+            <DomainsLanding />
+            <FaqSection />
+          </div>
         )}
 
-        {(role === 'RESELLER' || role === 'ADMIN') && (
-          customerUser ? (
-            <CustomerDashboard />
-          ) : (
-            <CustomerAuthView onCancel={() => setRole('PUBLIC')} />
-          )
+        {currentRoute === '/hosting' && (
+          <div>
+            <HostingLanding />
+          </div>
+        )}
+
+        {currentRoute === '/email' && (
+          <div>
+            <EmailLanding />
+          </div>
+        )}
+
+        {currentRoute === '/ssl' && (
+          <div>
+            <SslLanding />
+          </div>
+        )}
+
+        {currentRoute === '/diseno-web' && (
+          <div>
+            <WebDesignLanding />
+          </div>
+        )}
+
+        {currentRoute === '/seo' && (
+          <div>
+            <SeoLanding />
+          </div>
+        )}
+
+        {currentRoute === '/afiliados' && (
+          <div>
+            <AffiliatesLanding />
+          </div>
+        )}
+
+        {currentRoute === '/resellers' && (
+          <div>
+            <ResellersLanding />
+          </div>
+        )}
+
+        {currentRoute === '/blog' && (
+          <div>
+            <BlogLanding />
+          </div>
         )}
       </main>
-
-      {/* 4. Global Modals and Drawers */}
-      <CartModal />
-      <CheckoutModal />
 
       {/* Legal Compliance Modal */}
       <LegalModal
@@ -139,7 +147,7 @@ function MainAppContent() {
       {/* Floating WhatsApp Support Button */}
       <WhatsAppFloatingButton />
 
-      {/* 5. Footer */}
+      {/* Global Footer */}
       <Footer
         onNavigate={navigateTo}
         onOpenLegalModal={(doc) => setLegalModalDoc(doc)}

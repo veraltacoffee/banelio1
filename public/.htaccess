@@ -1,0 +1,20 @@
+# Banelio - Configuración de Enrutamiento SPA para Servidores Apache / IONOS
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Permitir acceso directo a archivos existentes (imágenes, scripts, css, sitemap, robots)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Redirigir todas las demás rutas limpias (/hosting, /email, /ssl, etc.) al punto de entrada index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Seguridad y cabeceras recomendadas
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

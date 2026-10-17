@@ -1,7 +1,8 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { ArrowUpRight, Scale, Phone } from 'lucide-react';
+import { Scale, Phone, ExternalLink, ShieldCheck, Mail, Globe, Server } from 'lucide-react';
 import { LegalDocType } from '../public/LegalModal';
+import { openCustomerPanel, openSuperSiteStore, openHostingStore, openEmailStore, openSslStore } from '../../services/supersiteService';
 
 interface FooterProps {
   onNavigate: (route: string) => void;
@@ -9,7 +10,7 @@ interface FooterProps {
 }
 
 export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
-  const { setRole, t } = useApp();
+  const { t, language } = useApp();
 
   const socialLinks = [
     {
@@ -76,13 +77,13 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
 
   return (
     <footer className="bg-[#070707] text-[#959A92] text-xs border-t border-[#555A52]/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         
-        {/* Adjusted Grid with balanced column distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
+        {/* Main Grid: 5 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
           
           {/* Brand Col */}
-          <div className="space-y-3.5">
+          <div className="space-y-3.5 lg:col-span-2">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onNavigate('/')}>
               <img
                 src="https://res.cloudinary.com/hxbmhqiq/image/upload/f_auto,q_auto/LOGO_BANELIO_wide_2"
@@ -96,7 +97,7 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
             </p>
 
             {/* Direct Contact & Social */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2 pt-2">
               <div className="text-[11px] text-[#FCFCF8] space-y-1">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[#858A82]">{t('footer_support_sales')} </span>
@@ -113,10 +114,19 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                     <Phone size={12} className="text-[#B8F23A]" />
                     <span>+52 660 125 4107</span>
                   </a>
+                  <span>&middot;</span>
+                  <a
+                    href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20atencion%20comercial"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#B8F23A] hover:underline font-bold"
+                  >
+                    WhatsApp 24/7
+                  </a>
                 </div>
               </div>
 
-              <div className="pt-1">
+              <div className="pt-2">
                 <div className="text-[10px] font-bold text-[#FCFCF8] mb-1.5 flex items-center gap-1.5">
                   <span>{t('footer_community')}</span>
                 </div>
@@ -138,9 +148,12 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
             </div>
           </div>
 
-          {/* Col 2: Dominios & DNS */}
+          {/* Col 2: Dominios & Hosting */}
           <div className="space-y-2.5">
-            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px]">{t('footer_col_domains')}</h4>
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
+              <Globe size={13} className="text-[#B8F23A]" />
+              <span>Dominios & Hosting</span>
+            </h4>
             <ul className="space-y-1.5">
               <li>
                 <button onClick={() => onNavigate('/dominios')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
@@ -153,28 +166,83 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
                 </button>
               </li>
               <li>
-                <button onClick={() => setRole('CUSTOMER')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  {t('footer_dns_zones')}
+                <button onClick={() => onNavigate('/hosting')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  {t('footer_hosting_nvme')}
                 </button>
               </li>
               <li>
-                <button onClick={() => setRole('CUSTOMER')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
-                  {t('footer_client_panel')}
+                <button onClick={() => onNavigate('/resellers')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  Hosting Reseller WHM
                 </button>
               </li>
               <li>
                 <span className="text-[#686D65]">{t('footer_whois_free')}</span>
               </li>
+              <li>
+                <span className="text-[#686D65]">{t('footer_litespeed')}</span>
+              </li>
             </ul>
           </div>
 
-          {/* Col 3: Legal México (Complete compliance menu) */}
+          {/* Col 3: Correo, SSL & Soluciones */}
           <div className="space-y-2.5">
             <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
-              <Scale className="w-3 h-3 text-[#B8F23A]" />
-              <span>{t('footer_col_legal')}</span>
+              <ShieldCheck size={13} className="text-[#B8F23A]" />
+              <span>Correo, SSL & Soluciones</span>
             </h4>
             <ul className="space-y-1.5">
+              <li>
+                <button onClick={() => onNavigate('/email')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  {t('footer_pro_email')}
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/ssl')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  {t('footer_ssl_certs')}
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/diseno-web')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  Diseño & Desarrollo Web
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/seo')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  Posicionamiento SEO
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/afiliados')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  Programa de Afiliados
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavigate('/blog')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left">
+                  {t('footer_arch_blog')}
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: SuperSite & Legal México */}
+          <div className="space-y-2.5">
+            <h4 className="font-bold text-[#FCFCF8] uppercase tracking-wider text-[11px] flex items-center gap-1">
+              <Scale size={13} className="text-[#B8F23A]" />
+              <span>Tienda & Legal</span>
+            </h4>
+            <ul className="space-y-1.5">
+              <li>
+                <button onClick={() => openSuperSiteStore('_blank')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left flex items-center gap-1">
+                  <span>Tienda SuperSite 2</span>
+                  <ExternalLink size={11} className="text-[#B8F23A]" />
+                </button>
+              </li>
+              <li>
+                <button onClick={() => openCustomerPanel('_blank')} className="hover:text-[#FCFCF8] transition-colors cursor-pointer text-left flex items-center gap-1">
+                  <span>{t('footer_client_panel')}</span>
+                  <ExternalLink size={11} className="text-[#B8F23A]" />
+                </button>
+              </li>
               <li>
                 <button
                   id="footer-legal-privacy"
@@ -254,7 +322,7 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
               {t('footer_cookie_settings')}
             </button>
             <span>&middot;</span>
-            <span className="text-[#656A62]">{t('footer_secure_payments')}</span>
+            <span className="text-[#656A62]">ResellerClub SuperSite 2 eCommerce Integration</span>
           </div>
         </div>
       </div>
