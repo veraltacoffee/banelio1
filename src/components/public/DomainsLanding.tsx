@@ -82,16 +82,13 @@ export default function DomainsLanding() {
           />
         </div>
 
-        {/* Intro Background Image with pure white background, no shadows */}
+        {/* Intro Background Image with pure white background, no shadows or halos */}
         <div className="absolute top-0 right-0 w-full sm:w-4/5 lg:w-3/5 h-[580px] sm:h-[620px] lg:h-[660px] pointer-events-none overflow-hidden z-0 flex justify-end">
-          <picture>
-            <source srcSet="/hero_clean.webp" type="image/webp" />
-            <img
-              src="/hero_clean.png"
-              alt="Banelio Registro de Dominios"
-              className="w-full h-full object-contain object-top lg:object-right-top"
-            />
-          </picture>
+          <img
+            src="/hero_pure_white.png"
+            alt="Banelio Registro de Dominios"
+            className="w-full h-full object-contain object-top lg:object-right-top"
+          />
         </div>
 
         {/* Soft edge gradients for seamless integration */}
@@ -220,7 +217,7 @@ export default function DomainsLanding() {
               {language === 'en' ? 'Everything Included with Every Domain Registration' : 'Todo lo que incluye cada registro de dominio'}
             </h2>
             <p className="text-[#555A52] mt-2 text-sm">
-              {language === 'en' ? 'Direct provisioning with official ICANN registry accreditation.' : 'Aprovisionamiento directo con acreditación oficial de registry e ICANN.'}
+              {language === 'en' ? 'Reliable domain registration through accredited registrars.' : 'Registro de dominios confiable mediante registrars acreditados.'}
             </p>
           </div>
 
@@ -230,12 +227,12 @@ export default function DomainsLanding() {
                 <Shield size={24} />
               </div>
               <h3 className="text-xl font-black text-[#070707]">
-                {language === 'en' ? 'Free WHOIS Privacy Protection' : 'Privacidad WHOIS Gratuita'}
+                {language === 'en' ? 'WHOIS Privacy Protection' : 'Protección de Privacidad WHOIS'}
               </h3>
               <p className="text-xs text-[#555A52] leading-relaxed">
                 {language === 'en'
-                  ? 'Your personal information (name, email, phone) is permanently masked from spammers and public databases at zero extra charge.'
-                  : 'Tus datos personales (nombre, teléfono y dirección) quedan enmascarados ante spammers y bases de datos públicas de forma permanente.'}
+                  ? 'Keep your personal details (name, email, phone) masked from spammers and public databases on eligible extensions.'
+                  : 'Mantén tus datos personales (nombre, teléfono y dirección) protegidos ante búsquedas públicas y spammers en extensiones compatibles.'}
               </p>
             </div>
 
@@ -248,8 +245,8 @@ export default function DomainsLanding() {
               </h3>
               <p className="text-xs text-[#555A52] leading-relaxed">
                 {language === 'en'
-                  ? 'Complete control over A, AAAA, CNAME, MX, TXT, SPF, and DKIM records with lightning-fast global propagation.'
-                  : 'Control total de registros A, AAAA, CNAME, MX, TXT, SPF y DKIM con propagación global instantánea en segundos.'}
+                  ? 'Complete control over A, AAAA, CNAME, MX, TXT, SPF, and DKIM records with fast global propagation.'
+                  : 'Control total de registros A, AAAA, CNAME, MX, TXT, SPF y DKIM con rápida propagación global.'}
               </p>
             </div>
 

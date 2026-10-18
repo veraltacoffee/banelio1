@@ -111,12 +111,12 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
     {
       icon: <Globe2 className="w-5 h-5 text-[#070707]" />,
       title: language === 'en' ? '400+ Global TLDs' : 'Más de 400 TLDs',
-      desc: language === 'en' ? 'Direct ICANN registry connection' : 'Registro de dominios acreditado'
+      desc: language === 'en' ? 'Accredited domain registration' : 'Registro de dominios acreditado'
     },
     {
       icon: <Lock className="w-5 h-5 text-[#070707]" />,
-      title: language === 'en' ? 'Free WHOIS Privacy' : 'WHOIS Privado 100% Gratis',
-      desc: language === 'en' ? 'Personal identity data protection' : 'Blindaje de datos personales'
+      title: language === 'en' ? 'WHOIS Privacy' : 'Privacidad WHOIS',
+      desc: language === 'en' ? 'Identity data protection' : 'Protección de datos personales'
     },
     {
       icon: <Headphones className="w-5 h-5 text-[#070707]" />,

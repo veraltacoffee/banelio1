@@ -45,10 +45,10 @@ export default function HostingLanding() {
         language === 'en' ? 'Unlimited Professional Email Accounts' : 'Cuentas de Correo Corporativo Ilimitadas',
         language === 'en' ? 'Free Wildcard SSL for all domains' : 'Certificados SSL Gratis para todos tus dominios',
         language === 'en' ? 'LiteSpeed Enterprise + HTTP/3 QUIC' : 'LiteSpeed Enterprise + HTTP/3 & QUIC',
-        language === 'en' ? 'CloudLinux OS Isolation (Guaranteed Resources)' : 'Aislamiento CloudLinux OS (Recursos 100% garantizados)',
+        language === 'en' ? 'CloudLinux OS Isolation (Dedicated Resources)' : 'Aislamiento CloudLinux OS (Recursos dedicados por cuenta)',
         language === 'en' ? 'Daily Automated Backups with 1-Click Restore' : 'Backups Diarios con restauración en 1 clic',
         language === 'en' ? '1-Click WordPress Staging & Git Integration' : 'Entornos Staging WordPress y despliegue Git',
-        language === 'en' ? 'Free Zero-Downtime White-Glove Migration' : 'Migración Gratuita Zero-Downtime incluida'
+        language === 'en' ? 'Website Migration Assistance Included' : 'Asistencia en migración de sitios web incluida'
       ],
       badge: language === 'en' ? 'Most Popular' : 'Más Recomendado'
     },
@@ -111,17 +111,17 @@ export default function HostingLanding() {
     },
     {
       icon: <RefreshCw className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'Free Zero-Downtime Migration' : 'Migración Gratuita Zero-Downtime',
+      title: language === 'en' ? 'Website Migration Assistance' : 'Asistencia en Migración Web',
       desc: language === 'en'
-        ? 'Our senior systems engineers migrate your websites, databases, and emails with zero interruption to your visitors.'
-        : 'Nuestro equipo de ingenieros migra tu sitio web, bases de datos y cuentas de correo sin que tus clientes sufran caídas ni pérdidas.'
+        ? 'Our technical support team assists you with migrating your website files, databases, and mailboxes.'
+        : 'Nuestro equipo de soporte técnico te acompaña en la migración de archivos, bases de datos y cuentas de correo.'
     },
     {
       icon: <Clock className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? '99.9% Uptime SLA Guaranteed' : 'Garantía SLA de 99.9% de Disponibilidad',
+      title: language === 'en' ? 'High Availability Cloud Infrastructure' : 'Infraestructura Cloud de Alta Disponibilidad',
       desc: language === 'en'
-        ? 'Enterprise Tier-III and Tier-IV redundant datacenter architecture with automatic hardware failover.'
-        : 'Infraestructura redundante en centros de datos certificados Tier-III y Tier-IV con conmutación por error automatizada.'
+        ? 'Redundant cloud server architecture designed for maximum operational continuity and reliable uptime.'
+        : 'Arquitectura en la nube con almacenamiento redundante diseñada para alta disponibilidad y estabilidad operativa.'
     },
     {
       icon: <Layers className="w-6 h-6 text-[#070707]" />,
@@ -145,8 +145,8 @@ export default function HostingLanding() {
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#070707] tracking-tight leading-tight max-w-4xl mx-auto">
             {language === 'en'
-              ? 'Web Hosting built for extreme speed and zero downtime.'
-              : 'Hosting web de alto rendimiento, escalable y sin caídas.'}
+              ? 'Web Hosting built for high performance and reliability.'
+              : 'Hosting web de alto rendimiento, escalable y confiable.'}
           </h1>
 
           <p className="mt-5 text-base sm:text-lg text-[#555A52] max-w-2xl mx-auto font-normal leading-relaxed">
@@ -177,15 +177,15 @@ export default function HostingLanding() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-[#555A52]">
             <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
-              {language === 'en' ? '99.9% Uptime SLA' : 'SLA de 99.9% de Uptime'}
+              {language === 'en' ? 'High Availability Cloud' : 'Alta Disponibilidad Cloud'}
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
-              {language === 'en' ? 'Free Zero-Downtime Migration' : 'Migración 100% Gratuita'}
+              {language === 'en' ? 'Assisted Website Migration' : 'Migración Asistida'}
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
-              {language === 'en' ? '30-Day Satisfaction Guarantee' : 'Garantía de Satisfacción 30 Días'}
+              {language === 'en' ? 'Expert Technical Support' : 'Soporte Técnico Especializado'}
             </span>
           </div>
         </div>

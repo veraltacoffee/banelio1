@@ -127,7 +127,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             >
               <span className="flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                <span>{EN ? 'Terms & SLA 99.9%' : 'Términos y SLA 99.9%'}</span>
+                <span>{EN ? 'Terms of Service' : 'Términos del Servicio'}</span>
               </span>
               <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             </button>
@@ -159,7 +159,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
             >
               <span className="flex items-center gap-2">
                 <Scale className="w-4 h-4" />
-                <span>{EN ? 'Domain Agreement ICANN' : 'Contrato Dominios ICANN'}</span>
+                <span>{EN ? 'Domain Registration Policies' : 'Políticas y Contrato de Dominios'}</span>
               </span>
               <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             </button>
@@ -198,10 +198,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
                     <h3 className="text-base font-bold text-[#070707]">3. Primary Purposes of Data Processing</h3>
                     <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm">
-                      <li>Registration and delegation of domain names with the Internet Corporation for Assigned Names and Numbers (ICANN) and NIC Mexico (Registry .MX).</li>
+                      <li>Registration and management of domain names through accredited registrars and official registries (including NIC Mexico for .MX domains).</li>
                       <li>Automated provisioning of Cloud NVMe servers, corporate email accounts and issuance of SSL certificates with RSA 2048/4096-bit encryption.</li>
                       <li>Issuance and digital stamping of electronic tax receipts (CFDI version 4.0) in accordance with the Federal Tax Code (CFF).</li>
-                      <li>Mandatory technical security notices, domain expiration alerts and business continuity (SLA) alerts.</li>
+                      <li>Technical security notices, service status updates, and domain expiration reminders.</li>
                     </ul>
 
                     <h3 className="text-base font-bold text-[#070707]">4. National and International Data Transfers</h3>
@@ -211,7 +211,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
                     <h3 className="text-base font-bold text-[#070707]">5. Information Security Measures</h3>
                     <p>
-                      Banelio implements administrative, technical and physical controls under the ISO/IEC 27001 standard, including AES-256 encryption at rest, TLS 1.3 in transit, multi-factor authentication (2FA) and CloudLinux CageFS isolation to prevent unauthorized access or security breaches.
+                      Banelio implements administrative, technical, and physical security measures, including transit encryption (TLS), account isolation, and credential protection to prevent unauthorized access or security breaches.
                     </p>
                   </div>
                 ) : (
@@ -233,10 +233,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                     <h3 className="text-base font-bold text-[#070707]">3. Finalidades Primarias del Tratamiento</h3>
                     <p>Los datos recabados son indispensables para cumplir las siguientes finalidades primarias y necesarias:</p>
                     <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm">
-                      <li>Registro y delegación oficial de nombres de dominio ante la ICANN y NIC México (Registry .MX).</li>
+                      <li>Registro y gestión de nombres de dominio a través de registrars acreditados y registros oficiales (incluyendo NIC México para dominios .MX).</li>
                       <li>Aprovisionamiento automatizado de servidores Cloud NVMe, cuentas de correo empresarial y emisión de certificados SSL con cifrado RSA 2048/4096 bits.</li>
                       <li>Emisión y timbrado digital de Comprobantes Fiscales Digitales por Internet (CFDI versión 4.0) conforme a las disposiciones del SAT.</li>
-                      <li>Notificaciones obligatorias de seguridad técnica, vencimientos de dominio y alertas de continuidad de negocio (SLA).</li>
+                      <li>Avisos de seguridad técnica, actualizaciones sobre el estado del servicio y recordatorios de vencimiento de dominios.</li>
                     </ul>
 
                     <h3 className="text-base font-bold text-[#070707]">4. Transferencia Nacional e Internacional de Datos</h3>
@@ -246,7 +246,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
                     <h3 className="text-base font-bold text-[#070707]">5. Medidas de Seguridad de la Información</h3>
                     <p>
-                      Banelio implementa controles administrativos, técnicos y físicos conforme al estándar ISO/IEC 27001, incluyendo cifrado AES-256 en reposo, tránsito TLS 1.3, autenticación multifactor (2FA) y aislamiento CloudLinux CageFS para prevenir accesos no autorizados o vulneraciones de seguridad.
+                      Banelio implementa controles y medidas de seguridad administrativas, técnicas y físicas, incluyendo cifrado en tránsito (TLS), aislamiento de cuentas y resguardo de credenciales para prevenir accesos no autorizados o vulneraciones de seguridad.
                     </p>
                   </div>
                 )}
@@ -419,7 +419,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                     {EN ? 'Commercial Code · Federal Consumer Protection Law (PROFECO)' : 'Código de Comercio · Ley Federal de Protección al Consumidor (PROFECO)'}
                   </span>
                   <h2 className="text-2xl font-black text-[#070707] mt-1">
-                    {EN ? 'Terms of Service and Service Level Agreement (SLA 99.9%)' : 'Términos de Servicio y Acuerdo de Nivel de Servicio (SLA 99.9%)'}
+                    {EN ? 'Terms of Service' : 'Términos del Servicio'}
                   </h2>
                   <p className="text-xs text-[#858A82] mt-1">{EN ? 'Adhesion contract for the provision of technology services' : 'Contrato de Adhesión para la Prestación de Servicios Tecnológicos'}</p>
                 </div>
@@ -431,18 +431,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                       This instrument constitutes a binding commercial contract entered into in accordance with Article 80 of the <em>Commercial Code</em> and <em>NOM-151-SCFI-2016</em>. By completing the order and payment process on the Banelio platform, the user provides their express and informed consent.
                     </p>
 
-                    <h3 className="text-base font-bold text-[#070707]">2. Server Availability Guarantee (SLA 99.9%)</h3>
+                    <h3 className="text-base font-bold text-[#070707]">2. Service Availability and Maintenance</h3>
                     <p>
-                      Banelio guarantees uninterrupted monthly operational availability of its Cloud NVMe storage nodes and backbone networks of <strong className="text-[#070707]">99.9%</strong>. This guarantee excludes scheduled maintenance windows notified 48 hours in advance and events of force majeure.
+                      Banelio provides hosting and infrastructure services backed by high-availability cloud architecture and redundant network connections. Services are delivered aiming for maximum operational continuity. Preventative maintenance, security updates, and network optimizations are scheduled periodically during off-peak hours where possible. Banelio is not liable for interruptions resulting from circumstances outside its reasonable control, third-party telecommunications network failures, or force majeure events.
                     </p>
-                    <p>
-                      In the event of non-compliance with the guaranteed SLA metric within a monthly billing cycle, the customer will be entitled to request credits applicable to renewal in accordance with the following scale:
-                    </p>
-                    <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Availability 99.0% - 99.8%: Credit equivalent to 10% of the monthly amount.</li>
-                      <li>Availability 95.0% - 98.9%: Credit equivalent to 25% of the monthly amount.</li>
-                      <li>Availability below 95.0%: Credit equivalent to 50% of the monthly amount.</li>
-                    </ul>
 
                     <h3 className="text-base font-bold text-[#070707]">3. Prices, Currencies and Taxes</h3>
                     <p>
@@ -461,18 +453,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                       El presente instrumento constituye un contrato mercantil vinculante celebrado de conformidad con el Artículo 80 del <em>Código de Comercio</em> y la <em>NOM-151-SCFI-2016</em>. Al completar el proceso de orden y pago en la plataforma Banelio, el usuario manifiesta su consentimiento expreso e informado.
                     </p>
 
-                    <h3 className="text-base font-bold text-[#070707]">2. Garantía de Disponibilidad de Servidores (SLA 99.9%)</h3>
+                    <h3 className="text-base font-bold text-[#070707]">2. Disponibilidad del Servicio y Mantenimiento</h3>
                     <p>
-                      Banelio garantiza una disponibilidad operativa mensual ininterrumpida de sus nodos de almacenamiento Cloud NVMe y redes troncales del <strong className="text-[#070707]">99.9%</strong>. Dicha garantía excluye ventanas de mantenimiento programado notificadas con 48 horas de antelación y eventos de caso fortuito o fuerza mayor.
+                      Banelio provee servicios de alojamiento e infraestructura basados en servidores de alta disponibilidad y conectividad redundante, procurando la mayor continuidad operativa de los servicios activos. Periódicamente se efectúan labores de mantenimiento preventivo, actualizaciones de seguridad y optimizaciones de infraestructura, programándose de preferencia en horarios de menor tráfico. Banelio no asume responsabilidad por interrupciones atribuibles a factores ajenos a su control razonable, fallas en redes de telecomunicaciones de terceros o causas de fuerza mayor.
                     </p>
-                    <p>
-                      En caso de incumplimiento de la métrica SLA garantizada dentro de un ciclo de facturación mensual, el cliente tendrá derecho a solicitar créditos aplicables a renovación de conformidad con la siguiente escala:
-                    </p>
-                    <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-                      <li>Disponibilidad 99.0% - 99.8%: Crédito equivalente al 10% del importe mensual.</li>
-                      <li>Disponibilidad 95.0% - 98.9%: Crédito equivalente al 25% del importe mensual.</li>
-                      <li>Disponibilidad menor a 95.0%: Crédito equivalente al 50% del importe mensual.</li>
-                    </ul>
 
                     <h3 className="text-base font-bold text-[#070707]">3. Precios, Divisas e Impuestos</h3>
                     <p>
@@ -538,29 +522,29 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               <div className="space-y-6">
                 <div className="border-b border-[#E2E5DA] pb-4">
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#49652A]">
-                    ICANN 2013 Registrar Accreditation Agreement · NIC México (.MX)
+                    {EN ? 'Accredited Registrars · Registry .MX Policies' : 'Registrars Acreditados · Políticas Registry .MX'}
                   </span>
                   <h2 className="text-2xl font-black text-[#070707] mt-1">
-                    {EN ? 'Domain Name Registration Contract and Policies' : 'Contrato y Políticas de Registro de Nombres de Dominio'}
+                    {EN ? 'Domain Name Registration Policies and Terms' : 'Políticas y Términos de Registro de Nombres de Dominio'}
                   </h2>
-                  <p className="text-xs text-[#858A82] mt-1">{EN ? 'Official provisions on ownership, renewal and dispute resolution' : 'Disposiciones Oficiales de Titularidad, Renovación y Resolución de Disputas'}</p>
+                  <p className="text-xs text-[#858A82] mt-1">{EN ? 'Provisions on ownership, renewal and dispute resolution' : 'Disposiciones de Titularidad, Renovación y Resolución de Disputas'}</p>
                 </div>
 
                 {EN ? (
                   <div className="space-y-4">
-                    <h3 className="text-base font-bold text-[#070707]">1. ICANN Authority and Accreditation Framework</h3>
+                    <h3 className="text-base font-bold text-[#070707]">1. Regulatory Framework and Accredited Registrars</h3>
                     <p>
-                      The registration of generic top-level domain names (gTLDs: .com, .net, .org, .online, .tech, .xyz, etc.) and territorial names (ccTLDs: .mx, .com.mx) is governed by the guidelines of the <strong className="text-[#070707]">Internet Corporation for Assigned Names and Numbers (ICANN)</strong> and the agreements with <strong className="text-[#070707]">NIC Mexico (Registry .MX)</strong>.
+                      The registration and management of generic top-level domains (gTLDs: .com, .net, .org, .online, .tech, .xyz, etc.) and territorial domains (ccTLDs: .mx, .com.mx) is processed through accredited registrars under the regulatory framework of the <strong className="text-[#070707]">Internet Corporation for Assigned Names and Numbers (ICANN)</strong> and the registry agreements with <strong className="text-[#070707]">NIC Mexico (Registry .MX)</strong>.
                     </p>
 
                     <h3 className="text-base font-bold text-[#070707]">2. Duty of Accuracy in WHOIS / RDAP Records</h3>
                     <p>
-                      The registrant declares under penalty of perjury that all information provided is truthful, complete and up to date. The intentional provision of false information constitutes legal grounds for cancellation under ICANN rules.
+                      The registrant declares that all information provided is truthful, complete, and up to date. The intentional provision of inaccurate information may constitute grounds for domain suspension or cancellation under applicable registry regulations.
                     </p>
 
-                    <h3 className="text-base font-bold text-[#070707]">3. Free WHOIS Privacy</h3>
+                    <h3 className="text-base font-bold text-[#070707]">3. WHOIS Privacy and Contact Protection</h3>
                     <p>
-                      Banelio provides the WHOIS Privacy service at no additional cost for eligible gTLDs, masking the registrant's data through a trust proxy to protect against abusive telemarketing and identity theft.
+                      In accordance with applicable registry policies and data protection rules, publicly available contact information can be protected through WHOIS/RDAP privacy options on eligible domain extensions supported by the registry and according to the options selected during domain purchase.
                     </p>
 
                     <h3 className="text-base font-bold text-[#070707]">4. Trademark Dispute Resolution Policy (UDRP & LDRP)</h3>
@@ -570,19 +554,19 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-base font-bold text-[#070707]">1. Marco de Autoridad y Acreditación ICANN</h3>
+                    <h3 className="text-base font-bold text-[#070707]">1. Marco Normativo y Registrars Acreditados</h3>
                     <p>
-                      El registro de nombres de dominio de nivel superior genérico (gTLDs: .com, .net, .org, .online, .tech, .xyz, etc.) y nombres territoriales (ccTLDs: .mx, .com.mx) se rige bajo los lineamientos de la <strong className="text-[#070707]">Corporación de Internet para la Asignación de Nombres y Números (ICANN)</strong> y los acuerdos con <strong className="text-[#070707]">NIC México (Registry .MX)</strong>.
+                      El registro y gestión de nombres de dominio de nivel superior genérico (gTLDs: .com, .net, .org, .online, .tech, .xyz, etc.) y territoriales (ccTLDs: .mx, .com.mx) se tramita a través de registrars acreditados bajo las normativas de la <strong className="text-[#070707]">Corporación de Internet para la Asignación de Nombres y Números (ICANN)</strong> y los acuerdos aplicables con <strong className="text-[#070707]">NIC México (Registry .MX)</strong>.
                     </p>
 
                     <h3 className="text-base font-bold text-[#070707]">2. Obligación de Veracidad en Registros WHOIS / RDAP</h3>
                     <p>
-                      El titular registrador (Registrant) declara bajo protesta de decir verdad que toda la información suministrada es fidedigna, completa y actualizada. El suministro intencional de información falsa constituye causa legal para la cancelación irrevocable conforme a normas de ICANN.
+                      El titular registrador (Registrant) declara que toda la información suministrada es fidedigna, completa y actualizada. El suministro deliberado de información inexacta puede constituir causa de suspensión o cancelación conforme a las políticas del registro correspondiente.
                     </p>
 
-                    <h3 className="text-base font-bold text-[#070707]">3. Privacidad WHOIS Gratuita</h3>
+                    <h3 className="text-base font-bold text-[#070707]">3. Privacidad WHOIS y Protección de Contacto</h3>
                     <p>
-                      Banelio proporciona el servicio de Privacidad WHOIS sin costo adicional para los gTLDs elegibles, enmascarando los datos del titular mediante un fideicomiso proxy para salvaguardarlo contra telemercadeo abusivo o robo de identidad.
+                      De acuerdo con las normativas internacionales y directrices de protección de datos, la información de contacto pública puede ser resguardada mediante opciones de Privacidad WHOIS/RDAP en aquellas extensiones donde el registro lo permita y según la configuración elegida por el usuario durante la contratación.
                     </p>
 
                     <h3 className="text-base font-bold text-[#070707]">4. Política de Resolución de Disputas de Marca (UDRP & LDRP)</h3>

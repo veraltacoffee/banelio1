@@ -27,7 +27,7 @@ export const FAQ_DATA = {
       id: 'faq-4',
       category: 'Dominios',
       question: '¿Cuánto tiempo tarda en propagarse y activarse un dominio registrado o transferido?',
-      answer: 'El aprovisionamiento de dominios nuevos en Banelio es instantáneo (menos de 60 segundos gracias a nuestra integración directa vía API con la ICANN y registrars acreditados). La propagación de servidores DNS a nivel mundial suele tardar entre 15 minutos y un máximo de 2 a 4 horas en completarse en todos los proveedores de internet (ISPs) globales.',
+      answer: 'El aprovisionamiento de dominios nuevos se procesa de forma ágil a través de registrars acreditados una vez confirmado el pago. La propagación de servidores DNS a nivel global suele reflejarse entre 15 minutos y unas cuantas horas en los proveedores de internet (ISPs).',
       popularSearchQuery: 'cuanto tarda en activarse un dominio en internet'
     },
     {
@@ -41,14 +41,14 @@ export const FAQ_DATA = {
       id: 'faq-6',
       category: 'Hosting',
       question: '¿Puedo transferir mi dominio y sitio web actual desde otro proveedor a Banelio sin perder datos?',
-      answer: '¡Sí, absolutamente! Nuestro equipo de ingenieros realiza la migración completa de tu sitio web (archivos, bases de datos y cuentas de correo existentes) con metodología Zero-Downtime de manera 100% gratuita al contratar cualquier plan anual de Hosting Cloud NVMe. Cero interrupciones para tus clientes.',
-      popularSearchQuery: 'como migrar hosting y dominio sin caidas gratis'
+      answer: '¡Sí, por supuesto! Nuestro equipo técnico te asiste en la migración de tu sitio web (archivos, bases de datos y cuentas de correo existentes) al contratar un plan de Hosting Cloud NVMe, coordinando los pasos técnicos para asegurar la continuidad de tu servicio.',
+      popularSearchQuery: 'como migrar hosting y dominio sin caidas'
     },
     {
       id: 'faq-7',
       category: 'Dominios',
       question: '¿Cómo funciona la privacidad WHOIS y la protección de datos personales de mi dominio?',
-      answer: 'Por normativa internacional de la ICANN, los datos de contacto de todo dueño de dominio son públicos. Con la Privacidad WHOIS incluida en Banelio, enmascaramos tu nombre, dirección particular, teléfono y correo electrónico personal bajo un fideicomiso seguro, protegiéndote contra llamadas de spam, ciberacoso y estafas de renovación falsa.',
+      answer: 'Por normativa de registro de dominios, los datos de contacto pueden ser públicos en registros WHOIS/RDAP. Mediante las opciones de Privacidad WHOIS disponibles para extensiones compatibles, es posible proteger tu información personal (nombre, dirección, teléfono y correo) frente a búsquedas públicas y contactos no deseados.',
       popularSearchQuery: 'para que sirve la proteccion de privacidad whois'
     }
   ],
@@ -78,7 +78,7 @@ export const FAQ_DATA = {
       id: 'faq-4',
       category: 'Domains',
       question: 'How long does it take for a registered or transferred domain to propagate and activate?',
-      answer: 'New domain provisioning at Banelio is instantaneous (under 60 seconds thanks to our direct API integration with ICANN and accredited registrars). Global DNS propagation across international ISPs typically completes in 15 minutes, with a maximum of 2 to 4 hours worldwide.',
+      answer: 'New domain provisioning is processed swiftly through accredited registrars once payment is confirmed. Global DNS propagation across international ISPs typically begins reflecting within 15 minutes to a few hours worldwide.',
       popularSearchQuery: 'how long does domain propagation take'
     },
     {
@@ -92,14 +92,14 @@ export const FAQ_DATA = {
       id: 'faq-6',
       category: 'Hosting',
       question: 'Can I transfer my current website and domain to Banelio without data loss or downtime?',
-      answer: 'Yes, absolutely! Our senior infrastructure engineers perform a full Zero-Downtime migration of your website (all files, databases, and existing email accounts) 100% free of charge when ordering any annual NVMe Cloud Hosting plan.',
+      answer: 'Yes, absolutely! Our support team assists you with migrating your website (all files, databases, and existing email accounts) when ordering an NVMe Cloud Hosting plan, planning each step to maintain service continuity.',
       popularSearchQuery: 'how to migrate website without downtime'
     },
     {
       id: 'faq-7',
       category: 'Domains',
       question: 'How does WHOIS privacy work and why is personal data protection important for domains?',
-      answer: 'Under standard ICANN rules, domain registrant contact details are publicly visible in WHOIS databases. Banelio includes free WHOIS Privacy protection that masks your full name, physical address, phone number, and personal email behind a private trust proxy, eliminating unwanted telemarketing spam and identity theft risks.',
+      answer: 'Under standard domain registration rules, registrant contact details can be publicly accessible in WHOIS/RDAP databases. With WHOIS Privacy protection options available for eligible domain extensions, your personal contact information can be shielded to minimize unwanted telemarketing and spam.',
       popularSearchQuery: 'what is domain whois privacy protection'
     }
   ]
@@ -136,7 +136,7 @@ export const TRANSLATIONS = {
     hero_title_line2: 'con total soberanía de marca.',
     hero_title_1: 'Registra tu dominio global',
     hero_title_2: 'con total soberanía de marca.',
-    hero_subtitle: 'Búsqueda ultrarrápida, gestión DNS completa, protección WHOIS privada y aprovisionamiento automático mediante nuestra capa de abstracción.',
+    hero_subtitle: 'Búsqueda ágil de dominios, gestión DNS, opciones de protección WHOIS y servicios de hosting optimizados para tu negocio.',
     hero_tab_register: 'Registrar Nuevo Dominio',
     hero_tab_transfer: 'Transferir Dominio Existente',
     hero_search_placeholder: 'Escribe el nombre de tu marca (ej: miempresa, appflow)...',
@@ -156,13 +156,13 @@ export const TRANSLATIONS = {
     hero_filter_global: 'Globales (.com, .net)',
     hero_filter_tech: 'Tecnología (.io, .dev, .ai)',
     hero_filter_regional: 'América Latina (.mx, .co, .cl)',
-    hero_free_whois: 'Privacidad WHOIS 100% Gratis',
+    hero_free_whois: 'Protección WHOIS Disponible',
     hero_dns_management: 'Gestión DNS Anycast Cloudflare',
-    hero_instant_activation: 'Activación en menos de 60s',
+    hero_instant_activation: 'Activación Rápida',
 
     // Hosting Plans
-    hosting_section_title: 'Hosting de alta velocidad, escalable y sin caídas',
-    hosting_section_desc: 'Servidores optimizados con LiteSpeed Web Server, aislamiento CloudLinux y provisión inmediata.',
+    hosting_section_title: 'Hosting de alta velocidad, escalable y confiable',
+    hosting_section_desc: 'Servidores optimizados con LiteSpeed Web Server, aislamiento CloudLinux y panel cPanel en español.',
     hosting_monthly: 'Pago Mensual',
     hosting_annual: 'Pago Anual',
     hosting_save_badge: 'Ahorra 40%',
@@ -177,7 +177,7 @@ export const TRANSLATIONS = {
     email_section_desc: 'Deja atrás buzones gratuitos y utiliza correos profesionales con autenticación DMARC, anti-phishing y sincronización móvil.',
     email_cta: 'Añadir Correo al Pedido',
     ssl_section_title: 'Cifra los datos de tus usuarios y sube en Google',
-    ssl_section_desc: 'Evita el mensaje de "Sitio no seguro" de los navegadores y activa el candado HTTPS con garantía legal.',
+    ssl_section_desc: 'Evita el mensaje de "Sitio no seguro" de los navegadores y activa el candado HTTPS con cifrado de 256 bits.',
     ssl_cta: 'Proteger Dominio',
     ssl_best_seller: 'Más Vendido',
 
@@ -226,7 +226,7 @@ export const TRANSLATIONS = {
     // Domains Landing
     dom_badge: 'Registro Global de TLDs',
     dom_title: 'Encuentra el nombre perfecto para tu próximo gran proyecto',
-    dom_subtitle: 'Registra extensiones .com, .mx, .lat, .io, .ai y más de 400 gTLDs con panel DNS Anycast y protección WHOIS incluida.',
+    dom_subtitle: 'Registra extensiones .com, .mx, .lat, .io, .ai y más de 400 gTLDs con panel de gestión DNS y opciones de privacidad WHOIS.',
     dom_transfer_tab: 'Transferir Dominio Existente',
     dom_register_tab: 'Registrar Nuevo Dominio',
     dom_auth_code: 'Código de Autorización (Auth-Code / EPP):',
@@ -254,7 +254,7 @@ export const TRANSLATIONS = {
     aff_subtitle: 'Monetiza tu comunidad, blog o clientes con tu enlace o código de referencia, con comisiones del 10% en servicios contratados.',
     aff_join_btn: 'Acceder al Panel de Afiliado',
     aff_portal_btn: 'Acceder a mi Panel de Afiliado',
-    aff_subtext: 'Activación instantánea · Retiros por PayPal o Transferencia',
+    aff_subtext: 'Registro sencillo · Retiros por PayPal o Transferencia',
 
     // Cart & Checkout
     cart_title: 'Tu Carrito de Compras',
@@ -304,7 +304,7 @@ export const TRANSLATIONS = {
     footer_search_tlds: 'Buscar & Registrar TLDs',
     footer_transfer: 'Transferencia Directa',
     footer_dns_zones: 'Zonas DNS & WHOIS',
-    footer_whois_free: 'Privacidad WHOIS Gratis',
+    footer_whois_free: 'Privacidad WHOIS',
     footer_col_infra: 'Infraestructura',
     footer_hosting_nvme: 'Hosting Cloud NVMe',
     footer_pro_email: 'Correo Profesional',
@@ -319,9 +319,9 @@ export const TRANSLATIONS = {
     footer_privacy: 'Aviso de Privacidad (LFPDPPP)',
     footer_cookies: 'Aviso de Cookies',
     footer_arco: 'Derechos ARCO (INAI)',
-    footer_terms: 'Términos y SLA (99.9%)',
+    footer_terms: 'Términos del Servicio',
     footer_aup: 'Política de Uso Aceptable (AUP)',
-    footer_domain_contract: 'Contrato Dominios ICANN',
+    footer_domain_contract: 'Políticas y Contrato de Dominios',
     footer_rights: 'Todos los derechos reservados.',
     footer_data_protection: 'Protección de Datos',
     footer_cookie_settings: 'Configuración de Cookies',
@@ -445,7 +445,7 @@ export const TRANSLATIONS = {
     hero_title_line2: 'with total brand sovereignty.',
     hero_title_1: 'Register your global domain',
     hero_title_2: 'with total brand sovereignty.',
-    hero_subtitle: 'Lightning-fast search, comprehensive DNS management, private WHOIS protection, and automated provisioning through our modern abstraction layer.',
+    hero_subtitle: 'Fast domain search, comprehensive DNS management, WHOIS protection options, and cloud hosting solutions for your business.',
     hero_tab_register: 'Register New Domain',
     hero_tab_transfer: 'Transfer Existing Domain',
     hero_search_placeholder: 'Type your brand name (e.g. mycompany, appflow)...',
@@ -465,13 +465,13 @@ export const TRANSLATIONS = {
     hero_filter_global: 'Global (.com, .net)',
     hero_filter_tech: 'Technology (.io, .dev, .ai)',
     hero_filter_regional: 'Latin America (.mx, .co, .cl)',
-    hero_free_whois: '100% Free WHOIS Privacy',
+    hero_free_whois: 'WHOIS Privacy Available',
     hero_dns_management: 'Cloudflare Anycast DNS Management',
-    hero_instant_activation: 'Activation in under 60s',
+    hero_instant_activation: 'Fast Activation',
 
     // Hosting Plans
-    hosting_section_title: 'High-speed, scalable hosting with zero downtime',
-    hosting_section_desc: 'Servers powered by LiteSpeed Web Server, CloudLinux isolation, and instant automated provisioning.',
+    hosting_section_title: 'High-speed, scalable hosting with maximum reliability',
+    hosting_section_desc: 'Servers powered by LiteSpeed Web Server, CloudLinux isolation, and cPanel control panel.',
     hosting_monthly: 'Monthly Billing',
     hosting_annual: 'Annual Billing',
     hosting_save_badge: 'Save 40%',
@@ -486,7 +486,7 @@ export const TRANSLATIONS = {
     email_section_desc: 'Leave free mailboxes behind and use enterprise email with DMARC authentication, anti-phishing filters, and mobile sync.',
     email_cta: 'Add Email to Order',
     ssl_section_title: 'Encrypt your visitor data and rank higher on Google',
-    ssl_section_desc: 'Eliminate browser "Not Secure" warnings and activate the HTTPS padlock backed by legal warranty.',
+    ssl_section_desc: 'Eliminate browser "Not Secure" warnings and activate the HTTPS padlock with 256-bit encryption.',
     ssl_cta: 'Protect Domain',
     ssl_best_seller: 'Best Seller',
 
@@ -535,7 +535,7 @@ export const TRANSLATIONS = {
     // Domains Landing
     dom_badge: 'Global TLD Registration',
     dom_title: 'Find the perfect name for your next big venture',
-    dom_subtitle: 'Register .com, .mx, .lat, .io, .ai and 400+ gTLDs with Anycast DNS panel and WHOIS privacy included.',
+    dom_subtitle: 'Register .com, .mx, .lat, .io, .ai and 400+ gTLDs with DNS management panel and WHOIS privacy options.',
     dom_transfer_tab: 'Transfer Existing Domain',
     dom_register_tab: 'Register New Domain',
     dom_auth_code: 'Authorization Code (Auth-Code / EPP):',
@@ -555,7 +555,7 @@ export const TRANSLATIONS = {
     // SSL Landing
     ssl_badge: 'Accredited SSL Certificates',
     ssl_title: 'Protect your data and client transactions with Secure HTTPS',
-    ssl_subtitle: 'Boost your Google search rankings (SEO), build instant visitor trust, and shield online checkout flows.',
+    ssl_subtitle: 'Boost your Google search rankings (SEO), build visitor trust, and shield online checkout flows.',
 
     // Affiliates Landing
     aff_badge: 'Partners & Affiliates Program',
@@ -563,7 +563,7 @@ export const TRANSLATIONS = {
     aff_subtitle: 'Monetize your community, blog, or agency with your unique referral link or promo code, earning 10% on contracted services.',
     aff_join_btn: 'Access Affiliate Panel',
     aff_portal_btn: 'Access Affiliate Panel',
-    aff_subtext: 'Instant activation · Payouts via PayPal or Wire Transfer',
+    aff_subtext: 'Simple sign-up · Payouts via PayPal or Wire Transfer',
 
     // Cart & Checkout
     cart_title: 'Your Shopping Cart',
@@ -613,7 +613,7 @@ export const TRANSLATIONS = {
     footer_search_tlds: 'Search & Register TLDs',
     footer_transfer: 'Direct Transfer',
     footer_dns_zones: 'DNS Zones & WHOIS',
-    footer_whois_free: 'Free WHOIS Privacy',
+    footer_whois_free: 'WHOIS Privacy',
     footer_col_infra: 'Infrastructure',
     footer_hosting_nvme: 'Cloud NVMe Hosting',
     footer_pro_email: 'Business Email',
@@ -628,9 +628,9 @@ export const TRANSLATIONS = {
     footer_privacy: 'Privacy Policy (LFPDPPP)',
     footer_cookies: 'Cookie Notice',
     footer_arco: 'ARCO Rights (INAI)',
-    footer_terms: 'Terms & SLA (99.9%)',
+    footer_terms: 'Terms of Service',
     footer_aup: 'Acceptable Use Policy (AUP)',
-    footer_domain_contract: 'ICANN Domain Agreement',
+    footer_domain_contract: 'Domain Registration Policies',
     footer_rights: 'All rights reserved.',
     footer_data_protection: 'Data Protection',
     footer_cookie_settings: 'Cookie Settings',

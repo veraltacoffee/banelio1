@@ -25,9 +25,9 @@ Centralizada en variables CSS dentro de `src/index.css`:
 *Se eliminó por completo el código de color lima antiguo (`#B8F23A`) y el gris antiguo (`#8A8F98`) en todos los archivos de la aplicación.*
 
 ## IMAGEN DEL INTRO (Hero)
-- **Fondo 100% blanco puro (`#FFFFFF`):** Procesada localmente a alta fidelidad y guardada en `public/hero_clean.png` y `public/hero_clean.webp`.
+- **Fondo 100% blanco puro (`#FFFFFF`):** Recurso `public/hero_pure_white.png` integrado directamente con fondo blanco puro sin sombras ni halos.
 - **Cero sombras:** Eliminadas sombras proyectadas, halos y drop-shadows.
-- **Integración fluida:** Fondo blanco puro integrado sin costuras con el contenedor `bg-white` de la sección en `HeroDomainSearch.tsx`.
+- **Integración fluida:** Fondo blanco puro integrado sin costuras con el contenedor `bg-white` de la sección en `HeroDomainSearch.tsx` en móvil, tablet y escritorio.
 
 ## MARCA BLANCA Y TEXTOS PÚBLICOS
 - Ninguna mención pública o visible a plataformas externas de reventa en la interfaz de usuario.
@@ -40,7 +40,7 @@ Centralizada en variables CSS dentro de `src/index.css`:
 2. **Dominios y hosting:** Registro de dominios, transferencia, hosting Cloud NVMe, hosting revendedores WHM, privacidad Whois y LiteSpeed.
 3. **Servicios digitales:** Correo corporativo, certificados SSL, diseño web, posicionamiento SEO y blog.
 4. **Clientes y partners:** Tienda Banelio, Panel de control de clientes, Programa de afiliados y soluciones para revendedores.
-5. **Información legal:** Aviso de privacidad, Política de cookies, Términos y SLA 99.9%, Derechos ARCO (INAI), Contrato de dominios (ICANN) y Política de uso aceptable (AUP).
+5. **Información legal:** Aviso de privacidad, Política de cookies, Términos de Servicio, Derechos ARCO (INAI), Políticas y Contrato de dominios y Política de uso aceptable (AUP).
 
 ## ESTADO DE COMPILACIÓN Y VERIFICACIÓN
 - `npm run lint` (`tsc --noEmit`): 0 errores.

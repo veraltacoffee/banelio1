@@ -80,16 +80,13 @@ export default function HeroDomainSearch() {
         />
       </div>
 
-      {/* Intro Background Image with 100% pure white background, no drop shadows */}
+      {/* Intro Background Image with 100% pure white background, no drop shadows or halos */}
       <div className="absolute top-0 right-0 w-full sm:w-4/5 lg:w-3/5 h-[580px] sm:h-[620px] lg:h-[660px] pointer-events-none overflow-hidden z-0 flex justify-end">
-        <picture>
-          <source srcSet="/hero_clean.webp" type="image/webp" />
-          <img
-            src="/hero_clean.png"
-            alt="Banelio Infraestructura y Servicios Digitales"
-            className="w-full h-full object-contain object-top lg:object-right-top"
-          />
-        </picture>
+        <img
+          src="/hero_pure_white.png"
+          alt="Banelio Infraestructura y Servicios Digitales"
+          className="w-full h-full object-contain object-top lg:object-right-top"
+        />
       </div>
 
       {/* Soft edge gradients ensuring 100% legibility and seamless white background integration */}
