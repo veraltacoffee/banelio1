@@ -20,68 +20,65 @@ export default function HostingLanding() {
     {
       id: 'starter',
       name: 'Cloud Starter',
-      subtitle: language === 'en' ? 'For personal blogs & startups' : 'Para sitios personales, blogs y primeros proyectos',
+      subtitle: language === 'en' ? 'For personal blogs, landing pages & initial websites' : 'Para sitios personales, blogs y primeros proyectos web',
       popular: false,
       specs: [
         language === 'en' ? '1 Hosted Website' : '1 Sitio Web alojado',
-        language === 'en' ? '10 GB NVMe PCIe 4.0 Storage' : '10 GB Almacenamiento NVMe PCIe 4.0',
+        language === 'en' ? '10 GB Cloud SSD Storage' : '10 GB Almacenamiento Cloud SSD',
         language === 'en' ? '5 Professional Business Email Accounts' : '5 Cuentas de Correo Corporativo',
-        language === 'en' ? 'Free Auto-SSL Certificate (Let\'s Encrypt)' : 'Certificado SSL Gratis automático',
-        language === 'en' ? 'LiteSpeed Web Server + LSCache' : 'LiteSpeed Web Server + LSCache',
+        language === 'en' ? 'Free Auto-SSL Certificate' : 'Certificado SSL Gratis automático',
+        language === 'en' ? 'High-Performance Web Server with Caching' : 'Servidor Web de alto rendimiento con soporte de caché',
         language === 'en' ? 'cPanel Control Panel in Spanish' : 'Panel de Control cPanel en Español',
         language === 'en' ? 'Unmetered Monthly Bandwidth' : 'Transferencia mensual sin límite medido',
-        language === 'en' ? 'Weekly Automatic Backups' : 'Copias de seguridad semanales'
+        language === 'en' ? 'Automated Periodic Backups' : 'Copias de seguridad periódicas automatizadas'
       ],
       badge: null
     },
     {
       id: 'pro',
       name: language === 'en' ? 'Cloud Pro Business' : 'Cloud Pro Empresarial',
-      subtitle: language === 'en' ? 'Our most recommended plan for growing businesses' : 'El plan más recomendado para empresas y tiendas en crecimiento',
+      subtitle: language === 'en' ? 'Recommended for growing businesses, catalogs & stores' : 'Recomendado para empresas y sitios con múltiples dominios',
       popular: true,
       specs: [
-        language === 'en' ? 'Unlimited Hosted Websites' : 'Sitios Web Ilimitados',
-        language === 'en' ? '50 GB Ultra NVMe PCIe 4.0 Storage' : '50 GB Almacenamiento Ultra NVMe PCIe 4.0',
-        language === 'en' ? 'Unlimited Professional Email Accounts' : 'Cuentas de Correo Corporativo Ilimitadas',
-        language === 'en' ? 'Free Wildcard SSL for all domains' : 'Certificados SSL Gratis para todos tus dominios',
-        language === 'en' ? 'LiteSpeed Enterprise + HTTP/3 QUIC' : 'LiteSpeed Enterprise + HTTP/3 & QUIC',
-        language === 'en' ? 'CloudLinux OS Isolation (Dedicated Resources)' : 'Aislamiento CloudLinux OS (Recursos dedicados por cuenta)',
-        language === 'en' ? 'Daily Automated Backups with 1-Click Restore' : 'Backups Diarios con restauración en 1 clic',
-        language === 'en' ? '1-Click WordPress Staging & Git Integration' : 'Entornos Staging WordPress y despliegue Git',
-        language === 'en' ? 'Website Migration Assistance Included' : 'Asistencia en migración de sitios web incluida'
+        language === 'en' ? 'Multiple / Unlimited Hosted Websites' : 'Sitios Web Múltiples / Ilimitados',
+        language === 'en' ? '50 GB Cloud SSD Storage' : '50 GB Almacenamiento Cloud SSD',
+        language === 'en' ? 'Professional Email Accounts included' : 'Cuentas de Correo Corporativo incluidas',
+        language === 'en' ? 'Free SSL for all your hosted domains' : 'Certificados SSL Gratis para tus dominios',
+        language === 'en' ? 'CloudLinux OS Isolation (Account Protection)' : 'Aislamiento CloudLinux OS (Entorno protegido por cuenta)',
+        language === 'en' ? 'Automated Backups with cPanel 1-Click Restore' : 'Backups automatizados con restauración en cPanel',
+        language === 'en' ? '1-Click Application Installer (WordPress, etc.)' : 'Instalador de más de 400 aplicaciones en 1 clic',
+        language === 'en' ? 'Assisted Website Migration Available' : 'Asistencia en migración web disponible'
       ],
       badge: language === 'en' ? 'Most Popular' : 'Más Recomendado'
     },
     {
       id: 'elite',
       name: 'Cloud Elite Turbo',
-      subtitle: language === 'en' ? 'Dedicated resources for heavy traffic & eCommerce' : 'Máxima potencia para e-commerce de alto tráfico y agencias',
+      subtitle: language === 'en' ? 'Enhanced computing resources for heavy traffic and commerce' : 'Recursos ampliados para sitios con alto volumen de visitas y agencias',
       popular: false,
       specs: [
         language === 'en' ? 'Unlimited Hosted Websites' : 'Sitios Web Ilimitados',
-        language === 'en' ? '150 GB Ultra NVMe PCIe 4.0 Storage' : '150 GB Almacenamiento Ultra NVMe',
-        language === 'en' ? '4 Dedicated CPU Cores & 8 GB RAM' : '4 Cores de CPU & 8 GB RAM Dedicada',
-        language === 'en' ? 'Dedicated IPv4 Address included' : 'Dirección IP Dedicada incluida',
-        language === 'en' ? 'Unlimited High-Speed Inboxes' : 'Buzones de Correo Ilimitados',
-        language === 'en' ? 'LiteSpeed Enterprise Turbo Caching' : 'Caché LiteSpeed Enterprise optimizado',
-        language === 'en' ? 'Acronis Cloud Real-Time Backups' : 'Copias Acronis Cloud en tiempo real',
-        language === 'en' ? 'VIP Priority 24/7 Phone & Ticket Support' : 'Soporte Prioritario VIP 24/7'
+        language === 'en' ? '150 GB Cloud SSD Storage' : '150 GB Almacenamiento Cloud SSD',
+        language === 'en' ? 'Expanded CPU & RAM allocation limits' : 'Límites ampliados de memoria RAM y procesamiento',
+        language === 'en' ? 'High-Volume Professional Mailboxes' : 'Buzones de Correo Corporativo de alta capacidad',
+        language === 'en' ? 'Optimized Server Cache for Faster TTFB' : 'Caché de servidor optimizada para menor TTFB',
+        language === 'en' ? 'Automated Backups & File Manager' : 'Copias de seguridad y administrador de archivos cPanel',
+        language === 'en' ? 'Priority Technical Support' : 'Soporte Técnico Especializado Prioritario'
       ],
       badge: null
     },
     {
       id: 'reseller',
       name: 'Hosting Reseller WHM',
-      subtitle: language === 'en' ? 'Launch your own hosting brand with cPanel & WHM' : 'Crea tu propia empresa de hosting con marca blanca',
+      subtitle: language === 'en' ? 'Launch your own hosting brand with cPanel & WHM' : 'Gestiona y revende cuentas de hosting con tu propia marca',
       popular: false,
       specs: [
-        language === 'en' ? '50 Independent cPanel Client Accounts' : '50 Cuentas cPanel independientes',
-        language === 'en' ? '250 GB NVMe PCIe 4.0 Enterprise Storage' : '250 GB Espacio NVMe de alto rendimiento',
+        language === 'en' ? 'Up to 50 Independent cPanel Client Accounts' : 'Hasta 50 Cuentas cPanel independientes',
+        language === 'en' ? '250 GB High-Performance Storage' : '250 GB Espacio de almacenamiento asignable',
         language === 'en' ? 'Full WebHost Manager (WHM) Access' : 'Acceso completo a WebHost Manager (WHM)',
-        language === 'en' ? '100% White-Label (Custom Private Nameservers)' : '100% Marca Blanca (Nameservers Privados)',
-        language === 'en' ? 'Automated Client Provisioning & Billing Ready' : 'Compatible con aprovisionamiento y facturación',
-        language === 'en' ? 'Free SSL for all your client accounts' : 'Certificados SSL Gratis para cada cliente',
-        language === 'en' ? 'Overselling Protection & Quota Control' : 'Control exacto de cuotas de disco y ancho de banda'
+        language === 'en' ? '100% White-Label (Custom Private Nameservers)' : '100% Marca Blanca con Nameservers Privados',
+        language === 'en' ? 'Free Auto-SSL for all your client accounts' : 'Certificados SSL Gratis para cada cliente',
+        language === 'en' ? 'Disk Quota & Bandwidth Management' : 'Gestión personalizada de cuotas de disco y transferencia'
       ],
       badge: language === 'en' ? 'Agencies & Devs' : 'Agencias & Partners'
     }
@@ -90,45 +87,45 @@ export default function HostingLanding() {
   const features = [
     {
       icon: <Cpu className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'NVMe PCIe 4.0 Storage' : 'Almacenamiento NVMe PCIe 4.0',
+      title: language === 'en' ? 'High-Speed Cloud SSD Storage' : 'Almacenamiento Cloud SSD de Alta Velocidad',
       desc: language === 'en'
-        ? 'Over 10x faster than traditional SATA SSDs. Delivers up to 7,000 MB/s read/write speed for instant database queries.'
-        : 'Más de 10x más rápido que SSDs tradicionales. Hasta 7,000 MB/s de lectura/escritura para consultas MariaDB y WordPress instantáneas.'
+        ? 'Solid-state drives configured in redundant arrays for fast database queries and smooth dynamic page generation.'
+        : 'Discos de estado sólido en matrices redundantes que aceleran las consultas a bases de datos y la carga de páginas dinámicas.'
     },
     {
       icon: <Zap className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'LiteSpeed Web Server & HTTP/3' : 'LiteSpeed Web Server & HTTP/3',
+      title: language === 'en' ? 'Optimized Web Server & Caching' : 'Servidor Web Optimizado & Caché',
       desc: language === 'en'
-        ? 'Pre-configured with LSCache to serve pages in under 50ms TTFB and maximize Google Core Web Vitals scores.'
-        : 'Optimizado con LSCache y protocolo QUIC / HTTP/3 para alcanzar un Time To First Byte (TTFB) inferior a 50ms y optimizar SEO.'
+        ? 'Pre-configured caching layers designed to minimize server latency and deliver pages swiftly to visitors.'
+        : 'Capas de aceleración y compresión preconfiguradas para reducir el tiempo de respuesta del servidor (TTFB).'
     },
     {
       icon: <ShieldCheck className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'CloudLinux OS Isolation' : 'Aislamiento CloudLinux OS',
+      title: language === 'en' ? 'CloudLinux Operating System' : 'Aislamiento CloudLinux OS',
       desc: language === 'en'
-        ? 'CageFS isolates each account so other tenants never consume your CPU, memory, or compromise your security.'
-        : 'Cada cuenta corre en un contenedor virtual CageFS seguro. Ningún vecino en el servidor puede saturar tus recursos ni comprometer datos.'
+        ? 'CageFS isolates each tenant account, ensuring stable resource distribution and preventing noisy neighbor interference.'
+        : 'Tecnología CageFS que aísla de forma segura cada cuenta para garantizar la estabilidad de los recursos asignados.'
     },
     {
       icon: <RefreshCw className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'Website Migration Assistance' : 'Asistencia en Migración Web',
+      title: language === 'en' ? 'Assisted Website Migration' : 'Asistencia en Migración Web',
       desc: language === 'en'
-        ? 'Our technical support team assists you with migrating your website files, databases, and mailboxes.'
-        : 'Nuestro equipo de soporte técnico te acompaña en la migración de archivos, bases de datos y cuentas de correo.'
+        ? 'Our technical support team assists you with migrating website files, databases, and mailboxes from your previous host.'
+        : 'Nuestro equipo de soporte técnico te orienta en el proceso de migración de archivos, bases de datos y correos.'
     },
     {
       icon: <Clock className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'High Availability Cloud Infrastructure' : 'Infraestructura Cloud de Alta Disponibilidad',
+      title: language === 'en' ? 'High Availability Architecture' : 'Infraestructura de Alta Disponibilidad',
       desc: language === 'en'
-        ? 'Redundant cloud server architecture designed for maximum operational continuity and reliable uptime.'
-        : 'Arquitectura en la nube con almacenamiento redundante diseñada para alta disponibilidad y estabilidad operativa.'
+        ? 'Enterprise cloud infrastructure engineered for robust operational stability and business continuity.'
+        : 'Infraestructura en la nube con monitoreo permanente diseñada para ofrecer máxima continuidad operativa.'
     },
     {
       icon: <Layers className="w-6 h-6 text-[#070707]" />,
-      title: language === 'en' ? 'cPanel Control Panel' : 'Panel de Control cPanel Líder',
+      title: language === 'en' ? 'Industry-Standard cPanel' : 'Panel de Control cPanel Líder',
       desc: language === 'en'
-        ? 'The industry-standard control panel with 1-click installers (Softaculous), phpMyAdmin, and cron jobs.'
-        : 'El panel de control más confiable y potente del mundo con instalador de más de 400 aplicaciones (WordPress, PrestaShop) en 1 clic.'
+        ? 'Intuitive graphical interface for managing domains, subdomains, email accounts, databases, and SSL certificates.'
+        : 'Interfaz gráfica intuitiva para administrar fácilmente dominios, correos, bases de datos MariaDB y certificados SSL.'
     }
   ];
 
@@ -140,19 +137,19 @@ export default function HostingLanding() {
         <div className="max-w-6xl mx-auto relative z-10 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DFF5B5] border border-[#B9E86A] text-xs font-black tracking-wide text-[#070707] uppercase mb-5">
             <Sparkles size={14} className="text-[#070707]" />
-            <span>{language === 'en' ? 'Ultra NVMe PCIe 4.0 Cloud Hosting' : 'Cloud Hosting NVMe de Alta Velocidad'}</span>
+            <span>{language === 'en' ? 'Cloud Web Hosting Solutions' : 'Alojamiento Web Cloud de Alto Rendimiento'}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-[#070707] tracking-tight leading-tight max-w-4xl mx-auto">
             {language === 'en'
-              ? 'Web Hosting built for high performance and reliability.'
+              ? 'Web Hosting built for high performance, stability, and scale.'
               : 'Hosting web de alto rendimiento, escalable y confiable.'}
           </h1>
 
           <p className="mt-5 text-base sm:text-lg text-[#555A52] max-w-2xl mx-auto font-normal leading-relaxed">
             {language === 'en'
-              ? 'Powered by 100% NVMe PCIe 4.0 storage, LiteSpeed Web Server, cPanel in Spanish, and automatic SSL certificates. View plans and order directly in the Banelio Store.'
-              : 'Servidores optimizados con LiteSpeed Web Server, almacenamiento 100% NVMe PCIe 4.0, cPanel en español y certificados SSL automáticos. Consulta planes y contrata en la Tienda Banelio.'}
+              ? 'Equipped with fast solid-state cloud storage, cPanel control panel, automated free SSL, and professional business email. Select your plan and contract securely in the Banelio Store.'
+              : 'Equipado con almacenamiento cloud de alta velocidad, panel cPanel en español, certificados SSL automáticos y cuentas de correo corporativo. Consulta planes y contrata en la Tienda Banelio.'}
           </p>
 
           {/* Direct CTA */}
@@ -161,11 +158,11 @@ export default function HostingLanding() {
               onClick={() => openHostingStore('_blank')}
               className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm px-6 py-3.5 rounded-xl shadow-xs transition-transform hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
-              <span>{language === 'en' ? 'View Hosting Plans' : 'Ver Planes de Hosting'}</span>
+              <span>{language === 'en' ? 'View Hosting Plans in Store' : 'Ver Planes de Hosting en la Tienda'}</span>
               <ExternalLink size={16} />
             </button>
             <a
-              href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20asesoria%20sobre%20planes%20de%20Hosting%20Web%20NVMe"
+              href="https://wa.me/526601254107?text=Hola%20Banelio,%20deseo%20asesoria%20sobre%20planes%20de%20Hosting%20Web"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm px-5 py-3.5 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
@@ -181,7 +178,7 @@ export default function HostingLanding() {
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
-              {language === 'en' ? 'Assisted Website Migration' : 'Migración Asistida'}
+              {language === 'en' ? 'cPanel Control Panel' : 'Panel cPanel en Español'}
             </span>
             <span className="flex items-center gap-1.5 font-medium">
               <Check size={14} className="text-[#070707] font-bold" />
@@ -195,7 +192,7 @@ export default function HostingLanding() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-14">
           <h2 className="text-2xl sm:text-4xl font-black text-[#070707] tracking-tight">
-            {language === 'en' ? 'Select the Ideal Plan for Your Project' : 'Elige el Plan Perfecto para tu Proyecto'}
+            {language === 'en' ? 'Select the Ideal Plan for Your Project' : 'Elige el Plan Adecuado para tu Proyecto'}
           </h2>
           <p className="mt-3 text-[#555A52] text-sm sm:text-base">
             {language === 'en'
@@ -230,7 +227,7 @@ export default function HostingLanding() {
                     {language === 'en' ? 'Banelio Commercial Catalog' : 'Catálogo Comercial Banelio'}
                   </span>
                   <span className="text-xs text-[#555A52]">
-                    {language === 'en' ? 'Check real-time pricing & discounts' : 'Consulta precios y promociones'}
+                    {language === 'en' ? 'Check real-time pricing & discounts' : 'Consulta precios y promociones en tienda'}
                   </span>
                 </div>
 
@@ -253,7 +250,7 @@ export default function HostingLanding() {
                       : 'bg-[#070707] hover:bg-[#202020] text-[#FCFCF8]'
                   }`}
                 >
-                  <span>{language === 'en' ? 'Order Plan' : 'Contratar Plan'}</span>
+                  <span>{language === 'en' ? 'Order Plan in Store' : 'Ver y Contratar Plan'}</span>
                   <ExternalLink size={13} />
                 </button>
               </div>
@@ -273,7 +270,7 @@ export default function HostingLanding() {
             </h2>
             <p className="mt-3 text-[#555A52] text-sm sm:text-base">
               {language === 'en'
-                ? 'Discover the technologies behind Banelio\'s NVMe cloud infrastructure.'
+                ? 'Discover the technologies behind Banelio\'s cloud hosting infrastructure.'
                 : 'Conoce los pilares tecnológicos que sustentan nuestra plataforma de alojamiento web.'}
             </p>
           </div>
@@ -298,13 +295,13 @@ export default function HostingLanding() {
             <div className="absolute top-0 right-0 w-80 h-80 bg-[#B9E86A]/10 rounded-full blur-3xl pointer-events-none" />
             <h3 className="text-2xl sm:text-3xl font-black text-[#FCFCF8] tracking-tight">
               {language === 'en'
-                ? 'Need a custom server or high-capacity deployment?'
-                : '¿Necesitas un servidor dedicado o una configuración a medida?'}
+                ? 'Need guidance choosing the right hosting setup?'
+                : '¿Necesitas asesoría para elegir el plan adecuado?'}
             </h3>
             <p className="mt-3 text-sm text-[#D5D9CE] max-w-2xl mx-auto">
               {language === 'en'
-                ? 'Talk to our infrastructure architects for enterprise clusters, private cloud, or migration assistance.'
-                : 'Habla con nuestros arquitectos de infraestructura para clusters empresariales, nube privada o asistencia de migración.'}
+                ? 'Consult with our infrastructure team for custom migrations, high-capacity sites, or reseller setups.'
+                : 'Habla con nuestros asesores de infraestructura para migraciones, proyectos de alto tráfico o configuración reseller.'}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
@@ -315,7 +312,7 @@ export default function HostingLanding() {
                 <ExternalLink size={14} />
               </button>
               <a
-                href="mailto:try@banelio.com?subject=Consulta%20Servidor%20Personalizado%20Banelio"
+                href="mailto:try@banelio.com?subject=Consulta%20Hosting%20Banelio"
                 className="bg-[#141414] hover:bg-[#202020] border border-[#555A52] text-[#FCFCF8] font-bold text-xs sm:text-sm px-6 py-3 rounded-xl transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B9E86A]"
               >
                 try@banelio.com

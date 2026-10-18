@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Search, Loader2, Shield, RefreshCw, Lock, Cpu, AlertCircle, ArrowRight } from 'lucide-react';
+import { Search, Loader2, Shield, RefreshCw, Lock, Cpu, AlertCircle, ArrowRight, ExternalLink } from 'lucide-react';
 import DomainTransferModal from './DomainTransferModal';
 import {
   parseDomainInput,
   submitDomainSearchToSuperSite,
   openSuperSiteStore
 } from '../../services/supersiteService';
-import { POPULAR_TLDS } from '../../config/supersite';
+import { POPULAR_TLDS, SUPERSITE_DOMAIN_TRANSFER_ENDPOINT } from '../../config/supersite';
 
 export default function DomainsLanding() {
   const { t, language } = useApp();
@@ -17,6 +17,19 @@ export default function DomainsLanding() {
   const [activeTab, setActiveTab] = useState<'REGISTER' | 'TRANSFER'>('REGISTER');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [transferTargetDomain, setTransferTargetDomain] = useState('');
+
+  // Check if URL contains transfer intention (?tab=transfer or ?action=transfer)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      const action = params.get('action');
+      if (tab === 'transfer' || action === 'transfer') {
+        setActiveTab('TRANSFER');
+        setIsTransferModalOpen(true);
+      }
+    }
+  }, []);
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -113,6 +126,7 @@ export default function DomainsLanding() {
           {/* Switcher */}
           <div className="inline-flex p-1.5 bg-[#F7F8F0] backdrop-blur-md rounded-2xl border border-[#E2E5DA] mb-6 shadow-2xs">
             <button
+              id="domains-tab-register-btn"
               onClick={() => setActiveTab('REGISTER')}
               className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                 activeTab === 'REGISTER'
@@ -123,7 +137,11 @@ export default function DomainsLanding() {
               {t('hero_tab_register')}
             </button>
             <button
-              onClick={() => setActiveTab('TRANSFER')}
+              id="domains-tab-transfer-btn"
+              onClick={() => {
+                setActiveTab('TRANSFER');
+                setIsTransferModalOpen(true);
+              }}
               className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707] ${
                 activeTab === 'TRANSFER'
                   ? 'bg-[#B9E86A] text-[#070707] shadow-xs'
@@ -139,6 +157,7 @@ export default function DomainsLanding() {
           <form onSubmit={handleSearch} className="relative max-w-3xl mx-auto mb-8 group">
             <div className="relative flex items-center">
               <input
+                id="domains-search-input"
                 type="text"
                 value={query}
                 onChange={(e) => {
@@ -150,6 +169,7 @@ export default function DomainsLanding() {
                 className="w-full pl-6 pr-36 sm:pr-48 py-5 rounded-2xl bg-white text-[#070707] placeholder-[#858A82] text-base sm:text-lg font-bold shadow-xl border-2 border-[#E2E5DA] focus:border-[#070707] focus:ring-2 focus:ring-[#B9E86A] outline-none transition-all"
               />
               <button
+                id="domains-search-submit-btn"
                 type="submit"
                 disabled={isSearching || !query.trim()}
                 aria-busy={isSearching}
@@ -180,12 +200,27 @@ export default function DomainsLanding() {
             )}
           </form>
 
+          {/* Quick Transfer Option Button */}
+          <div className="mb-6">
+            <button
+              onClick={() => {
+                setActiveTab('TRANSFER');
+                setIsTransferModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 text-xs font-bold text-[#49652A] hover:text-[#070707] hover:underline cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>{language === 'en' ? 'Already own a domain? Transfer it to Banelio with our guided transfer wizard' : '¿Ya posees un dominio registrado? Transfiérelo a Banelio con nuestro asistente de transferencia'}</span>
+            </button>
+          </div>
+
           {/* Top TLD Badges */}
           <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 text-xs">
             <span className="text-[#555A52] font-semibold mr-1">{t('hero_featured_ext')}:</span>
             {POPULAR_TLDS.map((tld) => (
               <button
                 key={tld}
+                id={`domains-quick-tld-${tld}`}
                 disabled={isSearching}
                 onClick={() => handleQuickTldClick(tld)}
                 className="bg-white hover:bg-[#F7F8F0] border border-[#E2E5DA] hover:border-[#070707] px-4 py-1.5 rounded-xl text-[#070707] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
@@ -231,8 +266,8 @@ export default function DomainsLanding() {
               </h3>
               <p className="text-xs text-[#555A52] leading-relaxed">
                 {language === 'en'
-                  ? 'Keep your personal details (name, email, phone) masked from spammers and public databases on eligible extensions.'
-                  : 'Mantén tus datos personales (nombre, teléfono y dirección) protegidos ante búsquedas públicas y spammers en extensiones compatibles.'}
+                  ? 'Keep personal details (name, email, phone) masked from spammers and public databases on eligible extensions.'
+                  : 'Mantén tus datos personales protegidos ante búsquedas públicas y spammers en extensiones compatibles.'}
               </p>
             </div>
 
@@ -265,13 +300,23 @@ export default function DomainsLanding() {
             </div>
           </div>
 
-          <div className="mt-12 text-center">
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={() => openSuperSiteStore('_blank')}
               className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#B9E86A] hover:bg-[#CBEF8A] text-[#070707] font-black text-sm rounded-2xl shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
             >
-              <span>{language === 'en' ? 'Explore Full Domain Catalog' : 'Explorar Catálogo Completo en Tienda Banelio'}</span>
+              <span>{language === 'en' ? 'Explore Full Domain Catalog in Store' : 'Explorar Catálogo Completo en Tienda Banelio'}</span>
               <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('TRANSFER');
+                setIsTransferModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#F7F8F0] hover:bg-[#F1F3E8] border border-[#E2E5DA] text-[#070707] font-bold text-sm rounded-2xl shadow-2xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#070707]"
+            >
+              <RefreshCw size={15} />
+              <span>{language === 'en' ? 'Transfer Domain' : 'Transferir Dominio'}</span>
             </button>
           </div>
         </div>

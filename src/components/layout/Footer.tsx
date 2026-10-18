@@ -172,7 +172,7 @@ export default function Footer({ onNavigate, onOpenLegalModal }: FooterProps) {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('/dominios')}
+                  onClick={() => onNavigate('/dominios?action=transfer')}
                   className="hover:text-[#B9E86A] transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#B9E86A]"
                 >
                   {t('footer_transfer')}

@@ -27,11 +27,11 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
   const services = [
     {
       id: 'hosting',
-      badge: language === 'en' ? 'Extreme Performance' : 'Alto Rendimiento',
-      title: language === 'en' ? 'Cloud NVMe Web Hosting' : 'Hosting Cloud NVMe',
+      badge: language === 'en' ? 'Cloud Performance' : 'Alto Rendimiento',
+      title: language === 'en' ? 'Cloud SSD Web Hosting' : 'Hosting Cloud de Alta Velocidad',
       desc: language === 'en'
-        ? 'Up to 10x faster than SATA SSDs. LiteSpeed Web Server, cPanel in Spanish, daily backups, and automated free SSL.'
-        : 'Hasta 10x más rápido que SSDs tradicionales. LiteSpeed Web Server, cPanel en español, copias automáticas y SSL gratis.',
+        ? 'High-speed solid-state cloud storage, cPanel in Spanish, automated backups, and free auto-SSL certificates.'
+        : 'Almacenamiento Cloud SSD de alta velocidad, panel cPanel en español, copias periódicas y certificados SSL gratuitos.',
       icon: <Server className="w-6 h-6 text-[#070707]" />,
       route: '/hosting',
       externalAction: () => openHostingStore('_blank'),
@@ -105,8 +105,8 @@ export default function HomeServicesGrid({ onNavigate }: HomeServicesGridProps) 
   const highlights = [
     {
       icon: <Zap className="w-5 h-5 text-[#070707]" />,
-      title: language === 'en' ? 'Sub-50ms TTFB' : 'TTFB < 50ms',
-      desc: language === 'en' ? 'Ultra NVMe PCIe 4.0 architecture' : 'Almacenamiento NVMe ultrarrápido'
+      title: language === 'en' ? 'Cloud Performance' : 'Alto Rendimiento Cloud',
+      desc: language === 'en' ? 'Fast solid-state cloud architecture' : 'Almacenamiento de alta velocidad'
     },
     {
       icon: <Globe2 className="w-5 h-5 text-[#070707]" />,

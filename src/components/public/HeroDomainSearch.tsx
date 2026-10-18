@@ -17,6 +17,18 @@ export default function HeroDomainSearch() {
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [transferTargetDomain, setTransferTargetDomain] = useState('');
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      const action = params.get('action');
+      if (tab === 'transfer' || action === 'transfer') {
+        setActiveTab('TRANSFER');
+        setIsTransferModalOpen(true);
+      }
+    }
+  }, []);
+
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (isSearching) return;

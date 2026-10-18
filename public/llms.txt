@@ -1,0 +1,88 @@
+# Banelio — Resumen de Información Pública e Infraestructura Digital
+
+> Banelio es una plataforma comercial de servicios web, infraestructura en la nube y registro de dominios que provee soluciones de presencia en línea para profesionales, empresas y agencias.
+
+Sitio Web Oficial: https://banelio.com/
+Contacto Comercial y Soporte: try@banelio.com
+Atención Telefónica y WhatsApp: +52 660 125 4107
+Sitemap XML: https://banelio.com/sitemap.xml
+
+---
+
+## 1. Servicios y Productos Ofrecidos
+
+### Registro y Transferencia de Dominios
+- Registro de dominios de primer nivel globales (gTLDs como .com, .net, .org, .info) y territoriales (ccTLDs como .mx, .com.mx, .lat, etc.).
+- Búsqueda en tiempo real de disponibilidad y cotización a través de la Tienda Banelio.
+- Asistente de transferencia de dominios entrantes con verificación de código de autorización (Auth/EPP) conforme a lineamientos de ICANN.
+- Opciones de protección de privacidad de datos WHOIS/RDAP en extensiones elegibles.
+- Panel de gestión para configuración de registros DNS (A, AAAA, CNAME, MX, TXT, SPF, DKIM).
+- URL canónica: https://banelio.com/dominios
+
+### Alojamiento Web (Cloud Hosting)
+- Planes de hosting web compartidos basados en Linux y panel de control cPanel en español.
+- Almacenamiento en discos de estado sólido (SSD) en servidores cloud optimizados.
+- Aislamiento de cuentas con CloudLinux OS y tecnología CageFS.
+- Certificados SSL automáticos gratuitos incluidos.
+- Cuentas de correo corporativo vinculadas al dominio.
+- Herramienta de copias de seguridad automatizadas y restauración desde cPanel.
+- Soporte para CMS populares (WordPress, Joomla, PrestaShop) con instalador de aplicaciones.
+- Planes para revendedores (Reseller Hosting) con acceso a WebHost Manager (WHM).
+- URL canónica: https://banelio.com/hosting
+
+### Correo Empresarial Corporativo
+- Buzones de correo con dominio propio (@tuempresa.com) para proyectar identidad y confianza de marca.
+- Plataformas ofrecidas:
+  * Titan Business Email: webmail moderno, aplicaciones móviles nativas para iOS y Android, calendarios compartidos, libreta de contactos y almacenamiento de 10 GB o 50 GB por cuenta.
+  * Google Workspace: integración completa con Gmail, Google Drive, Google Meet y suite colaborativa (Docs, Sheets, Slides).
+  * Microsoft 365: buzón empresarial Exchange con aplicaciones de oficina y Teams.
+- Preconfiguración de directivas de autenticación criptográfica SPF, firmas DKIM y políticas DMARC para máxima entregabilidad a la bandeja principal.
+- URL canónica: https://banelio.com/email
+
+### Certificados de Seguridad SSL
+- Certificados comerciales acreditados emitidos por Sectigo / Comodo CA:
+  * Validación de Dominio (DV): activación ágil para blogs y sitios corporativos.
+  * Wildcard SSL (*.dominio): protección integral del dominio raíz y subdominios ilimitados.
+  * Validación Extendida (EV): verificación legal de la empresa con respaldo y sellos dinámicos.
+- Cifrado seguro de hasta 256 bits para cumplir con normas de protección de datos personales y pagos bancarios PCI-DSS.
+- URL canónica: https://banelio.com/ssl
+
+### Servicios Profesionales Propios de Banelio
+- Diseño y Desarrollo Web: diseño de sitios web corporativos, landing pages de alta conversión orientadas a ventas y tiendas online con pasarelas de pago. Prestado directamente por el equipo técnico de Banelio.
+  * URL canónica: https://banelio.com/diseno-web
+- Posicionamiento Web (SEO): auditorías técnicas de rastreo, optimización semántica on-page, estrategia de palabras clave transaccionales y SEO local en Google Maps. Prestado directamente por el equipo de especialistas de Banelio.
+  * URL canónica: https://banelio.com/seo
+- Programa de Afiliados: modelo de recomendación con 10% de comisión comercial por clientes referidos mediante enlace o código personalizado.
+  * URL canónica: https://banelio.com/afiliados
+- Soluciones para Revendedores y Agencias: infraestructura para agencias de desarrollo con cuentas WHM y nombres de servidor privados.
+  * URL canónica: https://banelio.com/resellers
+
+### Artículos Técnicos y Base de Conocimiento (Blog)
+- Guías técnicas redactadas por especialistas de infraestructura sobre almacenamiento cloud, autenticación de correos, elección de extensiones de dominio y cifrado SSL.
+  * URL canónica: https://banelio.com/blog
+  * Artículos publicados:
+    - https://banelio.com/blog/nvme-vs-ssd
+    - https://banelio.com/blog/spf-dkim-dmarc
+    - https://banelio.com/blog/choosing-domain-extension
+    - https://banelio.com/blog/ssl-commercial-vs-free
+
+---
+
+## 2. Información Comercial y Contratación
+
+- Plataforma de Tienda y Contratación: La consulta de disponibilidad en tiempo real, selección de ciclos de facturación, promociones vigentes y pasarelas de pago se completan de forma segura a través de la Tienda Banelio (SuperSite 2).
+- Panel de Clientes: Los usuarios gestionan sus servicios activos, dominios, renovaciones y tickets de soporte en el Panel de Clientes oficial.
+- Monedas: Soporte para visualización en pesos mexicanos (MXN), dólares estadounidenses (USD) y principales divisas regionales.
+
+---
+
+## 3. Marco Legal y Cumplimiento Normativo
+
+- Marco aplicable: Legislación de los Estados Unidos Mexicanos (Ley Federal de Protección de Datos Personales en Posesión de los Particulares - LFPDPPP, INAI, Profeco, Código de Comercio y NOM-151).
+- Políticas públicas disponibles en la plataforma:
+  * Aviso de Privacidad Integral
+  * Política de Uso de Cookies
+  * Ejercicio de Derechos ARCO (Acceso, Rectificación, Cancelación y Oposición) ante el INAI
+  * Términos y Condiciones Generales del Servicio
+  * Política de Uso Aceptable (AUP)
+  * Contrato Marco de Registro de Nombres de Dominio

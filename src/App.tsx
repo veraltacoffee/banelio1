@@ -18,116 +18,143 @@ import { LegalModal, LegalDocType } from './components/public/LegalModal';
 import { CookieConsentBanner } from './components/public/CookieConsentBanner';
 import { WhatsAppFloatingButton } from './components/public/WhatsAppFloatingButton';
 
-function resolveRoute(pathname: string): string {
-  const path = pathname.toLowerCase().trim();
-  if (path === '/' || path === '') return '/';
-  if (path.startsWith('/dominios') || path.startsWith('/domains')) return '/dominios';
-  if (path.startsWith('/hosting')) return '/hosting';
-  if (path.startsWith('/email') || path.startsWith('/correo')) return '/email';
-  if (path.startsWith('/ssl') || path.startsWith('/seguridad')) return '/ssl';
-  if (path.startsWith('/diseno-web') || path.startsWith('/diseno') || path.startsWith('/web')) return '/diseno-web';
-  if (path.startsWith('/seo')) return '/seo';
-  if (path.startsWith('/afiliados') || path.startsWith('/affiliates')) return '/afiliados';
-  if (path.startsWith('/resellers') || path.startsWith('/revendedores')) return '/resellers';
-  if (path.startsWith('/blog')) return '/blog';
-  return '/';
+export interface RouteResolution {
+  canonicalPath: string;
+  articleSlug: string | null;
 }
 
-function MainAppContent() {
-  const [currentRoute, setCurrentRoute] = useState<string>(() => {
+export function resolveRoute(pathname: string): RouteResolution {
+  const path = pathname.toLowerCase().trim();
+  if (path === '/' || path === '') return { canonicalPath: '/', articleSlug: null };
+  if (path.startsWith('/dominios') || path.startsWith('/domains')) return { canonicalPath: '/dominios', articleSlug: null };
+  if (path.startsWith('/hosting')) return { canonicalPath: '/hosting', articleSlug: null };
+  if (path.startsWith('/email') || path.startsWith('/correo')) return { canonicalPath: '/email', articleSlug: null };
+  if (path.startsWith('/ssl') || path.startsWith('/seguridad')) return { canonicalPath: '/ssl', articleSlug: null };
+  if (path.startsWith('/diseno-web') || path.startsWith('/diseno') || path.startsWith('/web')) return { canonicalPath: '/diseno-web', articleSlug: null };
+  if (path.startsWith('/seo')) return { canonicalPath: '/seo', articleSlug: null };
+  if (path.startsWith('/afiliados') || path.startsWith('/affiliates')) return { canonicalPath: '/afiliados', articleSlug: null };
+  if (path.startsWith('/resellers') || path.startsWith('/revendedores')) return { canonicalPath: '/resellers', articleSlug: null };
+  if (path.startsWith('/blog')) {
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length >= 2 && segments[1]) {
+      return { canonicalPath: `/blog/${segments[1]}`, articleSlug: segments[1] };
+    }
+    return { canonicalPath: '/blog', articleSlug: null };
+  }
+  return { canonicalPath: '/', articleSlug: null };
+}
+
+function MainAppContent({ initialPath }: { initialPath?: string }) {
+  const [routeInfo, setRouteInfo] = useState<RouteResolution>(() => {
+    if (initialPath) {
+      return resolveRoute(initialPath);
+    }
     if (typeof window !== 'undefined') {
       return resolveRoute(window.location.pathname);
     }
-    return '/';
+    return { canonicalPath: '/', articleSlug: null };
   });
 
   const [legalModalDoc, setLegalModalDoc] = useState<LegalDocType | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentRoute(resolveRoute(window.location.pathname));
+      setRouteInfo(resolveRoute(window.location.pathname));
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const navigateTo = (route: string) => {
-    const canonicalRoute = resolveRoute(route);
-    if (typeof window !== 'undefined' && window.location.pathname !== canonicalRoute) {
-      window.history.pushState({}, '', canonicalRoute);
+  const navigateTo = (target: string) => {
+    // Preserve query parameters if any (e.g. ?action=transfer)
+    let path = target;
+    let query = '';
+    if (target.includes('?')) {
+      const parts = target.split('?');
+      path = parts[0];
+      query = '?' + parts[1];
     }
-    setCurrentRoute(canonicalRoute);
+
+    const resolved = resolveRoute(path);
+    const destinationUrl = `${resolved.canonicalPath}${query}`;
+
+    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== destinationUrl) {
+      window.history.pushState({}, '', destinationUrl);
+    }
+    setRouteInfo(resolved);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const { canonicalPath, articleSlug } = routeInfo;
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-[#070707] selection:bg-[#B9E86A] selection:text-[#070707] font-sans antialiased">
-      {/* Main Navigation Bar with full commercial portfolio */}
-      <Navbar currentRoute={currentRoute} onNavigate={navigateTo} />
+      {/* Main Navigation Bar */}
+      <Navbar currentRoute={canonicalPath} onNavigate={navigateTo} />
 
       {/* Main Content Area */}
       <main className="flex-1 bg-white">
-        {currentRoute === '/' && (
+        {canonicalPath === '/' && (
           <div>
             <HeroDomainSearch />
             <HomeServicesGrid onNavigate={navigateTo} />
-            <FaqSection />
+            <FaqSection onNavigateToBlog={() => navigateTo('/blog')} />
           </div>
         )}
 
-        {currentRoute === '/dominios' && (
+        {canonicalPath === '/dominios' && (
           <div>
             <DomainsLanding />
-            <FaqSection />
+            <FaqSection onNavigateToBlog={() => navigateTo('/blog')} />
           </div>
         )}
 
-        {currentRoute === '/hosting' && (
+        {canonicalPath === '/hosting' && (
           <div>
             <HostingLanding />
           </div>
         )}
 
-        {currentRoute === '/email' && (
+        {canonicalPath === '/email' && (
           <div>
             <EmailLanding />
           </div>
         )}
 
-        {currentRoute === '/ssl' && (
+        {canonicalPath === '/ssl' && (
           <div>
             <SslLanding />
           </div>
         )}
 
-        {currentRoute === '/diseno-web' && (
+        {canonicalPath === '/diseno-web' && (
           <div>
             <WebDesignLanding />
           </div>
         )}
 
-        {currentRoute === '/seo' && (
+        {canonicalPath === '/seo' && (
           <div>
             <SeoLanding />
           </div>
         )}
 
-        {currentRoute === '/afiliados' && (
+        {canonicalPath === '/afiliados' && (
           <div>
             <AffiliatesLanding />
           </div>
         )}
 
-        {currentRoute === '/resellers' && (
+        {canonicalPath === '/resellers' && (
           <div>
             <ResellersLanding />
           </div>
         )}
 
-        {currentRoute === '/blog' && (
+        {canonicalPath.startsWith('/blog') && (
           <div>
-            <BlogLanding />
+            <BlogLanding currentArticleSlug={articleSlug} onNavigate={navigateTo} />
           </div>
         )}
       </main>
@@ -156,10 +183,10 @@ function MainAppContent() {
   );
 }
 
-export default function App() {
+export default function App({ initialPath }: { initialPath?: string } = {}) {
   return (
     <AppProvider>
-      <MainAppContent />
+      <MainAppContent initialPath={initialPath} />
     </AppProvider>
   );
 }
